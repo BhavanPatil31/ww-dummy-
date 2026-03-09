@@ -1,0 +1,31 @@
+package com.wealthwise.wealthwise_backend.investment.controller;
+
+import com.wealthwise.wealthwise_backend.investment.entity.Investment;
+import com.wealthwise.wealthwise_backend.investment.service.InvestmentService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/investments")
+@CrossOrigin(origins = "*")
+public class InvestmentController {
+
+    @Autowired
+    private InvestmentService investmentService;
+
+    @PostMapping("/add")
+    public Investment addInvestment(@RequestBody Investment investment){
+
+        return investmentService.addInvestment(investment);
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<Investment> getUserInvestments(@PathVariable Long userId){
+
+        return investmentService.getUserInvestments(userId);
+    }
+
+}
