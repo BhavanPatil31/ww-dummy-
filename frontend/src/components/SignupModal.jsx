@@ -29,7 +29,7 @@ function SignupModal({ closeSignup, openLogin }) {
             }
 
             alert(data.message);
-            openLogin();
+            openLogin(email);
         } catch (err) {
             setErrorMsg(err.message || "Unable to reach server");
         } finally {

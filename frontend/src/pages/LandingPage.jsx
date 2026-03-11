@@ -60,10 +60,7 @@ function LandingPage({ openLogin, user, onLogout }) {
                 </button>
               </div>
             ) : (
-              <>
-                <button className="login-btn" onClick={openLogin}>Login</button>
-                <button className="signup-btn" onClick={openLogin}>Sign Up</button>
-              </>
+              <button className="login-btn" onClick={openLogin}>Login</button>
             )}
 
             <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>

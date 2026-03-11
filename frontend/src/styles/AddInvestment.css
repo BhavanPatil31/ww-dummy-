@@ -1,0 +1,243 @@
+.add-investment-container {
+    padding: 0;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.add-investment-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.add-investment-card h2 {
+    font-size: 1.8rem;
+    color: var(--text-white);
+    margin: 0 0 8px 0;
+    font-weight: 700;
+}
+
+.add-investment-card .subtitle {
+    color: var(--text-gray);
+    margin: 0 0 30px 0;
+    font-size: 0.95rem;
+}
+
+.investment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.toggle-group {
+    display: flex;
+    background: rgba(11, 17, 32, 0.6);
+    border-radius: 12px;
+    padding: 6px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.toggle-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-gray);
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.toggle-btn.active {
+    background: var(--fintech-green);
+    color: var(--fintech-blue);
+    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 16px;
+    color: var(--text-gray);
+    font-size: 1.2rem;
+}
+
+.input-wrapper input {
+    width: 100%;
+    background: rgba(11, 17, 32, 0.5);
+    border: 1px solid var(--border-color);
+    color: var(--text-white);
+    padding: 14px 16px 14px 45px;
+    border-radius: 10px;
+    font-size: 1rem;
+    outline: none;
+    font-family: inherit;
+    transition: var(--transition);
+    box-sizing: border-box;
+}
+
+.styled-select {
+    width: 100%;
+    background: rgba(11, 17, 32, 0.5);
+    border: 1px solid var(--border-color);
+    color: var(--text-white);
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 1rem;
+    outline: none;
+    font-family: inherit;
+    appearance: none;
+    cursor: pointer;
+}
+
+.input-wrapper input:focus,
+.styled-select:focus {
+    border-color: var(--fintech-green);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+/* Chrome, Safari, Edge, Opera hide numerical input spinners */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-white);
+    padding: 14px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-submit {
+    flex: 2;
+    background: var(--fintech-green);
+    border: none;
+    color: var(--fintech-blue);
+    padding: 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.btn-submit:hover:not(:disabled) {
+    background: var(--fintech-green-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(34, 197, 94, 0.2);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.error-message {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    text-align: center;
+}
+
+.success-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.success-icon {
+    font-size: 4rem;
+    color: var(--fintech-green);
+    margin-bottom: 20px;
+}
+
+.success-state h3 {
+    font-size: 1.5rem;
+    color: var(--text-white);
+    margin: 0 0 10px 0;
+}
+
+.success-state p {
+    color: var(--text-gray);
+    margin: 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .add-investment-card {
+        padding: 25px;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+}

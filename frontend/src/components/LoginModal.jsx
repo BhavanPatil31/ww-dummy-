@@ -2,8 +2,8 @@ import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "../styles/AuthModal.css";
 
-function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess }) {
-  const [email, setEmail] = useState("");
+function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initialEmail }) {
+  const [email, setEmail] = useState(initialEmail || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

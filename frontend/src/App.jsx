@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import LandingPage from "./pages/LandingPage";
+import Dashboard from "./pages/Dashboard";
 
 import LoginModal from "./components/LoginModal";
 import SignupModal from "./components/SignupModal";
@@ -14,33 +15,49 @@ function App() {
     const [showSignup, setShowSignup] = useState(false);
     const [showForgot, setShowForgot] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+    const [loginEmail, setLoginEmail] = useState("");
 
     return (
 
         <div>
 
-            <LandingPage
-                openLogin={() => setShowLogin(true)}
-                user={currentUser}
-                onLogout={() => {
-                    localStorage.removeItem("jwt_token");
-                    setCurrentUser(null);
-                }}
-            />
+            {currentUser ? (
+                <Dashboard
+                    user={currentUser}
+                    onLogout={() => {
+                        localStorage.removeItem("jwt_token");
+                        setCurrentUser(null);
+                    }}
+                />
+            ) : (
+                <LandingPage
+                    openLogin={() => setShowLogin(true)}
+                    user={currentUser}
+                    onLogout={() => {
+                        localStorage.removeItem("jwt_token");
+                        setCurrentUser(null);
+                    }}
+                />
+            )}
 
             {showLogin &&
 
                 <LoginModal
-                    closeLogin={() => setShowLogin(false)}
+                    initialEmail={loginEmail}
+                    closeLogin={() => {
+                        setShowLogin(false);
+                        setLoginEmail(""); // clear on close
+                    }}
                     openSignup={() => {
 
                         setShowLogin(false);
                         setShowSignup(true);
-
+                        setLoginEmail(""); // clear on switch
                     }}
                     onLoginSuccess={(user) => {
                         setCurrentUser(user);
                         setShowLogin(false);
+                        setLoginEmail("");
                     }}
                     openForgot={() => {
 
@@ -56,8 +73,8 @@ function App() {
 
                 <SignupModal
                     closeSignup={() => setShowSignup(false)}
-                    openLogin={() => {
-
+                    openLogin={(email) => {
+                        if (email) setLoginEmail(email);
                         setShowSignup(false);
                         setShowLogin(true);
 

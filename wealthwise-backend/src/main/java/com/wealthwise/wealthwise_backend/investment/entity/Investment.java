@@ -9,8 +9,10 @@ public class Investment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long investment_id;
 
+    @Column(name = "user_id")
     private Long userId;
 
     private Long fund_id;
@@ -29,10 +31,11 @@ public class Investment {
 
     private LocalDate created_date;
 
-    public Investment(){}
+    public Investment() {
+    }
 
     @PrePersist
-    public void onCreate(){
+    public void onCreate() {
         this.created_date = LocalDate.now();
     }
 
@@ -44,11 +47,11 @@ public class Investment {
         this.investment_id = investment_id;
     }
 
-    public Long getUser_id() {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setUser_id(Long userId) {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 

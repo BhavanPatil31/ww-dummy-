@@ -104,4 +104,17 @@ public class AuthController {
         response.put("message", result);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/debug-login")
+    public ResponseEntity<String> debugLogin(@RequestBody User user) {
+        try {
+            Optional<String> tokenOpt = authService.login(user.getEmail(), user.getPassword());
+            return ResponseEntity.ok("Success: " + tokenOpt.orElse("null token"));
+        } catch (Exception e) {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            e.printStackTrace(pw);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(sw.toString());
+        }
+    }
 }

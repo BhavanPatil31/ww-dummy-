@@ -1,0 +1,15 @@
+﻿Field	Type	Null	Key	Default	Extra
+id	bigint	NO	PRI	NULL	auto_increment
+scheme_name	varchar(255)	YES		NULL	
+amount_invested	double	YES		NULL	
+current_nav	double	YES		NULL	
+start_date	date	YES		NULL	
+investment_type	varchar(255)	YES		NULL	
+amount	double	YES		NULL	
+buy_date	date	YES		NULL	
+created_date	date	YES		NULL	
+frequency	varchar(255)	YES		NULL	
+fund_id	bigint	YES		NULL	
+nav_at_buy	double	YES		NULL	
+units	double	YES		NULL	
+user_id	bigint	YES		NULL	
