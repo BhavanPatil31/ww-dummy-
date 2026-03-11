@@ -17,19 +17,42 @@ public class Investment {
 
     private Long fund_id;
 
+    private String scheme_name;
+
     private String investment_type;
 
     private Double amount;
+    
+    private Double amount_invested;
 
     private Double units;
 
     private LocalDate buy_date;
+    
+    private LocalDate start_date;
 
     private Double nav_at_buy;
+    
+    private Double current_nav;
 
     private String frequency;
 
     private LocalDate created_date;
+
+    private String asset_category;
+
+    private String risk_level;
+
+    private String investment_goal;
+
+    private String platform;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    private Double expected_return;
+
+    private Integer investment_duration;
 
     public Investment() {
     }
@@ -63,6 +86,14 @@ public class Investment {
         this.fund_id = fund_id;
     }
 
+    public String getScheme_name() {
+        return scheme_name;
+    }
+
+    public void setScheme_name(String scheme_name) {
+        this.scheme_name = scheme_name;
+    }
+
     public String getInvestment_type() {
         return investment_type;
     }
@@ -77,6 +108,14 @@ public class Investment {
 
     public void setAmount(Double amount) {
         this.amount = amount;
+    }
+
+    public Double getAmount_invested() {
+        return amount_invested;
+    }
+
+    public void setAmount_invested(Double amount_invested) {
+        this.amount_invested = amount_invested;
     }
 
     public Double getUnits() {
@@ -95,12 +134,28 @@ public class Investment {
         this.buy_date = buy_date;
     }
 
+    public LocalDate getStart_date() {
+        return start_date;
+    }
+
+    public void setStart_date(LocalDate start_date) {
+        this.start_date = start_date;
+    }
+
     public Double getNav_at_buy() {
         return nav_at_buy;
     }
 
     public void setNav_at_buy(Double nav_at_buy) {
         this.nav_at_buy = nav_at_buy;
+    }
+
+    public Double getCurrent_nav() {
+        return current_nav;
+    }
+
+    public void setCurrent_nav(Double current_nav) {
+        this.current_nav = current_nav;
     }
 
     public String getFrequency() {
@@ -117,5 +172,61 @@ public class Investment {
 
     public void setCreated_date(LocalDate created_date) {
         this.created_date = created_date;
+    }
+
+    public String getAsset_category() {
+        return asset_category;
+    }
+
+    public void setAsset_category(String asset_category) {
+        this.asset_category = asset_category;
+    }
+
+    public String getRisk_level() {
+        return risk_level;
+    }
+
+    public void setRisk_level(String risk_level) {
+        this.risk_level = risk_level;
+    }
+
+    public String getInvestment_goal() {
+        return investment_goal;
+    }
+
+    public void setInvestment_goal(String investment_goal) {
+        this.investment_goal = investment_goal;
+    }
+
+    public String getPlatform() {
+        return platform;
+    }
+
+    public void setPlatform(String platform) {
+        this.platform = platform;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public Double getExpected_return() {
+        return expected_return;
+    }
+
+    public void setExpected_return(Double expected_return) {
+        this.expected_return = expected_return;
+    }
+
+    public Integer getInvestment_duration() {
+        return investment_duration;
+    }
+
+    public void setInvestment_duration(Integer investment_duration) {
+        this.investment_duration = investment_duration;
     }
 }

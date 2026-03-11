@@ -1,29 +1,47 @@
+:root {
+    --fintech-blue: #0b1120;
+    --fintech-blue-light: #1e293b;
+    --fintech-green: #22c55e;
+    --fintech-green-hover: #16a34a;
+    --text-white: #f8fafc;
+    --text-gray: #94a3b8;
+    --input-bg: rgba(11, 17, 32, 0.6);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --transition: all 0.3s ease;
+}
+
 .add-investment-container {
-    padding: 0;
-    animation: fadeIn 0.4s ease-out;
+    padding: 20px 40px;
+    height: 100%;
+    margin: 0 auto;
+    max-width: 1000px;
+}
+
+.add-investment-layout {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
 }
 
 .add-investment-card {
-    background: var(--card-bg);
+    background-color: var(--fintech-blue-light);
+    border-radius: 16px;
+    padding: 35px 40px;
+    width: 100%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 40px;
-    max-width: 600px;
-    margin: 0 auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .add-investment-card h2 {
-    font-size: 1.8rem;
     color: var(--text-white);
+    font-size: 1.6rem;
     margin: 0 0 8px 0;
-    font-weight: 700;
 }
 
 .add-investment-card .subtitle {
     color: var(--text-gray);
-    margin: 0 0 30px 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    margin: 0 0 25px 0;
 }
 
 .investment-form {
@@ -34,20 +52,18 @@
 
 .toggle-group {
     display: flex;
-    background: rgba(11, 17, 32, 0.6);
-    border-radius: 12px;
-    padding: 6px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    border-radius: 10px;
+    padding: 5px;
+    gap: 5px;
 }
 
 .toggle-btn {
     flex: 1;
-    background: transparent;
-    border: none;
-    color: var(--text-gray);
     padding: 12px;
-    font-size: 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-gray);
     font-weight: 600;
     border-radius: 8px;
     cursor: pointer;
@@ -55,18 +71,9 @@
 }
 
 .toggle-btn.active {
-    background: var(--fintech-green);
-    color: var(--fintech-blue);
-    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
-}
-
-.form-row {
-    display: flex;
-    gap: 20px;
-}
-
-.form-row .form-group {
-    flex: 1;
+    background-color: var(--fintech-green);
+    color: white;
+    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
 }
 
 .form-group {
@@ -76,9 +83,17 @@
 }
 
 .form-group label {
-    font-size: 0.9rem;
-    color: var(--text-gray);
+    color: #cbd5e1;
+    font-size: 0.85rem;
     font-weight: 500;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+.form-row .form-group {
+    flex: 1;
 }
 
 .input-wrapper {
@@ -89,108 +104,191 @@
 
 .input-icon {
     position: absolute;
-    left: 16px;
+    left: 14px;
     color: var(--text-gray);
-    font-size: 1.2rem;
+    font-size: 1.1rem;
 }
 
 .input-wrapper input {
     width: 100%;
-    background: rgba(11, 17, 32, 0.5);
+    padding: 12px 14px 12px 40px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
+    border-radius: 8px;
     color: var(--text-white);
-    padding: 14px 16px 14px 45px;
-    border-radius: 10px;
-    font-size: 1rem;
-    outline: none;
-    font-family: inherit;
+    font-size: 0.95rem;
     transition: var(--transition);
     box-sizing: border-box;
 }
 
-.styled-select {
-    width: 100%;
-    background: rgba(11, 17, 32, 0.5);
-    border: 1px solid var(--border-color);
-    color: var(--text-white);
-    padding: 14px 16px;
-    border-radius: 10px;
-    font-size: 1rem;
+.input-wrapper input:focus {
     outline: none;
-    font-family: inherit;
-    appearance: none;
-    cursor: pointer;
-}
-
-.input-wrapper input:focus,
-.styled-select:focus {
     border-color: var(--fintech-green);
     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
-/* Chrome, Safari, Edge, Opera hide numerical input spinners */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+.styled-select {
+    width: 100%;
+    padding: 12px 14px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-white);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    cursor: pointer;
+    appearance: none;
+}
+
+.styled-select.padding-left {
+    padding-left: 40px;
+}
+
+.styled-select:focus {
+    outline: none;
+    border-color: var(--fintech-green);
+}
+
+.styled-select:focus {
+    outline: none;
+    border-color: var(--fintech-green);
+}
+
+.styled-textarea {
+    width: 100%;
+    padding: 15px 14px 15px 40px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-white);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    resize: vertical;
+}
+
+.styled-textarea:focus {
+    outline: none;
+    border-color: var(--fintech-green);
+}
+
+/* Tooltips */
+.tooltip-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.tooltip {
+    color: var(--text-gray);
+    cursor: help;
+}
+
+/* Suggestions Dropdown */
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--fintech-blue);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    list-style: none;
+    padding: 0;
+    margin: 5px 0 0 0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.suggestions-dropdown li {
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    transition: var(--transition);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.suggestions-dropdown li strong {
+    color: var(--text-white);
+}
+
+.suggestion-nav {
+    margin-left: auto;
+    color: var(--fintech-green);
+    font-weight: 600;
+    background-color: rgba(34, 197, 94, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.suggestions-dropdown li:hover {
+    background-color: var(--fintech-blue-light);
+    color: var(--text-white);
+}
+
+.helper-text {
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    margin-top: 5px;
+    margin-left: 5px;
+}
+
+.helper-text.auto-calc {
+    color: var(--fintech-green);
+    font-weight: 600;
 }
 
 .form-actions {
     display: flex;
     gap: 15px;
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 .btn-cancel {
     flex: 1;
-    background: transparent;
+    padding: 14px;
+    background-color: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-white);
-    padding: 14px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    font-size: 1rem;
     transition: var(--transition);
 }
 
 .btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .btn-submit {
     flex: 2;
-    background: var(--fintech-green);
-    border: none;
-    color: var(--fintech-blue);
     padding: 14px;
-    border-radius: 10px;
-    font-weight: 700;
+    background-color: var(--fintech-green);
+    border: none;
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 1rem;
     transition: var(--transition);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .btn-submit:hover:not(:disabled) {
-    background: var(--fintech-green-hover);
+    background-color: var(--fintech-green-hover);
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(34, 197, 94, 0.2);
+    box-shadow: 0 6px 15px rgba(34, 197, 94, 0.4);
 }
 
 .btn-submit:disabled {
     opacity: 0.7;
     cursor: not-allowed;
-}
-
-.error-message {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    text-align: center;
 }
 
 .success-state {
@@ -205,39 +303,128 @@ input::-webkit-inner-spin-button {
 }
 
 .success-state h3 {
-    font-size: 1.5rem;
     color: var(--text-white);
-    margin: 0 0 10px 0;
+    margin-bottom: 10px;
 }
 
 .success-state p {
     color: var(--text-gray);
-    margin: 0;
+    font-size: 0.9rem;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.error-message {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    text-align: center;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-@media (max-width: 600px) {
-    .form-row {
+/* Fix input type number arrows for dark mode */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+/* Form & Summary Width Allocation */
+.form-section {
+    flex: 1.5;
+}
+
+.summary-section {
+    flex: 1;
+    position: sticky;
+    top: 20px;
+}
+
+.live-summary-card {
+    background-color: var(--fintech-blue-light);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+}
+
+.live-summary-card h3 {
+    margin: 0 0 20px 0;
+    color: var(--text-white);
+    font-size: 1.3rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+}
+
+.summary-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item span {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+}
+
+.summary-item strong {
+    color: var(--text-white);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.highlight-box {
+    margin-top: 10px;
+    background-color: rgba(34, 197, 94, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.highlight-box span {
+    color: var(--fintech-green);
+    font-weight: 600;
+}
+.highlight-box strong {
+    color: var(--fintech-green);
+    font-size: 1.3rem;
+}
+
+.highlight-box-secondary {
+    margin-top: 5px;
+    background-color: rgba(59, 130, 246, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.highlight-box-secondary span {
+    color: #3b82f6;
+    font-weight: 600;
+}
+.highlight-box-secondary strong {
+    color: #3b82f6;
+    font-size: 1.3rem;
+}
+
+@media (max-width: 900px) {
+    .add-investment-layout {
         flex-direction: column;
-        gap: 20px;
     }
-
-    .add-investment-card {
-        padding: 25px;
-    }
-
-    .form-actions {
-        flex-direction: column-reverse;
+    .summary-section {
+        position: static;
+        width: 100%;
     }
 }

@@ -43,6 +43,7 @@ public class AuthController {
             Optional<User> loggedUser = authService.getUserByEmail(user.getEmail());
             if (loggedUser.isPresent()) {
                 response.put("name", loggedUser.get().getName());
+                response.put("id", String.valueOf(loggedUser.get().getUser_id()));
             }
 
             // Supply the newly generated JWT Token mapped into 'token'

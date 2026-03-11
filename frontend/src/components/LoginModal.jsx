@@ -32,7 +32,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         localStorage.setItem("jwt_token", data.token);
       }
       if (onLoginSuccess) {
-        onLoginSuccess({ name: data.name, email, token: data.token });
+        onLoginSuccess({ id: parseInt(data.id), name: data.name, email, token: data.token });
       } else {
         closeLogin();
       }
