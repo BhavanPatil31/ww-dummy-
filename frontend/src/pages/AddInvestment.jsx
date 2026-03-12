@@ -7,34 +7,12 @@ import {
 import '../styles/AddInvestment.css';
 
 // Mock Dataset based on the user's provided fund list
-const MOCK_FUNDS = [
-    { code: "100027", name: "Grindlays Super Saver Income Fund-GSSIF-Half Yearly Dividend", nav: 24.50 },
-    { code: "100028", name: "Grindlays Super Saver Income Fund-GSSIF-Quaterly Dividend", nav: 22.10 },
-    { code: "100029", name: "Grindlays Super Saver Income Fund-GSSIF-Growth", nav: 42.10 },
-    { code: "100033", name: "Aditya Birla Sun Life Large & Mid Cap Fund - Regular Growth", nav: 115.42 },
-    { code: "100034", name: "Aditya Birla Sun Life Large & Mid Cap Fund - Regular - IDCW", nav: 45.60 },
-    { code: "100035", name: "Birla Sun Life Freedom Fund-Plan A (Dividend)", nav: 18.90 },
-    { code: "100036", name: "Birla Sun Life Freedom Fund-Plan B (Growth)", nav: 98.70 },
-    { code: "100038", name: "Aditya Birla Sun Life Income Fund - Growth - Regular Plan", nav: 105.20 },
-    { code: "100042", name: "Aditya Birla Sun Life Liquid Fund-Retail (Growth)", nav: 341.80 },
-    { code: "100043", name: "Aditya Birla Sun Life Liquid Fund-Institutional (Growth)", nav: 341.60 },
-    { code: "100047", name: "Aditya Birla Sun Life Liquid Fund - Growth", nav: 343.10 },
-    { code: "100055", name: "Aditya Birla Sun Life Gilt Plus - Liquid Plan - Growth", nav: 15.20 },
-    { code: "100058", name: "Aditya Birla Sun Life Government Securities Fund - Growth - Regular Plan", nav: 112.50 },
-    { code: "100061", name: "Aditya Birla Sun Life Constant Maturity 10 Year Gilt Fund - Growth", nav: 140.20 },
-    { code: "100064", name: "Aditya Birla Sun Life MNC Fund - Growth - Regular Plan", nav: 850.50 },
-    { code: "100066", name: "Aditya Birla Sun Life India Opportunities Fund - Growth", nav: 150.70 },
-    { code: "100069", name: "BARODA PIONEER DIVERSIFIED FUND", nav: 56.40 },
-    { code: "100078", name: "DSP Bond Fund - Growth", nav: 78.90 },
-    { code: "100081", name: "DSP Aggressive Hybrid Fund - Regular Plan - Growth", nav: 165.20 },
-    { code: "100084", name: "DSP Gilt Fund - Regular Plan - Growth", nav: 45.10 },
-    { code: "100087", name: "DSP Savings Fund - Regular Plan - Growth", nav: 89.90 },
-    // A couple extra general ones for testing
-    { code: "500001", name: "HDFC Index Fund - Sensex Plan", nav: 564.30 },
-    { code: "500002", name: "SBI Small Cap Fund - Regular Growth", nav: 142.10 }
-];
+// We'll fetch these from the backend now
+// const [MOCK_FUNDS, setMockFunds] = useState([]); // REMOVED from here
 
 export default function AddInvestment({ user, onBackToDashboard }) {
+    const [MOCK_FUNDS, setMockFunds] = useState([]);
+    const [loadingFunds, setLoadingFunds] = useState(false);
     const [type, setType] = useState('SIP');
     const [formData, setFormData] = useState({
         fundName: '',
@@ -49,7 +27,30 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     // Autocomplete Search States
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [filteredFunds, setFilteredFunds] = useState([]);
+    const [loadingNav, setLoadingNav] = useState(false);
     const suggestionRef = useRef(null);
+
+    // Fetch fund list on mount
+    useEffect(() => {
+        const fetchFundList = async () => {
+            setLoadingFunds(true);
+            try {
+                const response = await axios.get('http://localhost:8088/api/mf/list');
+                // The API returns {schemeCode: X, schemeName: Y}
+                const formatted = response.data.map(f => ({
+                    code: (f.schemeCode || f.scheme_code || "").toString(),
+                    name: f.schemeName || f.scheme_name || "Unknown Fund",
+                    nav: 0 // Will fetch later
+                }));
+                setMockFunds(formatted);
+            } catch (err) {
+                console.error("Failed to fetch funds", err);
+            } finally {
+                setLoadingFunds(false);
+            }
+        };
+        fetchFundList();
+    }, []);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -65,30 +66,53 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
-
-        // Handle Fund Search Logic
         if (name === "fundName") {
-            if (value.length > 0) {
-                const results = MOCK_FUNDS.filter(fund => 
-                    fund.name.toLowerCase().includes(value.toLowerCase()) || 
-                    fund.code.includes(value)
-                );
-                setFilteredFunds(results);
-                setShowSuggestions(true);
-            } else {
-                setShowSuggestions(false);
-            }
+            setShowSuggestions(true);
         }
     };
 
-    const handleSelectFund = (fund) => {
+    // Reactive filtering: update filteredFunds whenever MOCK_FUNDS or the input changes
+    useEffect(() => {
+        const searchVal = formData.fundName.trim().toLowerCase();
+        const results = MOCK_FUNDS.filter(fund => 
+            (fund.name && fund.name.toLowerCase().includes(searchVal)) || 
+            (fund.code && fund.code.includes(searchVal))
+        ).slice(0, 300); // More results
+        setFilteredFunds(results);
+    }, [formData.fundName, MOCK_FUNDS]);
+
+    const handleFocus = () => {
+        setShowSuggestions(true);
+    };
+
+    const handleSelectFund = async (fund) => {
+        setLoadingNav(true);
         setFormData({
             ...formData,
             fundName: fund.name,
             fund_id: fund.code,
-            nav: fund.nav.toString()
+            nav: "" // Clear while loading
         });
         setShowSuggestions(false);
+        
+        try {
+            const response = await axios.get(`http://localhost:8088/api/mf/${fund.code}`);
+            // MF API Response structure: { meta: {}, data: [{date: X, nav: Y}, ...] }
+            if (response.data && response.data.data && response.data.data.length > 0) {
+                const latestNav = response.data.data[0].nav;
+                setFormData(prev => ({
+                    ...prev,
+                    fundName: fund.name,
+                    fund_id: fund.code,
+                    nav: latestNav.toString()
+                }));
+            }
+        } catch (err) {
+            console.error("Failed to fetch NAV", err);
+            setFormData(prev => ({ ...prev, nav: "0.00" }));
+        } finally {
+            setLoadingNav(false);
+        }
     };
 
     const formatCurrency = (val) => {
@@ -188,20 +212,30 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                     <input
                                         type="text"
                                         name="fundName"
-                                        placeholder="Search funds e.g. 'Birla' or '100033'"
+                                        placeholder={loadingFunds ? "Loading funds..." : "Search funds e.g. 'Birla'"}
                                         value={formData.fundName}
                                         onChange={handleChange}
+                                        onFocus={handleFocus}
+                                        onClick={handleFocus}
                                         required
                                         autoComplete="off"
+                                        disabled={loadingFunds}
                                     />
-                                    {showSuggestions && filteredFunds.length > 0 && (
+                                    {showSuggestions && (
                                         <ul className="suggestions-dropdown">
-                                            {filteredFunds.map((fund) => (
-                                                <li key={fund.code} onClick={() => handleSelectFund(fund)}>
-                                                    <strong>{fund.code}</strong> - {fund.name}
-                                                    <span className="suggestion-nav">₹{fund.nav.toFixed(2)}</span>
+                                            {loadingFunds ? (
+                                                <li className="no-suggestions">Searching all funds...</li>
+                                            ) : filteredFunds.length > 0 ? (
+                                                filteredFunds.map((fund) => (
+                                                    <li key={fund.code} onClick={() => handleSelectFund(fund)}>
+                                                        <strong>{fund.code}</strong> - {fund.name}
+                                                    </li>
+                                                ))
+                                            ) : (
+                                                <li className="no-suggestions">
+                                                    {formData.fundName.length > 0 ? "No matching funds found" : "Click or type to search all funds"}
                                                 </li>
-                                            ))}
+                                            )}
                                         </ul>
                                     )}
                                 </div>
@@ -231,11 +265,12 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                         <input
                                             type="number"
                                             name="nav"
-                                            placeholder="52.4"
+                                            placeholder={loadingNav ? "Fetching..." : "52.4"}
                                             value={formData.nav}
                                             onChange={handleChange}
                                             required
                                             step="0.01"
+                                            disabled={loadingNav}
                                         />
                                     </div>
                                     <span className="helper-text auto-calc">Units: {units}</span>
