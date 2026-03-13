@@ -171,8 +171,6 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             <div className="add-investment-layout">
                 <div className="form-section">
                     <div className="add-investment-card">
-                        <h2>Add New Investment</h2>
-                        <p className="subtitle">Search & log your mutual fund or stock investment</p>
 
                     {status.success ? (
                         <div className="success-state">

@@ -31,8 +31,12 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
       if (data.token) {
         localStorage.setItem("jwt_token", data.token);
       }
+      
+      const userData = { id: parseInt(data.id), name: data.name, email, token: data.token };
+      localStorage.setItem("wealthwise_user", JSON.stringify(userData));
+
       if (onLoginSuccess) {
-        onLoginSuccess({ id: parseInt(data.id), name: data.name, email, token: data.token });
+        onLoginSuccess(userData);
       } else {
         closeLogin();
       }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
@@ -17,6 +17,19 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [loginEmail, setLoginEmail] = useState("");
 
+    // Persist login on refresh
+    useEffect(() => {
+        const savedUser = localStorage.getItem("wealthwise_user");
+        if (savedUser) {
+            try {
+                setCurrentUser(JSON.parse(savedUser));
+            } catch (e) {
+                console.error("Failed to parse saved user", e);
+                localStorage.removeItem("wealthwise_user");
+            }
+        }
+    }, []);
+
     return (
 
         <div>
@@ -26,6 +39,7 @@ function App() {
                     user={currentUser}
                     onLogout={() => {
                         localStorage.removeItem("jwt_token");
+                        localStorage.removeItem("wealthwise_user");
                         setCurrentUser(null);
                     }}
                 />
@@ -35,6 +49,7 @@ function App() {
                     user={currentUser}
                     onLogout={() => {
                         localStorage.removeItem("jwt_token");
+                        localStorage.removeItem("wealthwise_user");
                         setCurrentUser(null);
                     }}
                 />

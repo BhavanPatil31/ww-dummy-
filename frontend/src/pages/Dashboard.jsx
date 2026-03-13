@@ -139,8 +139,14 @@ export default function Dashboard({ user, onLogout }) {
                 {/* Top Header */}
                 <header className="dashboard-header">
                     <div className="welcome-section">
-                        <h1>Welcome back, {user?.name || "Investor"}</h1>
-                        <p>Here is your portfolio summary</p>
+                        <h1>
+                            {activeView === 'dashboard' ? `Welcome back, ${user?.name || "Investor"}` : 
+                             activeView === 'addInvestment' ? 'Add Investment' : 'WealthWise'}
+                        </h1>
+                        <p>
+                            {activeView === 'dashboard' ? 'Here is your portfolio summary' : 
+                             activeView === 'addInvestment' ? 'Search and log your mutual fund or stock investment' : 'Manage your wealth assets'}
+                        </p>
                     </div>
                     <div className="header-actions">
                         <button className="icon-btn"><FiBell /></button>
