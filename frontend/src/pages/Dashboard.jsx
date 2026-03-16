@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut, FiTrendingUp } from 'react-icons/fi';
 import AddInvestment from './AddInvestment';
+import Portfolio from './Portfolio';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#1e293b', '#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'];
@@ -10,7 +11,16 @@ const COLORS = ['#1e293b', '#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'
 export default function Dashboard({ user, onLogout, onOpenProfile }) {
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [activeView, setActiveView] = useState('dashboard');
+
+    // Initialize from localStorage or default to 'dashboard'
+    const [activeView, setActiveView] = useState(() => {
+        return localStorage.getItem("activeView") || 'dashboard';
+    });
+
+    // Save activeView to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem("activeView", activeView);
+    }, [activeView]);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -25,6 +35,61 @@ export default function Dashboard({ user, onLogout, onOpenProfile }) {
                 setDashboardData(response.data);
             } catch (error) {
                 console.error("Error fetching dashboard data", error);
+                const userId = user?.id;
+
+                // Separate fetch for investments and summary to avoid one failure blocking everything
+                let investments = [];
+                let portfolio = null;
+
+                try {
+                    const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    investments = invRes.data || [];
+                } catch (e) {
+                    console.error("Error fetching investments", e);
+                }
+
+                try {
+                    const portRes = await axios.get(`http://localhost:8088/api/portfolio/user/${userId}`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    portfolio = portRes.data;
+                } catch (e) {
+                    console.error("Error fetching portfolio summary", e);
+                }
+
+                // Calculate Asset Allocation Chart locally from investments
+                const assetMap = {};
+                investments.forEach(inv => {
+                    const type = inv.asset_category || inv.investment_type || 'Other';
+                    assetMap[type] = (assetMap[type] || 0) + (parseFloat(inv.amount) || 0);
+                });
+
+                const assetAllocation = Object.keys(assetMap).map(key => ({
+                    name: key,
+                    value: assetMap[key]
+                }));
+
+                setDashboardData({
+                    totalInvested: portfolio?.total_invested || 0,
+                    portfolioValue: portfolio?.current_value || 0,
+                    profitLoss: (portfolio?.current_value || 0) - (portfolio?.total_invested || 0),
+                    returnPercentage: portfolio?.return_percentage || 0,
+                    assetAllocation
+                });
+
+            } catch (error) {
+                console.error("Error fetching dashboard data", error);
+
+                // Set fallback empty state on error
+                setDashboardData({
+                    totalInvested: 0,
+                    portfolioValue: 0,
+                    profitLoss: 0,
+                    returnPercentage: 0,
+                    assetAllocation: []
+                });
             } finally {
                 setLoading(false);
             }
@@ -32,7 +97,8 @@ export default function Dashboard({ user, onLogout, onOpenProfile }) {
 
         if (user && activeView === 'dashboard') {
             fetchDashboardData();
-        } else if (!user) {
+        } else {
+            // Immediately stop global loading for other views so they can render their own loaders/content
             setLoading(false);
         }
     }, [user, activeView]);
@@ -76,6 +142,11 @@ export default function Dashboard({ user, onLogout, onOpenProfile }) {
                         <FiUser /> My Profile
                     </a>
 
+                    <button className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveView('dashboard')}><FiTrendingUp /> Dashboard</button>
+                    <button className={`nav-item ${activeView === 'addInvestment' ? 'active' : ''}`} onClick={() => setActiveView('addInvestment')}><FiPlus /> Add Investment</button>
+                    <button className={`nav-item ${activeView === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveView('portfolio')}><FiBriefcase /> Portfolio</button>
+                    <button className="nav-item"><FiTarget /> Goals</button>
+                    <button className="nav-item"><FiFileText /> Tax Reports</button>
                 </nav>
                 <div className="sidebar-bottom">
                     <button className="logout-btn" onClick={onLogout}>
@@ -111,6 +182,9 @@ export default function Dashboard({ user, onLogout, onOpenProfile }) {
                         onBackToDashboard={() => setActiveView('dashboard')}
                     />
 
+                    <AddInvestment user={user} onBackToDashboard={() => setActiveView('dashboard')} />
+                ) : activeView === 'portfolio' ? (
+                    <Portfolio user={user} />
                 ) : (
                     <div className="dashboard-content">
                         <div className="metrics-grid">
@@ -172,6 +246,8 @@ export default function Dashboard({ user, onLogout, onOpenProfile }) {
                                 )}
                             </div>
                         </div>
+                        )}
+
                     </div>
                 )}
             </main>

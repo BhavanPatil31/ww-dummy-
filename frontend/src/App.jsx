@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import UserProfile from "./pages/UserProfile";
 import LandingPage from "./pages/LandingPage";
@@ -76,6 +76,7 @@ function App() {
                         setLoginEmail("");
                     }}
                     onLoginSuccess={(user) => {
+                        localStorage.setItem("wealthwise_user", JSON.stringify(user));
                         setCurrentUser(user);
                         setShowLogin(false);
                         setLoginEmail("");

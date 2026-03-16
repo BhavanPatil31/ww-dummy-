@@ -41,6 +41,12 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
           token: data.token,
           userId: data.userId
         });
+      
+      const userData = { id: parseInt(data.id), name: data.name, email, token: data.token };
+      localStorage.setItem("wealthwise_user", JSON.stringify(userData));
+
+      if (onLoginSuccess) {
+        onLoginSuccess(userData);
       } else {
         closeLogin();
       }
