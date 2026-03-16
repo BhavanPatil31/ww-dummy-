@@ -22,17 +22,25 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
       });
 
       const data = await response.json();
+      console.log("LOGIN RESPONSE:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Login failed");
       }
 
       alert(data.message + " Welcome, " + data.name);
+
       if (data.token) {
         localStorage.setItem("jwt_token", data.token);
       }
+
       if (onLoginSuccess) {
-        onLoginSuccess({ id: parseInt(data.id), name: data.name, email, token: data.token });
+        onLoginSuccess({
+          name: data.name,
+          email: email,
+          token: data.token,
+          userId: data.userId
+        });
       } else {
         closeLogin();
       }
@@ -50,7 +58,11 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         <h2 className="modal-title">Welcome Back</h2>
         <p className="modal-subtitle">Sign in to your WealthWise account</p>
 
-        {errorMsg && <div style={{ color: '#ef4444', marginBottom: '10px', fontSize: '0.9rem' }}>{errorMsg}</div>}
+        {errorMsg && (
+          <div style={{ color: "#ef4444", marginBottom: "10px", fontSize: "0.9rem" }}>
+            {errorMsg}
+          </div>
+        )}
 
         <form onSubmit={handleLogin}>
           <div className="input-group">
@@ -66,9 +78,18 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
           </div>
 
           <div className="input-group">
-            <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <label
+              className="input-label"
+              style={{ display: "flex", justifyContent: "space-between" }}
+            >
               Password
-              <span className="auth-link" style={{ fontSize: '0.8rem' }} onClick={openForgot}>Forgot?</span>
+              <span
+                className="auth-link"
+                style={{ fontSize: "0.8rem" }}
+                onClick={openForgot}
+              >
+                Forgot?
+              </span>
             </label>
             <div className="password-input-wrapper">
               <input
@@ -96,7 +117,10 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
 
         <div className="auth-footer">
           <span>
-            Don't have an account? <span className="auth-link" onClick={openSignup}>Create Account</span>
+            Don't have an account?{" "}
+            <span className="auth-link" onClick={openSignup}>
+              Create Account
+            </span>
           </span>
         </div>
       </div>

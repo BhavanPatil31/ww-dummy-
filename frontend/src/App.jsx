@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import UserProfile from "./pages/UserProfile";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 
@@ -16,75 +17,91 @@ function App() {
     const [showForgot, setShowForgot] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [loginEmail, setLoginEmail] = useState("");
+    const [currentPage, setCurrentPage] = useState("home");
+
+    const handleLogout = () => {
+        localStorage.removeItem("jwt_token");
+        setCurrentUser(null);
+        setCurrentPage("home");
+    };
+
+    // ✅ NEW — when name is updated in profile page, sync it to dashboard
+    const handleProfileUpdate = (updatedProfile) => {
+        setCurrentUser(prev => ({
+            ...prev,
+            name: updatedProfile.name
+        }));
+    };
 
     return (
-
         <div>
 
-            {currentUser ? (
+            {/* PROFILE PAGE */}
+            {currentPage === "profile" && currentUser ? (
+                <UserProfile
+                    user={currentUser}
+                    onBack={() => setCurrentPage("dashboard")}
+                    onLogout={handleLogout}
+                    onProfileUpdate={handleProfileUpdate}  // ✅ NEW
+                />
+
+            /* DASHBOARD PAGE */
+            ) : currentUser ? (
                 <Dashboard
                     user={currentUser}
-                    onLogout={() => {
-                        localStorage.removeItem("jwt_token");
-                        setCurrentUser(null);
-                    }}
+                    onLogout={handleLogout}
+                    onOpenProfile={() => setCurrentPage("profile")}
                 />
+
+            /* LANDING PAGE */
             ) : (
                 <LandingPage
                     openLogin={() => setShowLogin(true)}
                     user={currentUser}
-                    onLogout={() => {
-                        localStorage.removeItem("jwt_token");
-                        setCurrentUser(null);
-                    }}
+                    onLogout={handleLogout}
                 />
             )}
 
+            {/* LOGIN MODAL */}
             {showLogin &&
-
                 <LoginModal
                     initialEmail={loginEmail}
                     closeLogin={() => {
                         setShowLogin(false);
-                        setLoginEmail(""); // clear on close
+                        setLoginEmail("");
                     }}
                     openSignup={() => {
-
                         setShowLogin(false);
                         setShowSignup(true);
-                        setLoginEmail(""); // clear on switch
+                        setLoginEmail("");
                     }}
                     onLoginSuccess={(user) => {
                         setCurrentUser(user);
                         setShowLogin(false);
                         setLoginEmail("");
+                        setCurrentPage("dashboard");
                     }}
                     openForgot={() => {
-
                         setShowLogin(false);
                         setShowForgot(true);
-
                     }}
                 />
-
             }
 
+            {/* SIGNUP MODAL */}
             {showSignup &&
-
                 <SignupModal
                     closeSignup={() => setShowSignup(false)}
                     openLogin={(email) => {
                         if (email) setLoginEmail(email);
                         setShowSignup(false);
                         setShowLogin(true);
-
                     }}
                 />
-
             }
 
+            {/* FORGOT PASSWORD MODAL */}
             {showForgot &&
-
                 <ForgotPasswordModal
                     close={() => setShowForgot(false)}
                     openLogin={() => {
@@ -92,13 +109,10 @@ function App() {
                         setShowLogin(true);
                     }}
                 />
-
             }
 
         </div>
-
     );
-
 }
 
 export default App;
