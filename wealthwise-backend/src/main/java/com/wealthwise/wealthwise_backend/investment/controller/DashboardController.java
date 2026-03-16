@@ -41,17 +41,20 @@ public class DashboardController {
                 if ("SIP".equalsIgnoreCase(type)) {
                     long monthsPassed = java.time.temporal.ChronoUnit.MONTHS.between(inv.getBuy_date(), java.time.LocalDate.now());
                     if (monthsPassed < 0) monthsPassed = 0;
-                    // Add 1 for the initial installment
                     long n = monthsPassed + 1; 
                     currentInvested = amount * n;
                     
-                    // SIP Formula: M = P × ({[1 + i]^n - 1} / i) × (1 + i)
-                    // Assuming expected annual return of 12% -> 1% monthly -> i = 0.01
-                    double i = 0.01;
-                    if (n > 0) {
-                        currentVal = amount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
+                    if (inv.getCurrent_nav() != null && inv.getNav_at_buy() != null && inv.getNav_at_buy() > 0) {
+                        // If we have live NAV, calculate based on growth
+                        currentVal = currentInvested * (inv.getCurrent_nav() / inv.getNav_at_buy());
                     } else {
-                        currentVal = currentInvested;
+                        // SIP Formula: M = P × ({[1 + i]^n - 1} / i) × (1 + i)
+                        double i = 0.01; // 1% monthly
+                        if (n > 0) {
+                            currentVal = amount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
+                        } else {
+                            currentVal = currentInvested;
+                        }
                     }
                 } else {
                     // Lumpsum
@@ -59,15 +62,18 @@ public class DashboardController {
                     if (days < 0) days = 0;
                     currentInvested = amount;
                     
-                    // Compound interest for lumpsum: A = P(1 + r/n)^(nt)
-                    // We use simple compound: A = P * (1 + r)^t where t is years
-                    double years = days / 365.25;
-                    currentVal = currentInvested * Math.pow(1.12, years);
+                    if (inv.getCurrent_nav() != null && inv.getNav_at_buy() != null && inv.getNav_at_buy() > 0) {
+                        currentVal = currentInvested * (inv.getCurrent_nav() / inv.getNav_at_buy());
+                    } else {
+                        double years = days / 365.25;
+                        currentVal = currentInvested * Math.pow(1.12, years);
+                    }
                 }
             } else {
-                currentVal = currentInvested * 1.12; // fallback
+                currentVal = currentInvested * (inv.getCurrent_nav() != null && inv.getNav_at_buy() != null && inv.getNav_at_buy() > 0 ? (inv.getCurrent_nav() / inv.getNav_at_buy()) : 1.12);
             }
             
+            totalInvested += currentInvested;
             portfolioValue += currentVal;
 
             assetAllocationMap.put(type, assetAllocationMap.getOrDefault(type, 0.0) + currentInvested);

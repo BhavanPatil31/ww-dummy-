@@ -11,7 +11,7 @@ const MOCK_FUNDS = [
     { code: "100027", name: "Grindlays Super Saver Income Fund-GSSIF-Half Yearly Dividend", nav: 24.50 },
     { code: "100028", name: "Grindlays Super Saver Income Fund-GSSIF-Quaterly Dividend", nav: 22.10 },
     { code: "100029", name: "Grindlays Super Saver Income Fund-GSSIF-Growth", nav: 42.10 },
-    { code: "100033", name: "Aditya Birla Sun Life Large & Mid Cap Fund - Regular Growth", nav: 115.42 },
+    { code: "100033", name: "Aditya Birla Sun Life Large & Mid Cap Fund - Regular Growth", nav: 868.79 },
     { code: "100034", name: "Aditya Birla Sun Life Large & Mid Cap Fund - Regular - IDCW", nav: 45.60 },
     { code: "100035", name: "Birla Sun Life Freedom Fund-Plan A (Dividend)", nav: 18.90 },
     { code: "100036", name: "Birla Sun Life Freedom Fund-Plan B (Growth)", nav: 98.70 },
@@ -49,6 +49,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     // Autocomplete Search States
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [filteredFunds, setFilteredFunds] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
     const suggestionRef = useRef(null);
 
     // Close dropdown on outside click
@@ -62,6 +63,38 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Debounced fund search
+    useEffect(() => {
+        const searchTimer = setTimeout(async () => {
+            if (formData.fundName.length >= 3) {
+                setIsSearching(true);
+                try {
+                    const token = localStorage.getItem("jwt_token");
+                    const res = await axios.get(`http://localhost:8088/api/nav/search?q=${formData.fundName}`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    // mfapi returns list of objects with schemeCode and schemeName
+                    const suggestions = (res.data || []).map(item => ({
+                        code: item.schemeCode.toString(),
+                        name: item.schemeName,
+                        nav: 0 // Will fetch actual NAV on selection
+                    }));
+                    setFilteredFunds(suggestions);
+                    setShowSuggestions(suggestions.length > 0);
+                } catch (err) {
+                    console.error("Search failed", err);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setFilteredFunds([]);
+                setShowSuggestions(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(searchTimer);
+    }, [formData.fundName]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
@@ -74,21 +107,68 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                     fund.code.includes(value)
                 );
                 setFilteredFunds(results);
-                setShowSuggestions(true);
             } else {
-                setShowSuggestions(false);
+                // When field is cleared, show all funds
+                setFilteredFunds(MOCK_FUNDS);
             }
+            setShowSuggestions(true);
         }
     };
 
-    const handleSelectFund = (fund) => {
-        setFormData({
-            ...formData,
+    const handleFundFocus = () => {
+        // Show all funds immediately on click/focus
+        const currentValue = formData.fundName;
+        if (currentValue.length > 0) {
+            const results = MOCK_FUNDS.filter(fund =>
+                fund.name.toLowerCase().includes(currentValue.toLowerCase()) ||
+                fund.code.includes(currentValue)
+            );
+            setFilteredFunds(results);
+        } else {
+            setFilteredFunds(MOCK_FUNDS);
+        }
+        setShowSuggestions(true);
+    };
+
+    const handleSelectFund = async (fund) => {
+        // Clear previous NAV and show loading feedback
+        setFormData(prev => ({
+            ...prev,
             fundName: fund.name,
             fund_id: fund.code,
-            nav: fund.nav.toString()
-        });
+            nav: "Fetching..." // Visual indicator that live data is being retrieved
+        }));
         setShowSuggestions(false);
+
+        // Fetch live NAV from backend
+        try {
+            const token = localStorage.getItem("jwt_token");
+            console.log(`Fetching live NAV for fund code: ${fund.code}`);
+            const response = await axios.get(`http://localhost:8088/api/nav/${fund.code}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (response.data && !isNaN(response.data)) {
+                console.log(`Successfully fetched NAV: ${response.data}`);
+                setFormData(prev => ({
+                    ...prev,
+                    nav: response.data.toString()
+                }));
+            } else {
+                console.warn("Got unexpected NAV response, falling back to mock value");
+                setFormData(prev => ({
+                    ...prev,
+                    nav: fund.nav.toString()
+                }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch live NAV from backend:", error);
+            // Revert to mock value on failure
+            setFormData(prev => ({
+                ...prev,
+                nav: fund.nav.toString()
+            }));
+        }
     };
 
     const formatCurrency = (val) => {
@@ -99,8 +179,11 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         }).format(val || 0);
     };
 
-    const units = (formData.amount > 0 && formData.nav > 0) 
-        ? (parseFloat(formData.amount) / parseFloat(formData.nav)).toFixed(4) 
+    const isNavFetching = formData.nav === "Fetching...";
+    const currentNavValue = parseFloat(formData.nav);
+    
+    const units = (formData.amount > 0 && !isNaN(currentNavValue) && currentNavValue > 0) 
+        ? (parseFloat(formData.amount) / currentNavValue).toFixed(4) 
         : "0.0000";
 
     const handleSubmit = async (e) => {
@@ -188,20 +271,24 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                     <input
                                         type="text"
                                         name="fundName"
-                                        placeholder="Search funds e.g. 'Birla' or '100033'"
+                                        placeholder="Click to browse or type to search funds"
                                         value={formData.fundName}
                                         onChange={handleChange}
+                                        onFocus={handleFundFocus}
                                         required
                                         autoComplete="off"
                                     />
-                                    {showSuggestions && filteredFunds.length > 0 && (
+                                    {showSuggestions && (
                                         <ul className="suggestions-dropdown">
-                                            {filteredFunds.map((fund) => (
-                                                <li key={fund.code} onClick={() => handleSelectFund(fund)}>
-                                                    <strong>{fund.code}</strong> - {fund.name}
-                                                    <span className="suggestion-nav">₹{fund.nav.toFixed(2)}</span>
-                                                </li>
-                                            ))}
+                                            {isSearching ? (
+                                                <li className="searching-indicator">Searching funds...</li>
+                                            ) : (
+                                                filteredFunds.map((fund) => (
+                                                    <li key={fund.code} onClick={() => handleSelectFund(fund)}>
+                                                        <strong>{fund.code}</strong> - {fund.name}
+                                                    </li>
+                                                ))
+                                            )}
                                         </ul>
                                     )}
                                 </div>
@@ -229,13 +316,13 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                     <div className="input-wrapper">
                                         <FiActivity className="input-icon" />
                                         <input
-                                            type="number"
+                                            type="text"
                                             name="nav"
                                             placeholder="52.4"
+                                            className={isNavFetching ? "nav-fetching" : ""}
                                             value={formData.nav}
                                             onChange={handleChange}
                                             required
-                                            step="0.01"
                                         />
                                     </div>
                                     <span className="helper-text auto-calc">Units: {units}</span>
