@@ -11,7 +11,7 @@ const COLORS = ['#1e293b', '#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'
 export default function Dashboard({ user, onLogout }) {
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
-    
+
     // Initialize from localStorage or default to 'dashboard'
     const [activeView, setActiveView] = useState(() => {
         return localStorage.getItem("activeView") || 'dashboard';
@@ -49,19 +49,19 @@ export default function Dashboard({ user, onLogout }) {
                 } catch (e) {
                     console.error("Error fetching portfolio summary", e);
                 }
-                
+
                 // Calculate Asset Allocation Chart locally from investments
                 const assetMap = {};
                 investments.forEach(inv => {
                     const type = inv.asset_category || inv.investment_type || 'Other';
                     assetMap[type] = (assetMap[type] || 0) + (parseFloat(inv.amount) || 0);
                 });
-                
+
                 const assetAllocation = Object.keys(assetMap).map(key => ({
                     name: key,
                     value: assetMap[key]
                 }));
-                
+
                 setDashboardData({
                     totalInvested: portfolio?.total_invested || 0,
                     portfolioValue: portfolio?.current_value || 0,
@@ -69,10 +69,10 @@ export default function Dashboard({ user, onLogout }) {
                     returnPercentage: portfolio?.return_percentage || 0,
                     assetAllocation
                 });
-                
+
             } catch (error) {
                 console.error("Error fetching dashboard data", error);
-                
+
                 // Set fallback empty state on error
                 setDashboardData({
                     totalInvested: 0,
@@ -128,14 +128,8 @@ export default function Dashboard({ user, onLogout }) {
                 {/* Top Header */}
                 <header className="dashboard-header">
                     <div className="welcome-section">
-                        {activeView === 'dashboard' ? (
-                            <>
-                                <h1>Welcome back, {user?.name || "Investor"}</h1>
-                                <p>Here is your portfolio summary</p>
-                            </>
-                        ) : (
-                            <h1>{activeView === 'portfolio' ? 'My Portfolio' : 'Add New Investment'}</h1>
-                        )}
+                        <h1>Welcome back, {user?.name || "Investor"}</h1>
+                        <p>Here is your portfolio summary</p>
                     </div>
                     <div className="header-actions">
                         <button className="icon-btn"><FiBell /></button>
@@ -217,7 +211,7 @@ export default function Dashboard({ user, onLogout }) {
                                 </div>
                             </div>
                         )}
-                        
+
                     </div>
                 )}
             </main>

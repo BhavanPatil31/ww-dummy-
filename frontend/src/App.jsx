@@ -17,26 +17,6 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [loginEmail, setLoginEmail] = useState("");
 
-    // Restore user from localStorage on mount
-    useEffect(() => {
-        const savedUser = localStorage.getItem("wealthwise_user");
-        if (savedUser) {
-            try {
-                setCurrentUser(JSON.parse(savedUser));
-            } catch (e) {
-                console.error("Failed to parse saved user", e);
-                localStorage.removeItem("wealthwise_user");
-            }
-        }
-    }, []);
-
-    const logout = () => {
-        localStorage.removeItem("jwt_token");
-        localStorage.removeItem("wealthwise_user");
-        localStorage.removeItem("activeView"); // Reset view on logout
-        setCurrentUser(null);
-    };
-
     return (
 
         <div>
@@ -44,13 +24,19 @@ function App() {
             {currentUser ? (
                 <Dashboard
                     user={currentUser}
-                    onLogout={logout}
+                    onLogout={() => {
+                        localStorage.removeItem("jwt_token");
+                        setCurrentUser(null);
+                    }}
                 />
             ) : (
                 <LandingPage
                     openLogin={() => setShowLogin(true)}
                     user={currentUser}
-                    onLogout={logout}
+                    onLogout={() => {
+                        localStorage.removeItem("jwt_token");
+                        setCurrentUser(null);
+                    }}
                 />
             )}
 
