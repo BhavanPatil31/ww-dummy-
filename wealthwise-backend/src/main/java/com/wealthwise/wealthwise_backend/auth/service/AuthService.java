@@ -3,6 +3,8 @@ package com.wealthwise.wealthwise_backend.auth.service;
 import com.wealthwise.wealthwise_backend.auth.entity.User;
 import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
 import com.wealthwise.wealthwise_backend.auth.util.JwtUtil;
+import com.wealthwise.wealthwise_backend.userprofile.entity.UserProfileDetails;
+import com.wealthwise.wealthwise_backend.userprofile.repository.UserProfileRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,6 +24,9 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private UserProfileRepository userProfileRepository;
 
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -102,5 +107,16 @@ public class AuthService {
         userRepository.save(user);
 
         return "Password updated successfully";
+    }
+    
+    public void deleteAccount(Long userId) {
+        // Step 1 — delete profile first to avoid foreign key error
+        Optional<UserProfileDetails> profile = userProfileRepository.findByUserId(userId);
+        profile.ifPresent(userProfileRepository::delete);
+
+        // Step 2 — delete user
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        userRepository.delete(user);
     }
 }

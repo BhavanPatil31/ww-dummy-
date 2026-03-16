@@ -1,0 +1,663 @@
+/* ============================================
+   UserProfile.css — Matches Dashboard.css
+   ============================================ */
+
+:root {
+    --fintech-blue: #0b1120;
+    --fintech-blue-light: #1e293b;
+    --fintech-green: #22c55e;
+    --fintech-green-hover: #16a34a;
+    --text-white: #f8fafc;
+    --text-gray: #94a3b8;
+    --card-bg: rgba(30, 41, 59, 0.5);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --transition: all 0.3s ease;
+}
+
+.profile-page {
+    display: flex;
+    height: 100vh;
+    background-color: var(--fintech-blue);
+    font-family: 'Inter', 'Roboto', sans-serif;
+    color: var(--text-white);
+    overflow: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.profile-sidebar {
+    width: 260px;
+    background-color: var(--fintech-blue-light);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 30px 0 20px 0;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.profile-brand {
+    padding: 0 24px;
+    margin-bottom: 40px;
+}
+
+.profile-brand h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text-white);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.profile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-grow: 1;
+    padding: 0 16px;
+}
+
+.profile-nav-item {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-gray);
+    text-decoration: none;
+    font-weight: 500;
+    border-radius: 10px;
+    transition: var(--transition);
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.profile-nav-item:hover {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--fintech-green);
+}
+
+.profile-nav-item.active {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--fintech-green);
+}
+
+.profile-sidebar-bottom {
+    padding: 20px 16px;
+}
+
+.profile-logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1rem;
+    font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+.profile-logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ─── MAIN ─── */
+.profile-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-width: 0;
+    position: relative;
+}
+
+/* ─── HEADER ─── */
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 40px;
+    background-color: rgba(11, 17, 32, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    gap: 20px;
+}
+
+.profile-header-left {
+    min-width: 0;
+    flex: 1;
+}
+
+.profile-header-left h1 {
+    font-size: 1.8rem;
+    margin: 0;
+    color: var(--text-white);
+    font-weight: 700;
+}
+
+.profile-header-left p {
+    color: var(--text-gray);
+    margin: 6px 0 0 0;
+    font-size: 1rem;
+}
+
+.profile-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.profile-header-right:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.profile-avatar-small {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--fintech-blue-light);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fintech-green);
+    flex-shrink: 0;
+}
+
+.profile-header-name {
+    color: var(--text-white);
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ─── CONTENT ─── */
+.profile-content {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 1400px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ─── BANNER ─── */
+.profile-banner {
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.profile-banner.success {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: var(--fintech-green);
+    color: var(--fintech-green);
+}
+
+.profile-banner.error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* ─── PROFILE CARD ─── */
+.profile-card {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    transition: var(--transition);
+}
+
+.profile-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+}
+
+.profile-avatar-large {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--fintech-green);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.profile-info-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.profile-info-email {
+    color: var(--fintech-green);
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.profile-info-meta {
+    color: var(--text-gray);
+    font-size: 0.875rem;
+}
+
+.profile-active-badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--fintech-green);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.profile-no-profile {
+    background: var(--card-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    color: var(--text-gray);
+    font-size: 1rem;
+}
+
+/* ─── TABS ─── */
+.profile-tab-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.profile-tab {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-gray);
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: var(--transition);
+    font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+.profile-tab:hover {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--fintech-green);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.profile-tab.active {
+    background: var(--fintech-green);
+    color: #000;
+    border-color: var(--fintech-green);
+    font-weight: 600;
+}
+
+/* ✅ Delete tab special styling */
+.profile-tab.delete-tab {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.profile-tab.delete-tab:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.profile-tab.delete-tab.active {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+/* ─── TAB CARD ─── */
+.profile-tab-card {
+    background: var(--card-bg);
+    padding: 35px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.profile-tab-card h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--text-white);
+    margin: 0 0 24px 0;
+}
+
+/* ─── DETAIL ROWS ─── */
+.profile-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.profile-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(11, 17, 32, 0.5);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.profile-detail-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.profile-detail-label {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.profile-detail-value {
+    color: var(--text-white);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* ─── FORM ─── */
+.profile-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.profile-form-group label {
+    color: var(--text-gray);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.profile-input {
+    background: rgba(11, 17, 32, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 13px 16px;
+    color: var(--text-white);
+    font-size: 0.95rem;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: var(--transition);
+}
+
+.profile-input:focus {
+    border-color: var(--fintech-green);
+    background: rgba(11, 17, 32, 0.9);
+}
+
+.profile-input::placeholder {
+    color: #475569;
+}
+
+.profile-save-btn {
+    background: var(--fintech-green);
+    color: #000;
+    border: none;
+    padding: 13px 32px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: 'Inter', 'Roboto', sans-serif;
+    margin-top: 8px;
+}
+
+.profile-save-btn:hover {
+    background: var(--fintech-green-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(34, 197, 94, 0.3);
+}
+
+.profile-save-btn:disabled {
+    background: #166534;
+    color: #4ade80;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ─── DELETE ACCOUNT ─── */
+.delete-title {
+    color: #ef4444 !important;
+}
+
+.delete-warning {
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.delete-warning-title {
+    color: #ef4444;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+}
+
+.delete-warning-text {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    margin: 0 0 10px 0;
+    line-height: 1.6;
+}
+
+.delete-warning-list {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    margin: 0 0 12px 0;
+    padding-left: 20px;
+    line-height: 2;
+}
+
+.delete-input:focus {
+    border-color: #ef4444 !important;
+}
+
+.delete-btn {
+    width: 100%;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: 'Inter', 'Roboto', sans-serif;
+    margin-top: 8px;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(239, 68, 68, 0.2);
+}
+
+.delete-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ─── MISC ─── */
+.profile-sub-text {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+}
+
+.profile-empty-text {
+    color: var(--text-gray);
+    text-align: center;
+    padding: 40px 0;
+    font-size: 1rem;
+}
+
+.profile-current-val {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+}
+
+.profile-green {
+    color: var(--fintech-green);
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+    .profile-content { padding: 24px; }
+    .profile-header  { padding: 16px 24px; }
+    .profile-sidebar { width: 200px; }
+}
+
+/* ─── EDIT SECTION TITLES ─── */
+.edit-section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--fintech-green);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.edit-section-optional {
+    color: var(--text-gray);
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* ─── ACTIVITY LOG ─── */
+.activity-log-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(11, 17, 32, 0.5);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    transition: var(--transition);
+}
+
+.activity-log-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.activity-log-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.activity-log-field {
+    color: var(--fintech-green);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.activity-log-change {
+    color: var(--text-white);
+    font-size: 0.9rem;
+}
+
+.activity-arrow {
+    color: var(--fintech-green);
+    margin: 0 8px;
+    font-weight: 700;
+}
+
+.activity-log-date {
+    color: var(--text-gray);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    margin-left: 20px;
+}
+
+/* ─── EDIT SECTION TITLES ─── */
+.edit-section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--fintech-green);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.edit-section-optional {
+    color: var(--text-gray);
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
