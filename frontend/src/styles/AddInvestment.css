@@ -231,6 +231,15 @@
     color: var(--text-white);
 }
 
+.no-suggestions {
+    padding: 15px;
+    color: var(--text-gray);
+    font-style: italic;
+    font-size: 0.9rem;
+    text-align: center;
+    background-color: transparent !important;
+}
+
 .helper-text {
     font-size: 0.8rem;
     color: var(--text-gray);

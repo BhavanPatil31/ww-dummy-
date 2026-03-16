@@ -33,8 +33,12 @@ const MOCK_FUNDS = [
     { code: "500001", name: "HDFC Index Fund - Sensex Plan", nav: 564.30 },
     { code: "500002", name: "SBI Small Cap Fund - Regular Growth", nav: 142.10 }
 ];
+// We'll fetch these from the backend now
+// const [MOCK_FUNDS, setMockFunds] = useState([]); // REMOVED from here
 
 export default function AddInvestment({ user, onBackToDashboard }) {
+    const [MOCK_FUNDS, setMockFunds] = useState([]);
+    const [loadingFunds, setLoadingFunds] = useState(false);
     const [type, setType] = useState('SIP');
     const [formData, setFormData] = useState({
         fundName: '',
@@ -50,7 +54,30 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [filteredFunds, setFilteredFunds] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [loadingNav, setLoadingNav] = useState(false);
     const suggestionRef = useRef(null);
+
+    // Fetch fund list on mount
+    useEffect(() => {
+        const fetchFundList = async () => {
+            setLoadingFunds(true);
+            try {
+                const response = await axios.get('http://localhost:8088/api/mf/list');
+                // The API returns {schemeCode: X, schemeName: Y}
+                const formatted = response.data.map(f => ({
+                    code: (f.schemeCode || f.scheme_code || "").toString(),
+                    name: f.schemeName || f.scheme_name || "Unknown Fund",
+                    nav: 0 // Will fetch later
+                }));
+                setMockFunds(formatted);
+            } catch (err) {
+                console.error("Failed to fetch funds", err);
+            } finally {
+                setLoadingFunds(false);
+            }
+        };
+        fetchFundList();
+    }, []);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -98,8 +125,6 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
-
-        // Handle Fund Search Logic
         if (name === "fundName") {
             if (value.length > 0) {
                 const results = MOCK_FUNDS.filter(fund => 
@@ -126,6 +151,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             setFilteredFunds(results);
         } else {
             setFilteredFunds(MOCK_FUNDS);
+            setShowSuggestions(true);
         }
         setShowSuggestions(true);
     };
@@ -168,6 +194,47 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 ...prev,
                 nav: fund.nav.toString()
             }));
+    // Reactive filtering: update filteredFunds whenever MOCK_FUNDS or the input changes
+    useEffect(() => {
+        const searchVal = formData.fundName.trim().toLowerCase();
+        const results = MOCK_FUNDS.filter(fund => 
+            (fund.name && fund.name.toLowerCase().includes(searchVal)) || 
+            (fund.code && fund.code.includes(searchVal))
+        ).slice(0, 300); // More results
+        setFilteredFunds(results);
+    }, [formData.fundName, MOCK_FUNDS]);
+
+    const handleFocus = () => {
+        setShowSuggestions(true);
+    };
+
+    const handleSelectFund = async (fund) => {
+        setLoadingNav(true);
+        setFormData({
+            ...formData,
+            fundName: fund.name,
+            fund_id: fund.code,
+            nav: "" // Clear while loading
+        });
+        setShowSuggestions(false);
+        
+        try {
+            const response = await axios.get(`http://localhost:8088/api/mf/${fund.code}`);
+            // MF API Response structure: { meta: {}, data: [{date: X, nav: Y}, ...] }
+            if (response.data && response.data.data && response.data.data.length > 0) {
+                const latestNav = response.data.data[0].nav;
+                setFormData(prev => ({
+                    ...prev,
+                    fundName: fund.name,
+                    fund_id: fund.code,
+                    nav: latestNav.toString()
+                }));
+            }
+        } catch (err) {
+            console.error("Failed to fetch NAV", err);
+            setFormData(prev => ({ ...prev, nav: "0.00" }));
+        } finally {
+            setLoadingNav(false);
         }
     };
 
@@ -275,19 +342,32 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                         value={formData.fundName}
                                         onChange={handleChange}
                                         onFocus={handleFundFocus}
+                                        placeholder={loadingFunds ? "Loading funds..." : "Search funds e.g. 'Birla'"}
+                                        value={formData.fundName}
+                                        onChange={handleChange}
+                                        onFocus={handleFocus}
+                                        onClick={handleFocus}
                                         required
                                         autoComplete="off"
+                                        disabled={loadingFunds}
                                     />
                                     {showSuggestions && (
                                         <ul className="suggestions-dropdown">
                                             {isSearching ? (
                                                 <li className="searching-indicator">Searching funds...</li>
                                             ) : (
+                                            {loadingFunds ? (
+                                                <li className="no-suggestions">Searching all funds...</li>
+                                            ) : filteredFunds.length > 0 ? (
                                                 filteredFunds.map((fund) => (
                                                     <li key={fund.code} onClick={() => handleSelectFund(fund)}>
                                                         <strong>{fund.code}</strong> - {fund.name}
                                                     </li>
                                                 ))
+                                            ) : (
+                                                <li className="no-suggestions">
+                                                    {formData.fundName.length > 0 ? "No matching funds found" : "Click or type to search all funds"}
+                                                </li>
                                             )}
                                         </ul>
                                     )}
@@ -323,6 +403,12 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                             value={formData.nav}
                                             onChange={handleChange}
                                             required
+                                            placeholder={loadingNav ? "Fetching..." : "52.4"}
+                                            value={formData.nav}
+                                            onChange={handleChange}
+                                            required
+                                            step="0.01"
+                                            disabled={loadingNav}
                                         />
                                     </div>
                                     <span className="helper-text auto-calc">Units: {units}</span>
