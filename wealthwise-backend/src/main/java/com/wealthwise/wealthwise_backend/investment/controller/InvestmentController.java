@@ -28,4 +28,13 @@ public class InvestmentController {
         return investmentService.getUserInvestments(userId);
     }
 
+    @PutMapping("/{id}")
+    public Investment updateInvestment(@PathVariable("id") Long id, @RequestBody Investment investment) {
+        return investmentService.updateInvestment(id, investment);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteInvestment(@PathVariable("id") Long id) {
+        investmentService.deleteInvestment(id);
+    }
 }
