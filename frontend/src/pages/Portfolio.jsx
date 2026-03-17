@@ -42,7 +42,7 @@ export default function Portfolio({ user }) {
         setLoading(true);
         try {
             const token = localStorage.getItem("jwt_token");
-            const userId = user?.id;
+            const userId = user?.userId || user?.id;
             let investmentsData = [];
             let portfolioData = null;
 
@@ -215,7 +215,7 @@ export default function Portfolio({ user }) {
         setLoading(true);
         try {
             const token = localStorage.getItem("jwt_token");
-            const userId = user?.id;
+            const userId = user?.userId || user?.id;
             // Force backend to fetch live NAV for all funds and update DB
             await axios.post(`http://localhost:8088/api/portfolio/refresh/${userId}`, {}, {
                 headers: { "Authorization": `Bearer ${token}` }

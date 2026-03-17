@@ -24,6 +24,9 @@ public class UserProfileService {
     @Autowired
     private ProfileActivityLogRepository logRepository; // ✅ ADDED
 
+    @Autowired
+    private com.wealthwise.wealthwise_backend.auth.service.AuthService authService; // ✅ Sync to Auth table
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // CREATE
@@ -82,6 +85,9 @@ public class UserProfileService {
         profile.setName(request.getName().trim());
         UserProfileDetails saved = repository.save(profile);
 
+        // ✅ Sync to Auth table
+        authService.updateUserName(profile.getUserId(), saved.getName());
+
         // ✅ Log the change
         logRepository.save(new ProfileActivityLog(
             saved.getUserId(), "Name", oldName, saved.getName()
@@ -104,6 +110,9 @@ public class UserProfileService {
 
         profile.setEmail(request.getNewEmail().trim());
         UserProfileDetails saved = repository.save(profile);
+
+        // ✅ Sync to Auth table
+        authService.updateUserEmail(profile.getUserId(), saved.getEmail());
 
         // ✅ Log the change
         logRepository.save(new ProfileActivityLog(

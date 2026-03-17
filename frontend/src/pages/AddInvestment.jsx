@@ -144,8 +144,8 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         setStatus({ loading: true, success: false, error: '' });
 
         const payload = {
-            userId: user?.id,
-            user_id: user?.id,
+            userId: user?.userId || user?.id,
+            user_id: user?.userId || user?.id,
             fund_id: parseInt(formData.fund_id) || Math.floor(Math.random() * 1000) + 1,
             investment_type: type,
             amount: parseFloat(formData.amount),

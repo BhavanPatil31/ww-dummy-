@@ -34,15 +34,13 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         localStorage.setItem("jwt_token", data.token);
       }
 
-      if (onLoginSuccess) {
-        onLoginSuccess({
-          name: data.name,
-          email: email,
-          token: data.token,
-          userId: data.userId
-        });
-      
-      const userData = { id: parseInt(data.id), name: data.name, email, token: data.token };
+      const userData = {
+        userId: data.userId || data.id,
+        name: data.name,
+        email,
+        token: data.token
+      };
+
       localStorage.setItem("wealthwise_user", JSON.stringify(userData));
 
       if (onLoginSuccess) {

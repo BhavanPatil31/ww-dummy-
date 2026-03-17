@@ -89,9 +89,12 @@ public class DashboardController {
             return map;
         }).toList();
 
+        double profitLoss = portfolioValue - totalInvested;
+
         Map<String, Object> response = new HashMap<>();
         response.put("totalInvested", totalInvested);
         response.put("portfolioValue", portfolioValue);
+        response.put("profitLoss", profitLoss);
         response.put("returnPercentage", returnPercentage);
         response.put("assetAllocation", assetAllocation);
 

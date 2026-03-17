@@ -31,6 +31,9 @@ public class AuthService {
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public User register(User user) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists: " + user.getEmail());
+        }
         // Hash the password before saving to the database
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
@@ -118,5 +121,19 @@ public class AuthService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         userRepository.delete(user);
+    }
+
+    public void updateUserName(Long userId, String newName) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setName(newName);
+        userRepository.save(user);
+    }
+
+    public void updateUserEmail(Long userId, String newEmail) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setEmail(newEmail);
+        userRepository.save(user);
     }
 }
