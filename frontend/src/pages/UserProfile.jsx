@@ -22,10 +22,11 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
     });
 
     useEffect(() => {
-        if (user && user.userId) fetchProfileByUserId(user.userId);
+        const uid = user?.userId || user?.id;
+        if (uid) fetchProfileByUserId(uid);
     }, [user]);
 
-    // ✅ When profile loads, prefill form with current values
+    // ✅ Prefill from profile OR from user object if profile is missing
     useEffect(() => {
         if (profile) {
             setEditForm(prev => ({
@@ -34,8 +35,14 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                 email: profile.email || "",
                 phone: profile.phone || "",
             }));
+        } else if (user) {
+            setEditForm(prev => ({
+                ...prev,
+                name: user.name || "",
+                email: user.email || "",
+            }));
         }
-    }, [profile]);
+    }, [profile, user]);
 
     const showMessage = (text, type) => {
         setMessage({ text, type });
@@ -58,10 +65,35 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
 
     // ✅ Save all changes at once
     const saveAllChanges = async () => {
-        if (!profile) return showMessage("No profile loaded", "error");
         setLoading(true);
+        const uid = user?.userId || user?.id;
 
         try {
+            // ─── CREATE PROFILE IF MISSING ───
+            if (!profile) {
+                const res = await fetch(API_BASE, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        userId: uid,
+                        name: editForm.name.trim(),
+                        email: editForm.email.trim(),
+                        phone: editForm.phone.trim(),
+                        password: editForm.newPassword || "dummy_pass_123" // password is required by backend DTO
+                    }),
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || "Failed to create profile");
+                }
+                const newProfile = await res.json();
+                setProfile(newProfile);
+                if (onProfileUpdate) onProfileUpdate(newProfile);
+                showMessage("Profile created successfully!", "success");
+                setLoading(false);
+                return;
+            }
             // Update name if changed
             if (editForm.name.trim() && editForm.name.trim() !== profile.name) {
                 const res = await fetch(`${API_BASE}/${profile.profileId}/name`, {
@@ -149,6 +181,16 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
             }
 
             showMessage("Profile updated successfully!", "success");
+            
+            // ✅ Refresh profile data from server
+            const finalRes = await fetch(`${API_BASE}/user/${uid}`);
+            if (finalRes.ok) {
+                const finalProfile = await finalRes.json();
+                setProfile(finalProfile);
+                // ✅ Update main app state with latest name/email
+                if (onProfileUpdate) onProfileUpdate(finalProfile);
+            }
+
             // Clear password fields after save
             setEditForm(prev => ({
                 ...prev,
@@ -157,7 +199,8 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                 confirmPassword: "",
             }));
 
-        } catch {
+        } catch (err) {
+            console.error("Save error:", err);
             showMessage("Cannot connect to server", "error");
         }
         setLoading(false);
@@ -169,7 +212,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
         }
         setLoading(true);
         try {
-            const uid = user?.userId;
+            const uid = user?.userId || user?.id;
             if (profile) {
                 await fetch(`${API_BASE}/${profile.profileId}`, { method: "DELETE" });
             }
@@ -188,7 +231,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
         setLoading(false);
     };
 
-    // ✅ Only 3 tabs now
+    // ✅ Tabs for embedded view
     const tabs = [
         { key: "view",   label: "View" },
         { key: "edit",   label: "Edit Profile" },
@@ -196,270 +239,201 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
     ];
 
     return (
-        <div className="profile-page">
-
-            {/* SIDEBAR */}
-            <aside className="profile-sidebar">
-                <div className="profile-brand">
-                    <h2>WealthWise</h2>
-                </div>
-                <nav className="profile-nav">
-                    <div className="profile-nav-item" onClick={onBack}>
-                        Dashboard
+        <div className="profile-container-embedded">
+            <div className="profile-content">
+                
+                {/* BANNER */}
+                {message.text && (
+                    <div className={`profile-banner ${message.type}`}>
+                        {message.text}
                     </div>
-                    <div className="profile-nav-item active">
-                        My Profile
-                    </div>
-                </nav>
-                <div className="profile-sidebar-bottom">
-                    <button className="profile-logout-btn" onClick={onLogout}>
-                        Logout
-                    </button>
-                </div>
-            </aside>
+                )}
 
-            {/* MAIN */}
-            <main className="profile-main">
-
-                {/* HEADER */}
-                <header className="profile-header">
-                    <div className="profile-header-left">
-                        <h1>My Profile</h1>
-                        <p>Manage your personal details</p>
-                    </div>
-                    <div className="profile-header-right">
-                        <div className="profile-avatar-small">
-                            {profile?.name?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase() || "U"}
+                {/* PROFILE CARD */}
+                {profile ? (
+                    <div className="profile-card">
+                        <div className="profile-avatar-large">
+                            {profile.name?.charAt(0).toUpperCase()}
                         </div>
-                        <span className="profile-header-name">
-                            {profile?.name || user?.name || "User"}
-                        </span>
-                    </div>
-                </header>
-
-                <div className="profile-content">
-
-                    {/* BANNER */}
-                    {message.text && (
-                        <div className={`profile-banner ${message.type}`}>
-                            {message.text}
-                        </div>
-                    )}
-
-                    {/* PROFILE CARD */}
-                    {profile ? (
-                        <div className="profile-card">
-                            <div className="profile-avatar-large">
-                                {profile.name?.charAt(0).toUpperCase()}
+                        <div>
+                            <div className="profile-info-name">{profile.name}</div>
+                            <div className="profile-info-email">{profile.email}</div>
+                            <div className="profile-info-meta">
+                                {profile.phone || "No phone added"} &nbsp;|&nbsp; Member since {formatDate(profile.createdDate)}
                             </div>
-                            <div>
-                                <div className="profile-info-name">{profile.name}</div>
-                                <div className="profile-info-email">{profile.email}</div>
-                                <div className="profile-info-meta">
-                                    {profile.phone || "No phone added"} &nbsp;|&nbsp; Member since {formatDate(profile.createdDate)}
+                        </div>
+                        <div className="profile-active-badge">Active</div>
+                    </div>
+                ) : (
+                    <div className="profile-no-profile">
+                        {loading ? "Loading..." : "No profile found. Use Edit Profile tab below."}
+                    </div>
+                )}
+
+                {/* TABS */}
+                <div className="profile-tab-bar">
+                    {tabs.map(({ key, label }) => (
+                        <button
+                            key={key}
+                            className={`profile-tab ${activeTab === key ? "active" : ""} ${key === "delete" ? "delete-tab" : ""}`}
+                            onClick={() => setActiveTab(key)}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* TAB CARD */}
+                <div className="profile-tab-card">
+
+                    {/* VIEW TAB */}
+                    {activeTab === "view" && (
+                        <div>
+                            <h3>Profile Details</h3>
+                            {profile ? (
+                                <div className="profile-detail-grid">
+                                    {[
+                                        { label: "Full Name",    value: profile.name },
+                                        { label: "Email",        value: profile.email },
+                                        { label: "Phone",        value: profile.phone || "Not set" },
+                                        { label: "Member Since", value: formatDate(profile.createdDate) },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="profile-detail-row">
+                                            <span className="profile-detail-label">{label}</span>
+                                            <span className="profile-detail-value">{value}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-                            <div className="profile-active-badge">Active</div>
-                        </div>
-                    ) : (
-                        <div className="profile-no-profile">
-                            {loading ? "Loading..." : "No profile found. Use Edit Profile tab below."}
+                            ) : (
+                                <div className="profile-empty-text">No profile yet. Use Edit Profile tab.</div>
+                            )}
                         </div>
                     )}
 
-                    {/* TABS — only 3 now */}
-                    <div className="profile-tab-bar">
-                        {tabs.map(({ key, label }) => (
+                    {/* EDIT TAB */}
+                    {activeTab === "edit" && (
+                        <div>
+                            <h3>Edit Profile</h3>
+                            <p className="profile-sub-text">Only fill the fields you want to change. Others will remain as they are.</p>
+
+                            <div className="edit-section-title">Personal Information</div>
+                            
+                            <div className="profile-form-group">
+                                <label>Full Name</label>
+                                <input
+                                    type="text"
+                                    className="profile-input"
+                                    placeholder="Enter your name"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="profile-form-group">
+                                <label>Email Address</label>
+                                <input
+                                    type="email"
+                                    className="profile-input"
+                                    placeholder="Enter your email"
+                                    value={editForm.email}
+                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="profile-form-group">
+                                <label>Phone Number</label>
+                                <input
+                                    type="text"
+                                    className="profile-input"
+                                    placeholder="Enter your phone number"
+                                    value={editForm.phone}
+                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="edit-section-title" style={{ marginTop: "24px" }}>
+                                Security <span className="edit-section-optional">(optional)</span>
+                            </div>
+
+                            <div className="profile-form-group">
+                                <label>Current Password</label>
+                                <input
+                                    type="password"
+                                    className="profile-input"
+                                    placeholder="Required to change password"
+                                    value={editForm.currentPassword}
+                                    onChange={(e) => setEditForm({ ...editForm, currentPassword: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="profile-form-group">
+                                <label>New Password</label>
+                                <input
+                                    type="password"
+                                    className="profile-input"
+                                    placeholder="New password (min 6 chars)"
+                                    value={editForm.newPassword}
+                                    onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="profile-form-group">
+                                <label>Confirm New Password</label>
+                                <input
+                                    type="password"
+                                    className="profile-input"
+                                    placeholder="Repeat new password"
+                                    value={editForm.confirmPassword}
+                                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                                />
+                            </div>
+
                             <button
-                                key={key}
-                                className={`profile-tab ${activeTab === key ? "active" : ""} ${key === "delete" ? "delete-tab" : ""}`}
-                                onClick={() => setActiveTab(key)}
+                                className="profile-save-btn"
+                                onClick={saveAllChanges}
+                                disabled={loading}
                             >
-                                {label}
+                                {loading ? "Saving..." : (profile ? "Save Changes" : "Create Profile")}
                             </button>
-                        ))}
-                    </div>
+                        </div>
+                    )}
 
-                    {/* TAB CARD */}
-                    <div className="profile-tab-card">
-
-                        {/* VIEW */}
-                        {activeTab === "view" && (
-                            <div>
-                                <h3>Profile Details</h3>
-                                {profile ? (
-                                    <div className="profile-detail-grid">
-                                        {[
-                                            { label: "Full Name",    value: profile.name },
-                                            { label: "Email",        value: profile.email },
-                                            { label: "Phone",        value: profile.phone || "Not set" },
-                                            { label: "Member Since", value: formatDate(profile.createdDate) },
-                                        ].map(({ label, value }) => (
-                                            <div key={label} className="profile-detail-row">
-                                                <span className="profile-detail-label">{label}</span>
-                                                <span className="profile-detail-value">{value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="profile-empty-text">No profile yet. Use Edit Profile tab.</p>
-                                )}
+                    {/* DELETE TAB */}
+                    {activeTab === "delete" && (
+                        <div>
+                            <h3 className="delete-title">Delete Account</h3>
+                            <div className="delete-warning">
+                                <p className="delete-warning-title">Caution — This action is permanent!</p>
+                                <p className="delete-warning-text">Logging out will not delete your account. If you proceed:</p>
+                                <ul className="delete-warning-list">
+                                    <li>Your profile and settings will be permanently removed.</li>
+                                    <li>You will lose all your investments and portfolio history.</li>
+                                    <li>This account cannot be recovered.</li>
+                                </ul>
+                                <p className="delete-warning-text">Please type <strong>DELETE</strong> below to confirm.</p>
                             </div>
-                        )}
 
-                        {/* ✅ EDIT PROFILE — all fields in one tab */}
-                        {activeTab === "edit" && (
-                            <div>
-                                <h3>Edit Profile</h3>
-                                <p className="profile-sub-text">
-                                    Only fill the fields you want to change. Leave others as they are.
-                                </p>
-
-                                {/* Hidden dummy inputs to stop browser autofill */}
-                                <input type="text" style={{ display: "none" }} />
-                                <input type="password" style={{ display: "none" }} />
-
-                                {/* ─── PERSONAL INFO SECTION ─── */}
-                                <div className="edit-section-title">Personal Information</div>
-
-                                <div className="profile-form-group">
-                                    <label>Full Name</label>
-                                    <input
-                                        className="profile-input"
-                                        type="text"
-                                        placeholder="Enter your full name"
-                                        autoComplete="new-password"
-                                        name="fullname_field"
-                                        value={editForm.name}
-                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="profile-form-group">
-                                    <label>Email</label>
-                                    <input
-                                        className="profile-input"
-                                        type="text"
-                                        placeholder="Enter your email"
-                                        autoComplete="new-password"
-                                        name="email_field"
-                                        value={editForm.email}
-                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="profile-form-group">
-                                    <label>Phone</label>
-                                    <input
-                                        className="profile-input"
-                                        type="text"
-                                        placeholder="Enter your phone number"
-                                        autoComplete="new-password"
-                                        name="phone_field"
-                                        value={editForm.phone}
-                                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                    />
-                                </div>
-
-                                {/* ─── PASSWORD SECTION ─── */}
-                                <div className="edit-section-title" style={{ marginTop: "28px" }}>
-                                    Change Password <span className="edit-section-optional">(optional)</span>
-                                </div>
-
-                                <div className="profile-form-group">
-                                    <label>Current Password</label>
-                                    <input
-                                        className="profile-input"
-                                        type="password"
-                                        placeholder="Enter current password"
-                                        autoComplete="new-password"
-                                        name="current_pass"
-                                        value={editForm.currentPassword}
-                                        onChange={(e) => setEditForm({ ...editForm, currentPassword: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="profile-form-group">
-                                    <label>New Password</label>
-                                    <input
-                                        className="profile-input"
-                                        type="password"
-                                        placeholder="Min 6 characters"
-                                        autoComplete="new-password"
-                                        name="new_pass"
-                                        value={editForm.newPassword}
-                                        onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="profile-form-group">
-                                    <label>Confirm New Password</label>
-                                    <input
-                                        className="profile-input"
-                                        type="password"
-                                        placeholder="Repeat new password"
-                                        autoComplete="new-password"
-                                        name="confirm_pass"
-                                        value={editForm.confirmPassword}
-                                        onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
-                                    />
-                                </div>
-
-                                <button
-                                    className="profile-save-btn"
-                                    onClick={saveAllChanges}
-                                    disabled={loading}
-                                >
-                                    {loading ? "Saving..." : "Save Changes"}
-                                </button>
+                            <div className="profile-form-group">
+                                <input
+                                    type="text"
+                                    className="profile-input delete-input"
+                                    placeholder='Type "DELETE" to confirm'
+                                    value={deleteConfirm}
+                                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                                />
                             </div>
-                        )}
 
-                        {/* DELETE ACCOUNT */}
-                        {activeTab === "delete" && (
-                            <div>
-                                <h3 className="delete-title">Delete Account</h3>
-                                <div className="delete-warning">
-                                    <p className="delete-warning-title">
-                                        Warning — This action cannot be undone!
-                                    </p>
-                                    <p className="delete-warning-text">
-                                        Deleting your account will permanently remove:
-                                    </p>
-                                    <ul className="delete-warning-list">
-                                        <li>Your profile information</li>
-                                        <li>All your investments and portfolio data</li>
-                                        <li>Your transaction history</li>
-                                        <li>All account settings and preferences</li>
-                                    </ul>
-                                    <p className="delete-warning-text">
-                                        Once deleted, your data <b style={{ color: "#ef4444" }}>cannot be recovered</b>. If you are sure, type <b style={{ color: "#ef4444" }}>DELETE</b> in the box below.
-                                    </p>
-                                </div>
-                                <div className="profile-form-group">
-                                    <label>Type DELETE to confirm</label>
-                                    <input
-                                        className="profile-input delete-input"
-                                        type="text"
-                                        placeholder="Type DELETE here"
-                                        autoComplete="off"
-                                        value={deleteConfirm}
-                                        onChange={(e) => setDeleteConfirm(e.target.value)}
-                                    />
-                                </div>
-                                <button
-                                    className="delete-btn"
-                                    onClick={deleteAccount}
-                                    disabled={loading || deleteConfirm !== "DELETE"}
-                                >
-                                    {loading ? "Deleting Account..." : "Delete My Account Permanently"}
-                                </button>
-                            </div>
-                        )}
-
-                    </div>
+                            <button
+                                className="delete-btn"
+                                onClick={deleteAccount}
+                                disabled={loading || deleteConfirm !== "DELETE"}
+                            >
+                                {loading ? "Deleting..." : "Delete My Account Permanently"}
+                            </button>
+                        </div>
+                    )}
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

@@ -12,45 +12,55 @@ import "./App.css";
 
 function App() {
 
+    // ✅ 1. Initialize from localStorage
+    const [currentUser, setCurrentUser] = useState(() => {
+        const saved = localStorage.getItem("wealthwise_user");
+        return saved ? JSON.parse(saved) : null;
+    });
+
+    const [currentPage, setCurrentPage] = useState(() => {
+        // If user is logged in, default to dashboard. Else home.
+        const savedPage = localStorage.getItem("wealthwise_current_page");
+        if (savedPage) return savedPage;
+        return localStorage.getItem("jwt_token") ? "dashboard" : "home";
+    });
+
     const [showLogin, setShowLogin] = useState(false);
     const [showSignup, setShowSignup] = useState(false);
     const [showForgot, setShowForgot] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
     const [loginEmail, setLoginEmail] = useState("");
-    const [currentPage, setCurrentPage] = useState("home");
 
+    // ✅ 2. Persist page changes
+    useEffect(() => {
+        localStorage.setItem("wealthwise_current_page", currentPage);
+    }, [currentPage]);
+
+    // ✅ 3. Logout logic
     const handleLogout = () => {
         localStorage.removeItem("jwt_token");
+        localStorage.removeItem("wealthwise_user");
+        localStorage.removeItem("wealthwise_current_page");
+        localStorage.removeItem("activeView");
         setCurrentUser(null);
         setCurrentPage("home");
     };
 
     // ✅ NEW — when name is updated in profile page, sync it to dashboard
     const handleProfileUpdate = (updatedProfile) => {
-        setCurrentUser(prev => ({
-            ...prev,
-            name: updatedProfile.name
-        }));
+        const newUser = { ...currentUser, name: updatedProfile.name };
+        setCurrentUser(newUser);
+        localStorage.setItem("wealthwise_user", JSON.stringify(newUser));
     };
 
     return (
         <div>
 
-            {/* PROFILE PAGE */}
-            {currentPage === "profile" && currentUser ? (
-                <UserProfile
-                    user={currentUser}
-                    onBack={() => setCurrentPage("dashboard")}
-                    onLogout={handleLogout}
-                    onProfileUpdate={handleProfileUpdate}  // ✅ NEW
-                />
-
-            /* DASHBOARD PAGE */
-            ) : currentUser ? (
+            {/* MAIN APP CONTENT */}
+            {currentUser ? (
                 <Dashboard
                     user={currentUser}
                     onLogout={handleLogout}
-                    onOpenProfile={() => setCurrentPage("profile")}
+                    onProfileUpdate={handleProfileUpdate}
                 />
 
             /* LANDING PAGE */

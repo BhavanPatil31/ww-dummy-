@@ -174,9 +174,11 @@
     transition: var(--transition);
 }
 
-.profile-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+.profile-btn:hover,
+.profile-btn.active {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--fintech-green);
+    border-color: rgba(34, 197, 94, 0.3);
 }
 
 .dashboard-content {
@@ -251,6 +253,7 @@
 }
 .metric-card .value.highlight { color: #a855f7; }
 .metric-card .value.positive { color: var(--fintech-green); }
+.metric-card .value.negative { color: #ef4444; }
 
 
 /* Charts Section Grid */
