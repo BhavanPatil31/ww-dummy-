@@ -2,7 +2,7 @@ package com.wealthwise.wealthwise_backend.userprofile.service;
 
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateEmailRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateNameRequest;
-import com.wealthwise.wealthwise_backend.userprofile.dto.UpdatePasswordRequest;
+
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdatePhoneRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UserProfileDTO;
 import com.wealthwise.wealthwise_backend.userprofile.entity.ProfileActivityLog;
@@ -140,27 +140,6 @@ public class UserProfileService {
         ));
 
         return toDTO(saved);
-    }
-
-    // UPDATE PASSWORD
-    public String updatePassword(Long profileId, UpdatePasswordRequest request) {
-        UserProfileDetails profile = findById(profileId);
-        if (!passwordEncoder.matches(request.getCurrentPassword(), profile.getPassword()))
-            throw new IllegalArgumentException("Current password is incorrect");
-        if (!request.getNewPassword().equals(request.getConfirmPassword()))
-            throw new IllegalArgumentException("Passwords do not match");
-        if (request.getNewPassword().length() < 6)
-            throw new IllegalArgumentException("Password must be at least 6 characters");
-
-        profile.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        repository.save(profile);
-
-        // ✅ Log the change — never log actual password
-        logRepository.save(new ProfileActivityLog(
-            profile.getUserId(), "Password", "••••••••", "••••••••  (changed)"
-        ));
-
-        return "Password updated successfully";
     }
 
     // DELETE
