@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.portfolio.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
@@ -32,7 +32,8 @@ public class Portfolio {
     @Column(precision = 8, scale = 2)
     private BigDecimal cagr;
 
-    public Portfolio() {}
+    public Portfolio() {
+    }
 
     public Integer getPortfolio_id() {
         return portfolio_id;
