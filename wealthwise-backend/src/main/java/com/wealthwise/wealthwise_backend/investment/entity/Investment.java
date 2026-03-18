@@ -1,7 +1,8 @@
 package com.wealthwise.wealthwise_backend.investment.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "investments")
@@ -10,64 +11,103 @@ public class Investment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    private Long investment_id;
+    @JsonProperty("investment_id")
+    private Long investmentId;
 
     @Column(name = "user_id")
+    @JsonProperty("user_id")
     private Long userId;
 
-    private Long fund_id;
+    @Column(name = "fund_id")
+    @JsonProperty("fund_id")
+    private Long fundId;
 
-    private String scheme_name;
+    @Column(name = "scheme_name")
+    @JsonProperty("scheme_name")
+    private String schemeName;
 
-    private String investment_type;
+    @Column(name = "investment_type")
+    @JsonProperty("investment_type")
+    private String investmentType;
 
+    @JsonProperty("amount")
     private Double amount;
     
-    private Double amount_invested;
+    @Column(name = "amount_invested")
+    @JsonProperty("amount_invested")
+    private Double amountInvested;
 
+    @JsonProperty("units")
     private Double units;
 
-    private LocalDate buy_date;
+    @Column(name = "buy_date")
+    @JsonProperty("buy_date")
+    private LocalDate buyDate;
     
-    private LocalDate start_date;
+    @Column(name = "start_date")
+    @JsonProperty("start_date")
+    private LocalDate startDate;
 
-    private Double nav_at_buy;
+    @Column(name = "end_date")
+    @JsonProperty("end_date")
+    private LocalDate endDate;
+
+    @Column(name = "nav_at_buy")
+    @JsonProperty("nav_at_buy")
+    private Double navAtBuy;
     
-    private Double current_nav;
+    @Column(name = "current_nav")
+    @JsonProperty("current_nav")
+    private Double currentNav;
 
+    @JsonProperty("frequency")
     private String frequency;
 
-    private LocalDate created_date;
+    @Column(name = "created_date")
+    @JsonProperty("created_date")
+    private LocalDate createdDate;
 
-    private String asset_category;
+    @Column(name = "asset_category")
+    @JsonProperty("asset_category")
+    private String assetCategory;
 
-    private String risk_level;
+    @Column(name = "risk_level")
+    @JsonProperty("risk_level")
+    private String riskLevel;
 
-    private String investment_goal;
+    @Column(name = "investment_goal")
+    @JsonProperty("investment_goal")
+    private String investmentGoal;
 
+    @JsonProperty("platform")
     private String platform;
 
     @Column(columnDefinition = "TEXT")
+    @JsonProperty("notes")
     private String notes;
 
-    private Double expected_return;
+    @Column(name = "expected_return")
+    @JsonProperty("expected_return")
+    private Double expectedReturn;
 
-    private Integer investment_duration;
+    @Column(name = "investment_duration")
+    @JsonProperty("investment_duration")
+    private Integer investmentDuration;
 
     public Investment() {
     }
 
     @PrePersist
     public void onCreate() {
-        this.created_date = LocalDate.now();
+        this.createdDate = LocalDate.now();
     }
 
-    public Long getInvestment_id() {
-        return investment_id;
+    public Long getInvestmentId() {
+        return investmentId;
     }
 
-    public void setInvestment_id(Long investment_id) {
-        this.investment_id = investment_id;
+    public void setInvestmentId(Long investmentId) {
+        this.investmentId = investmentId;
     }
 
     public Long getUserId() {
@@ -78,28 +118,28 @@ public class Investment {
         this.userId = userId;
     }
 
-    public Long getFund_id() {
-        return fund_id;
+    public Long getFundId() {
+        return fundId;
     }
 
-    public void setFund_id(Long fund_id) {
-        this.fund_id = fund_id;
+    public void setFundId(Long fundId) {
+        this.fundId = fundId;
     }
 
-    public String getScheme_name() {
-        return scheme_name;
+    public String getSchemeName() {
+        return schemeName;
     }
 
-    public void setScheme_name(String scheme_name) {
-        this.scheme_name = scheme_name;
+    public void setSchemeName(String schemeName) {
+        this.schemeName = schemeName;
     }
 
-    public String getInvestment_type() {
-        return investment_type;
+    public String getInvestmentType() {
+        return investmentType;
     }
 
-    public void setInvestment_type(String investment_type) {
-        this.investment_type = investment_type;
+    public void setInvestmentType(String investmentType) {
+        this.investmentType = investmentType;
     }
 
     public Double getAmount() {
@@ -110,12 +150,12 @@ public class Investment {
         this.amount = amount;
     }
 
-    public Double getAmount_invested() {
-        return amount_invested;
+    public Double getAmountInvested() {
+        return amountInvested;
     }
 
-    public void setAmount_invested(Double amount_invested) {
-        this.amount_invested = amount_invested;
+    public void setAmountInvested(Double amountInvested) {
+        this.amountInvested = amountInvested;
     }
 
     public Double getUnits() {
@@ -126,36 +166,44 @@ public class Investment {
         this.units = units;
     }
 
-    public LocalDate getBuy_date() {
-        return buy_date;
+    public LocalDate getBuyDate() {
+        return buyDate;
     }
 
-    public void setBuy_date(LocalDate buy_date) {
-        this.buy_date = buy_date;
+    public void setBuyDate(LocalDate buyDate) {
+        this.buyDate = buyDate;
     }
 
-    public LocalDate getStart_date() {
-        return start_date;
+    public LocalDate getStartDate() {
+        return startDate;
     }
 
-    public void setStart_date(LocalDate start_date) {
-        this.start_date = start_date;
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
     }
 
-    public Double getNav_at_buy() {
-        return nav_at_buy;
+    public LocalDate getEndDate() {
+        return endDate;
     }
 
-    public void setNav_at_buy(Double nav_at_buy) {
-        this.nav_at_buy = nav_at_buy;
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
     }
 
-    public Double getCurrent_nav() {
-        return current_nav;
+    public Double getNavAtBuy() {
+        return navAtBuy;
     }
 
-    public void setCurrent_nav(Double current_nav) {
-        this.current_nav = current_nav;
+    public void setNavAtBuy(Double navAtBuy) {
+        this.navAtBuy = navAtBuy;
+    }
+
+    public Double getCurrentNav() {
+        return currentNav;
+    }
+
+    public void setCurrentNav(Double currentNav) {
+        this.currentNav = currentNav;
     }
 
     public String getFrequency() {
@@ -166,36 +214,36 @@ public class Investment {
         this.frequency = frequency;
     }
 
-    public LocalDate getCreated_date() {
-        return created_date;
+    public LocalDate getCreatedDate() {
+        return createdDate;
     }
 
-    public void setCreated_date(LocalDate created_date) {
-        this.created_date = created_date;
+    public void setCreatedDate(LocalDate createdDate) {
+        this.createdDate = createdDate;
     }
 
-    public String getAsset_category() {
-        return asset_category;
+    public String getAssetCategory() {
+        return assetCategory;
     }
 
-    public void setAsset_category(String asset_category) {
-        this.asset_category = asset_category;
+    public void setAssetCategory(String assetCategory) {
+        this.assetCategory = assetCategory;
     }
 
-    public String getRisk_level() {
-        return risk_level;
+    public String getRiskLevel() {
+        return riskLevel;
     }
 
-    public void setRisk_level(String risk_level) {
-        this.risk_level = risk_level;
+    public void setRiskLevel(String riskLevel) {
+        this.riskLevel = riskLevel;
     }
 
-    public String getInvestment_goal() {
-        return investment_goal;
+    public String getInvestmentGoal() {
+        return investmentGoal;
     }
 
-    public void setInvestment_goal(String investment_goal) {
-        this.investment_goal = investment_goal;
+    public void setInvestmentGoal(String investmentGoal) {
+        this.investmentGoal = investmentGoal;
     }
 
     public String getPlatform() {
@@ -214,19 +262,19 @@ public class Investment {
         this.notes = notes;
     }
 
-    public Double getExpected_return() {
-        return expected_return;
+    public Double getExpectedReturn() {
+        return expectedReturn;
     }
 
-    public void setExpected_return(Double expected_return) {
-        this.expected_return = expected_return;
+    public void setExpectedReturn(Double expectedReturn) {
+        this.expectedReturn = expectedReturn;
     }
 
-    public Integer getInvestment_duration() {
-        return investment_duration;
+    public Integer getInvestmentDuration() {
+        return investmentDuration;
     }
 
-    public void setInvestment_duration(Integer investment_duration) {
-        this.investment_duration = investment_duration;
+    public void setInvestmentDuration(Integer investmentDuration) {
+        this.investmentDuration = investmentDuration;
     }
 }

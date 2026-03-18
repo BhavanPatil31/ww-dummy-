@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { 
-    FiDollarSign, FiCalendar, FiActivity, FiTag, FiCheckCircle, 
+import {
+    FiDollarSign, FiCalendar, FiActivity, FiTag, FiCheckCircle,
     FiLayers, FiSmartphone, FiShield, FiTarget, FiPercent, FiClock, FiFileText, FiInfo
 } from 'react-icons/fi';
 import '../styles/AddInvestment.css';
@@ -16,10 +16,11 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         nav: '',
         amount: '',
         frequency: 'Monthly',
-        startDate: ''
+        startDate: '',
+        endDate: ''
     });
     const [status, setStatus] = useState({ loading: false, success: false, error: '' });
-    
+
     // Autocomplete Search States
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [filteredFunds, setFilteredFunds] = useState([]);
@@ -69,11 +70,11 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
         const searchTimer = setTimeout(async () => {
             const searchVal = formData.fundName.toLowerCase();
-            const results = mockFunds.filter(fund => 
-                fund.name.toLowerCase().includes(searchVal) || 
+            const results = mockFunds.filter(fund =>
+                fund.name.toLowerCase().includes(searchVal) ||
                 fund.code.includes(searchVal)
             ).slice(0, 100);
-            
+
             setFilteredFunds(results);
         }, 300);
 
@@ -98,13 +99,13 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             nav: "Fetching..."
         }));
         setShowSuggestions(false);
-        
+
         try {
             const token = localStorage.getItem("jwt_token");
             const response = await axios.get(`http://localhost:8088/api/nav/${fund.code}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            
+
             if (response.data && !isNaN(response.data)) {
                 setFormData(prev => ({ ...prev, nav: response.data.toString() }));
             } else {
@@ -134,9 +135,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
     const isNavFetching = formData.nav === "Fetching..." || loadingNav;
     const currentNavValue = parseFloat(formData.nav);
-    
-    const units = (formData.amount > 0 && !isNaN(currentNavValue) && currentNavValue > 0) 
-        ? (parseFloat(formData.amount) / currentNavValue).toFixed(4) 
+
+    const units = (formData.amount > 0 && !isNaN(currentNavValue) && currentNavValue > 0)
+        ? (parseFloat(formData.amount) / currentNavValue).toFixed(4)
         : "0.0000";
 
     const handleSubmit = async (e) => {
@@ -157,7 +158,8 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             scheme_name: formData.fundName,
             amount_invested: parseFloat(formData.amount),
             current_nav: parseFloat(formData.nav),
-            start_date: formData.startDate
+            start_date: formData.startDate,
+            end_date: formData.endDate || null
         };
 
         try {
@@ -285,6 +287,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                             <option value="Weekly">Weekly</option>
                                             <option value="Monthly">Monthly</option>
                                             <option value="Quarterly">Quarterly</option>
+                                            <option value="Yearly">Yearly</option>
                                         </select>
                                     </div>
                                 )}
@@ -303,6 +306,20 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                             />
                                         </div>
                                     </div>
+                                    {type === 'SIP' && (
+                                        <div className="form-group">
+                                            <label>End Date (Optional)</label>
+                                            <div className="input-wrapper">
+                                                <FiCalendar className="input-icon" />
+                                                <input
+                                                    type="date"
+                                                    name="endDate"
+                                                    value={formData.endDate}
+                                                    onChange={handleChange}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="form-actions">

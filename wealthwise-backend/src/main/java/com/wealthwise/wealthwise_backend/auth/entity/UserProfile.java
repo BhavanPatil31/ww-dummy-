@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.auth.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,10 +21,11 @@ public class UserProfile {
 
     private LocalDateTime created_date;
 
-    public UserProfile(){}
+    public UserProfile() {
+    }
 
     @PrePersist
-    public void onCreate(){
+    public void onCreate() {
         this.created_date = LocalDateTime.now();
     }
 

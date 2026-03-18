@@ -2,12 +2,14 @@ package com.wealthwise.wealthwise_backend.investment.service;
 
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
 import com.wealthwise.wealthwise_backend.investment.repository.InvestmentRepository;
+import com.wealthwise.wealthwise_backend.notification.NotificationService;
 import com.wealthwise.wealthwise_backend.portfolio.service.PortfolioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -20,10 +22,27 @@ public class InvestmentService {
     @Lazy
     private PortfolioService portfolioService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     public Investment addInvestment(Investment investment) {
         Investment saved = investmentRepository.save(investment);
         if (saved.getUserId() != null) {
             portfolioService.updatePortfolio(saved.getUserId());
+            
+            // Create notification
+            String msg = "New " + saved.getInvestmentType() + " investment of ₹" + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
+            notificationService.createNotification(saved.getUserId(), msg, "INVESTMENT");
+
+            // Check if end_date is approaching or reached today
+            if (saved.getEndDate() != null) {
+                LocalDate today = LocalDate.now();
+                if (saved.getEndDate().isEqual(today)) {
+                    notificationService.createNotification(saved.getUserId(), "Important: Today is the end date of your investment in " + saved.getSchemeName() + ".", "INVESTMENT_DUE");
+                } else if (saved.getEndDate().isEqual(today.plusDays(7))) {
+                    notificationService.createNotification(saved.getUserId(), "Notice: Your investment in " + saved.getSchemeName() + " will end in 7 days.", "INVESTMENT_DUE");
+                }
+            }
         }
         return saved;
     }
@@ -37,39 +56,40 @@ public class InvestmentService {
         Investment existing = investmentRepository.findById(id).orElse(null);
         if (existing != null) {
             // Update core fields
-            existing.setScheme_name(investment.getScheme_name());
+            existing.setSchemeName(investment.getSchemeName());
             existing.setAmount(investment.getAmount());
             
             // Explicitly sync amount_invested if it's null or we want to ensure it matches amount
             // Adjusting based on user report: "amount invested still stores the previous value"
-            if (investment.getAmount_invested() != null) {
-                existing.setAmount_invested(investment.getAmount_invested());
+            if (investment.getAmountInvested() != null) {
+                existing.setAmountInvested(investment.getAmountInvested());
             } else {
-                existing.setAmount_invested(investment.getAmount());
+                existing.setAmountInvested(investment.getAmount());
             }
 
-            existing.setNav_at_buy(investment.getNav_at_buy());
+            existing.setNavAtBuy(investment.getNavAtBuy());
             
             // Sync current_nav if not provided
-            if (investment.getCurrent_nav() != null) {
-                existing.setCurrent_nav(investment.getCurrent_nav());
-            } else if (existing.getCurrent_nav() == null) {
-                existing.setCurrent_nav(investment.getNav_at_buy());
+            if (investment.getCurrentNav() != null) {
+                existing.setCurrentNav(investment.getCurrentNav());
+            } else if (existing.getCurrentNav() == null) {
+                existing.setCurrentNav(investment.getNavAtBuy());
             }
 
             existing.setUnits(investment.getUnits());
-            existing.setBuy_date(investment.getBuy_date() != null ? investment.getBuy_date() : investment.getStart_date());
-            existing.setStart_date(investment.getStart_date() != null ? investment.getStart_date() : investment.getBuy_date());
+            existing.setBuyDate(investment.getBuyDate() != null ? investment.getBuyDate() : investment.getStartDate());
+            existing.setStartDate(investment.getStartDate() != null ? investment.getStartDate() : investment.getBuyDate());
+            existing.setEndDate(investment.getEndDate());
             existing.setFrequency(investment.getFrequency());
             
             // Update additional metadata if available
-            if (investment.getAsset_category() != null) existing.setAsset_category(investment.getAsset_category());
+            if (investment.getAssetCategory() != null) existing.setAssetCategory(investment.getAssetCategory());
             if (investment.getPlatform() != null) existing.setPlatform(investment.getPlatform());
             if (investment.getNotes() != null) existing.setNotes(investment.getNotes());
-            if (investment.getExpected_return() != null) existing.setExpected_return(investment.getExpected_return());
-            if (investment.getInvestment_duration() != null) existing.setInvestment_duration(investment.getInvestment_duration());
-            if (investment.getInvestment_goal() != null) existing.setInvestment_goal(investment.getInvestment_goal());
-            if (investment.getRisk_level() != null) existing.setRisk_level(investment.getRisk_level());
+            if (investment.getExpectedReturn() != null) existing.setExpectedReturn(investment.getExpectedReturn());
+            if (investment.getInvestmentDuration() != null) existing.setInvestmentDuration(investment.getInvestmentDuration());
+            if (investment.getInvestmentGoal() != null) existing.setInvestmentGoal(investment.getInvestmentGoal());
+            if (investment.getRiskLevel() != null) existing.setRiskLevel(investment.getRiskLevel());
             
             Investment saved = investmentRepository.save(existing);
             

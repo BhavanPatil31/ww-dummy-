@@ -47,20 +47,20 @@ public class PortfolioService {
 
                 // Fetch real-time NAV
                 Double liveNav = null;
-                if (inv.getFund_id() != null) {
-                    liveNav = navService.getLatestNav(String.valueOf(inv.getFund_id()));
+                if (inv.getFundId() != null) {
+                    liveNav = navService.getLatestNav(String.valueOf(inv.getFundId()));
                 }
 
                 double currentNav;
                 if (liveNav != null) {
                     currentNav = liveNav;
                     // Update current_nav in database for this investment
-                    inv.setCurrent_nav(currentNav);
+                    inv.setCurrentNav(currentNav);
                     investmentRepository.save(inv);
                 } else {
                     // Fallback to existing or simulated
-                    double navAtBuy = inv.getNav_at_buy() != null ? inv.getNav_at_buy() : 1.0;
-                    currentNav = inv.getCurrent_nav() != null ? inv.getCurrent_nav() : navAtBuy * 1.07;
+                    double navAtBuy = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 1.0;
+                    currentNav = inv.getCurrentNav() != null ? inv.getCurrentNav() : navAtBuy * 1.07;
                 }
                 
                 currentValue = currentValue.add(units.multiply(BigDecimal.valueOf(currentNav)));
