@@ -16,9 +16,6 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
         name: "",
         email: "",
         phone: "",
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
     });
 
     useEffect(() => {
@@ -350,44 +347,6 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                                     onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                                 />
                             </div>
-
-                            <div className="edit-section-title" style={{ marginTop: "24px" }}>
-                                Security <span className="edit-section-optional">(optional)</span>
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>Current Password</label>
-                                <input
-                                    type="password"
-                                    className="profile-input"
-                                    placeholder="Required to change password"
-                                    value={editForm.currentPassword}
-                                    onChange={(e) => setEditForm({ ...editForm, currentPassword: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>New Password</label>
-                                <input
-                                    type="password"
-                                    className="profile-input"
-                                    placeholder="New password (min 6 chars)"
-                                    value={editForm.newPassword}
-                                    onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>Confirm New Password</label>
-                                <input
-                                    type="password"
-                                    className="profile-input"
-                                    placeholder="Repeat new password"
-                                    value={editForm.confirmPassword}
-                                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
-                                />
-                            </div>
-
                             <button
                                 className="profile-save-btn"
                                 onClick={saveAllChanges}
