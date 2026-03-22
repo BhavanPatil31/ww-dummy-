@@ -253,11 +253,7 @@ export default function Portfolio({ user }) {
             )}
 
             {/* ── Page Header ── */}
-            <div className="portfolio-page-header">
-                <div>
-                    <h2><FiBriefcase /> My Portfolio</h2>
-                    <p className="subtitle">Track, manage and analyse all your investments</p>
-                </div>
+            <div className="portfolio-page-header" style={{ justifyContent: 'flex-end' }}>
                 <button className="btn-refresh" onClick={handleFullRefresh} disabled={loading}>
                     <FiRefreshCw className={loading ? 'spin' : ''} /> Refresh All
                 </button>
@@ -343,14 +339,14 @@ export default function Portfolio({ user }) {
                                             </span>
                                         </td>
                                         <td className="td-actions">
-                                            <button className="action-btn view" onClick={() => openView(inv)} title="View Details">
-                                                <FiEye /> View
+                                            <button className="table-icon-btn view" onClick={() => openView(inv)} title="View Details">
+                                                <FiEye size={18} />
                                             </button>
-                                            <button className="action-btn edit" onClick={() => openEdit(inv)} title="Edit">
-                                                <FiEdit2 /> Edit
+                                            <button className="table-icon-btn edit" onClick={() => openEdit(inv)} title="Edit">
+                                                <FiEdit2 size={18} />
                                             </button>
-                                            <button className="action-btn delete" onClick={() => openDelete(inv)} title="Delete">
-                                                <FiTrash2 /> Delete
+                                            <button className="table-icon-btn delete" onClick={() => openDelete(inv)} title="Delete">
+                                                <FiTrash2 size={18} />
                                             </button>
                                         </td>
                                     </tr>

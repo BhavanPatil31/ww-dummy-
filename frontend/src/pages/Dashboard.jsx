@@ -248,17 +248,24 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             {/* Main Content Area */}
             <main className="dashboard-main">
                 <header className="dashboard-header">
-                    <div className="welcome-section">
-                        <h1>Welcome back, {user?.name || "Investor"}</h1>
-                        <p>
-                            {activeView === 'dashboard' ? 'Here is your portfolio summary' :
-                             activeView === 'profile' ? 'Manage your personal details' :
-                             activeView === 'addInvestment' ? 'Add a new asset to your portfolio' :
-                             activeView === 'portfolio' ? 'View and manage your investments' : 
-                             'Your financial overview'}
-                        </p>
-                    </div>
-                    <div className="header-actions">
+                    {(activeView === 'dashboard' || activeView === 'profile' || activeView === 'addInvestment' || activeView === 'portfolio') && (
+                        <div className="welcome-section">
+                            <h1>
+                                {activeView === 'dashboard' ? `Welcome back, ${user?.name || "Investor"}` :
+                                 activeView === 'profile' ? `Welcome back, ${user?.name || "Investor"}` :
+                                 activeView === 'addInvestment' ? 'Add Investment' :
+                                 activeView === 'portfolio' ? 'My Portfolio' : 'Welcome'}
+                            </h1>
+                            <p>
+                                {activeView === 'dashboard' ? 'Here is your portfolio summary' :
+                                 activeView === 'profile' ? 'Manage your personal details' :
+                                 activeView === 'addInvestment' ? 'Add a new asset to your portfolio' :
+                                 activeView === 'portfolio' ? 'Track, manage and analyse all your investments' :
+                                 'Your financial overview'}
+                            </p>
+                        </div>
+                    )}
+                    <div className="header-actions" style={{ marginLeft: (activeView === 'dashboard' || activeView === 'profile' || activeView === 'addInvestment' || activeView === 'portfolio') ? '0' : 'auto' }}>
                         {activeView === 'dashboard' && (
                             <button 
                                 className="refresh-btn" 
