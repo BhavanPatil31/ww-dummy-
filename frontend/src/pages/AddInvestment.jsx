@@ -6,6 +6,49 @@ import {
 } from 'react-icons/fi';
 import '../styles/AddInvestment.css';
 
+const PRIORITY_FUNDS = [
+    { code: "125497", name: "HDFC Top 100 Fund - Direct Plan - Growth", nav: 0 },
+    { code: "118834", name: "SBI Bluechip Fund - Direct Plan - Growth", nav: 0 },
+    { code: "118825", name: "Mirae Asset Large Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120465", name: "Axis Bluechip Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120716", name: "ICICI Prudential Bluechip Fund - Direct Plan - Growth", nav: 0 },
+    { code: "122639", name: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120468", name: "UTI Flexi Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120199", name: "Aditya Birla Sun Life Frontline Equity Fund - Direct Plan - Growth", nav: 0 },
+    { code: "125354", name: "SBI Small Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120847", name: "Quant Small Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120822", name: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130321", name: "Kotak Emerging Equity Fund - Direct Plan - Growth", nav: 0 },
+    { code: "129457", name: "ICICI Prudential Flexi Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130115", name: "Axis Flexi Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "128051", name: "HDFC Flexi Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "132010", name: "DSP Flexi Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130323", name: "Kotak Equity Opportunities Fund - Direct Plan - Growth", nav: 0 },
+    { code: "131201", name: "SBI Focused Equity Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130112", name: "Axis Focused 25 Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130114", name: "Axis Small Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "100148", name: "Franklin India Prima Fund - Growth", nav: 0 },
+    { code: "100251", name: "Franklin India Bluechip Fund - Growth", nav: 0 },
+    { code: "100305", name: "Franklin India Taxshield - Growth", nav: 0 },
+    { code: "131203", name: "SBI Contra Fund - Direct Plan - Growth", nav: 0 },
+    { code: "131202", name: "SBI Magnum Midcap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "131205", name: "SBI Long Term Equity Fund - Direct Plan - Growth", nav: 0 },
+    { code: "132011", name: "DSP Small Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "132012", name: "DSP Equity Opportunities Fund - Direct Plan - Growth", nav: 0 },
+    { code: "132013", name: "DSP Tax Saver Fund - Direct Plan - Growth", nav: 0 },
+    { code: "129456", name: "ICICI Prudential Value Discovery Fund - Direct Plan - Growth", nav: 0 },
+    { code: "128052", name: "HDFC Balanced Advantage Fund - Direct Plan - Growth", nav: 0 },
+    { code: "128053", name: "HDFC Hybrid Equity Fund - Direct Plan - Growth", nav: 0 },
+    { code: "128054", name: "HDFC Large and Mid Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "128055", name: "HDFC Small Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "127042", name: "DSP Midcap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "126503", name: "Axis Midcap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130322", name: "Kotak Small Cap Fund - Direct Plan - Growth", nav: 0 },
+    { code: "130324", name: "Kotak Bluechip Fund - Direct Plan - Growth", nav: 0 },
+    { code: "119551", name: "Tata Digital India Fund - Direct Plan - Growth", nav: 0 },
+    { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth", nav: 0 }
+];
+
 export default function AddInvestment({ user, onBackToDashboard }) {
     const [mockFunds, setMockFunds] = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
@@ -27,6 +70,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const [isSearching, setIsSearching] = useState(false);
     const [loadingNav, setLoadingNav] = useState(false);
     const suggestionRef = useRef(null);
+    const todayDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+        .toISOString()
+        .split('T')[0];
 
     // Fetch fund list on mount
     useEffect(() => {
@@ -39,8 +85,20 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                     name: f.schemeName || f.scheme_name || f.name || "Unknown Fund",
                     nav: 0
                 }));
-                setMockFunds(formatted);
-                setFilteredFunds(formatted.slice(0, 50));
+
+                // Keep your provided funds visible in the default top list,
+                // while preserving existing API funds and structure.
+                const mergedMap = new Map();
+                PRIORITY_FUNDS.forEach(fund => mergedMap.set(fund.code, fund));
+                formatted.forEach(fund => {
+                    if (!mergedMap.has(fund.code)) {
+                        mergedMap.set(fund.code, fund);
+                    }
+                });
+
+                const mergedFunds = Array.from(mergedMap.values());
+                setMockFunds(mergedFunds);
+                setFilteredFunds(mergedFunds.slice(0, 50));
             } catch (err) {
                 console.error("Failed to fetch funds", err);
             } finally {
@@ -90,40 +148,49 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         setShowSuggestions(true);
     };
 
-    const handleSelectFund = async (fund) => {
-        setLoadingNav(true);
+    const handleSelectFund = (fund) => {
         setFormData(prev => ({
             ...prev,
             fundName: fund.name,
             fund_id: fund.code,
-            nav: "Fetching..."
+            nav: prev.startDate ? "Fetching..." : ""
         }));
         setShowSuggestions(false);
+    };
 
-        try {
-            const token = localStorage.getItem("jwt_token");
-            const response = await axios.get(`http://localhost:8088/api/nav/${fund.code}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+    useEffect(() => {
+        const fetchNavBySelectedDate = async () => {
+            if (!formData.fund_id || !formData.startDate) {
+                setLoadingNav(false);
+                setFormData(prev => (prev.nav === "" ? prev : { ...prev, nav: "" }));
+                return;
+            }
 
-            if (response.data && !isNaN(response.data)) {
-                setFormData(prev => ({ ...prev, nav: response.data.toString() }));
-            } else {
-                // Fallback to MF API if internal NAV service fails
-                const mfRes = await axios.get(`http://localhost:8088/api/mf/${fund.code}`);
-                if (mfRes.data && mfRes.data.data && mfRes.data.data.length > 0) {
-                    setFormData(prev => ({ ...prev, nav: mfRes.data.data[0].nav.toString() }));
+            setLoadingNav(true);
+            setFormData(prev => ({ ...prev, nav: "Fetching..." }));
+
+            try {
+                const token = localStorage.getItem("jwt_token");
+                const response = await axios.get(`http://localhost:8088/api/nav/${formData.fund_id}`, {
+                    params: { date: formData.startDate },
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (response.data && !isNaN(response.data)) {
+                    setFormData(prev => ({ ...prev, nav: response.data.toString() }));
                 } else {
                     setFormData(prev => ({ ...prev, nav: "0.00" }));
                 }
+            } catch (err) {
+                console.error("Failed to fetch date-based NAV", err);
+                setFormData(prev => ({ ...prev, nav: "0.00" }));
+            } finally {
+                setLoadingNav(false);
             }
-        } catch (err) {
-            console.error("Failed to fetch NAV", err);
-            setFormData(prev => ({ ...prev, nav: "0.00" }));
-        } finally {
-            setLoadingNav(false);
-        }
-    };
+        };
+
+        fetchNavBySelectedDate();
+    }, [formData.fund_id, formData.startDate]);
 
     const formatCurrency = (val) => {
         return new Intl.NumberFormat('en-IN', {
@@ -302,6 +369,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                                 name="startDate"
                                                 value={formData.startDate}
                                                 onChange={handleChange}
+                                                max={todayDate}
                                                 required
                                             />
                                         </div>
