@@ -314,6 +314,45 @@
     transform: translateY(-1px);
 }
 
+.table-icon-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-gray);
+    transition: var(--transition);
+}
+
+.table-icon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.table-icon-btn.view:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.table-icon-btn.edit:hover {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.table-icon-btn.delete:hover {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: var(--fintech-red);
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
 /* ── Table Footer ── */
 .table-footer {
     padding: 12px 16px;

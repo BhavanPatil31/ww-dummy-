@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
     FiDollarSign, FiCalendar, FiActivity, FiTag, FiCheckCircle,
-    FiLayers, FiSmartphone, FiShield, FiTarget, FiPercent, FiClock, FiFileText, FiInfo
+    FiLayers, FiSmartphone, FiShield, FiTarget, FiPercent, FiClock, FiFileText, FiInfo, FiPlus
 } from 'react-icons/fi';
 import '../styles/AddInvestment.css';
 

@@ -304,21 +304,6 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
                                         ))}
                                     </div>
 
-                                    <div className="theme-selector">
-                                        <div className="theme-selector-label">App Theme</div>
-                                        <select
-                                            className="theme-selector-select"
-                                            value={theme || "system"}
-                                            onChange={(e) => setTheme && setTheme(e.target.value)}
-                                        >
-                                            <option value="system">System Default</option>
-                                            <option value="light">Light</option>
-                                            <option value="dark">Dark</option>
-                                        </select>
-                                        <div className="theme-selector-hint">
-                                            Changes apply immediately and are saved for next visit.
-                                        </div>
-                                    </div>
                                 </>
                             ) : (
                                 <div className="profile-empty-text">No profile yet. Use Edit Profile tab.</div>
