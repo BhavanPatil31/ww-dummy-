@@ -3,7 +3,7 @@ import "../styles/UserProfile.css";
 
 const API_BASE = "http://localhost:8088/api/profiles";
 
-export default function UserProfile({ user, onBack, onLogout, onProfileUpdate }) {
+export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, theme, setTheme }) {
 
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -16,9 +16,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
         name: "",
         email: "",
         phone: "",
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+
     });
 
     useEffect(() => {
@@ -291,19 +289,37 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                         <div>
                             <h3>Profile Details</h3>
                             {profile ? (
-                                <div className="profile-detail-grid">
-                                    {[
-                                        { label: "Full Name",    value: profile.name },
-                                        { label: "Email",        value: profile.email },
-                                        { label: "Phone",        value: profile.phone || "Not set" },
-                                        { label: "Member Since", value: formatDate(profile.createdDate) },
-                                    ].map(({ label, value }) => (
-                                        <div key={label} className="profile-detail-row">
-                                            <span className="profile-detail-label">{label}</span>
-                                            <span className="profile-detail-value">{value}</span>
+                                <>
+                                    <div className="profile-detail-grid">
+                                        {[
+                                            { label: "Full Name",    value: profile.name },
+                                            { label: "Email",        value: profile.email },
+                                            { label: "Phone",        value: profile.phone || "Not set" },
+                                            { label: "Member Since", value: formatDate(profile.createdDate) },
+                                        ].map(({ label, value }) => (
+                                            <div key={label} className="profile-detail-row">
+                                                <span className="profile-detail-label">{label}</span>
+                                                <span className="profile-detail-value">{value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="theme-selector">
+                                        <div className="theme-selector-label">App Theme</div>
+                                        <select
+                                            className="theme-selector-select"
+                                            value={theme || "system"}
+                                            onChange={(e) => setTheme && setTheme(e.target.value)}
+                                        >
+                                            <option value="system">System Default</option>
+                                            <option value="light">Light</option>
+                                            <option value="dark">Dark</option>
+                                        </select>
+                                        <div className="theme-selector-hint">
+                                            Changes apply immediately and are saved for next visit.
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="profile-empty-text">No profile yet. Use Edit Profile tab.</div>
                             )}
@@ -351,43 +367,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                                 />
                             </div>
 
-                            <div className="edit-section-title" style={{ marginTop: "24px" }}>
-                                Security <span className="edit-section-optional">(optional)</span>
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>Current Password</label>
-                                <input
-                                    type="password"
-                                    className="profile-input"
-                                    placeholder="Required to change password"
-                                    value={editForm.currentPassword}
-                                    onChange={(e) => setEditForm({ ...editForm, currentPassword: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>New Password</label>
-                                <input
-                                    type="password"
-                                    className="profile-input"
-                                    placeholder="New password (min 6 chars)"
-                                    value={editForm.newPassword}
-                                    onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>Confirm New Password</label>
-                                <input
-                                    type="password"
-                                    className="profile-input"
-                                    placeholder="Repeat new password"
-                                    value={editForm.confirmPassword}
-                                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
-                                />
-                            </div>
-
+                            
                             <button
                                 className="profile-save-btn"
                                 onClick={saveAllChanges}

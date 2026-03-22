@@ -14,6 +14,7 @@ import java.util.Map;
 import javax.annotation.PostConstruct;
 
 @Service
+@SuppressWarnings("null")
 public class MutualFundService {
 
     @Autowired

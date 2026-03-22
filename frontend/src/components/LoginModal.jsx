@@ -9,8 +9,12 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const [requiresOtp, setRequiresOtp] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpMsg, setOtpMsg] = useState("");
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
+  const performLogin = async () => {
     setIsLoading(true);
     setErrorMsg("");
 
@@ -25,6 +29,12 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
       console.log("LOGIN RESPONSE:", data);
 
       if (!response.ok) {
+        if (response.status === 403) {
+          // Account exists but is not verified yet
+          setRequiresOtp(true);
+          setErrorMsg(data.error || "Account not verified. Please verify your email.");
+          return false;
+        }
         throw new Error(data.error || "Login failed");
       }
 
@@ -48,10 +58,63 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
       } else {
         closeLogin();
       }
+
+      return true;
     } catch (err) {
       setErrorMsg(err.message || "Unable to reach server");
+      return false;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setRequiresOtp(false);
+    setOtpMsg("");
+    await performLogin();
+  };
+
+  const handleResendOtp = async () => {
+    setOtpMsg("");
+    try {
+      const response = await fetch("http://localhost:8088/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Could not resend OTP");
+      }
+      setOtpMsg(data.message || "OTP resent to your email");
+    } catch (err) {
+      setOtpMsg(err.message || "Unable to resend OTP");
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setIsVerifyingOtp(true);
+    setOtpMsg("");
+    try {
+      const response = await fetch("http://localhost:8088/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "OTP verification failed");
+      }
+
+      setOtpMsg("OTP verified! Logging you in...");
+      setRequiresOtp(false);
+      await performLogin();
+    } catch (err) {
+      setOtpMsg(err.message || "Unable to verify OTP");
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -65,6 +128,45 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         {errorMsg && (
           <div style={{ color: "#ef4444", marginBottom: "10px", fontSize: "0.9rem" }}>
             {errorMsg}
+          </div>
+        )}
+
+        {requiresOtp && (
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ marginBottom: "0.4rem", fontWeight: 600 }}>Enter OTP sent to your email</div>
+            <div className="input-group">
+              <label className="input-label">OTP</label>
+              <input
+                type="text"
+                className="modal-input"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+              <button
+                type="button"
+                className="auth-btn"
+                onClick={handleVerifyOtp}
+                disabled={isVerifyingOtp || !otp}
+              >
+                {isVerifyingOtp ? "Verifying..." : "Verify OTP"}
+              </button>
+              <button
+                type="button"
+                className="auth-btn"
+                style={{ backgroundColor: "#6b7280" }}
+                onClick={handleResendOtp}
+              >
+                Resend OTP
+              </button>
+            </div>
+            {otpMsg && (
+              <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#0f5132" }}>
+                {otpMsg}
+              </div>
+            )}
           </div>
         )}
 

@@ -10,10 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
+import java.security.SecureRandom;
+
+import org.springframework.lang.NonNull;
 
 @Service
+@SuppressWarnings("null")
 public class AuthService {
 
     @Autowired
@@ -24,19 +28,29 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
-    
+
     @Autowired
     private UserProfileRepository userProfileRepository;
 
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final SecureRandom secureRandom = new SecureRandom();
 
+    @SuppressWarnings("null")
     public User register(User user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists: " + user.getEmail());
         }
         // Hash the password before saving to the database
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        // Newly registered users must verify their account via OTP before logging in
+        user.setVerified(false);
+
+        User savedUser = userRepository.save(user);
+
+        // Send OTP to the user's email as part of the registration flow (login verification)
+        sendOtp(savedUser.getEmail(), "login");
+
+        return savedUser;
     }
 
     public Optional<String> login(String email, String rawPassword) {
@@ -44,6 +58,15 @@ public class AuthService {
 
         // Check if user exists and if the raw password matches the hashed password
         if (user.isPresent() && passwordEncoder.matches(rawPassword, user.get().getPassword())) {
+            // Ensure the user has verified their email via OTP
+            Boolean verified = user.get().getVerified();
+            if (Boolean.FALSE.equals(verified)) {
+                // If not verified, generate and store a login OTP explicitly as login intent
+                sendOtp(email, "login");
+                throw new com.wealthwise.wealthwise_backend.auth.exception.AccountNotVerifiedException(
+                        "Account not verified. OTP sent to email with login intent.");
+            }
+
             // Generate valid JWT using JwtUtil
             String token = jwtUtil.generateToken(user.get().getEmail());
             return Optional.of(token);
@@ -57,7 +80,8 @@ public class AuthService {
     }
 
     // SEND OTP
-    public String sendOtp(String email) {
+    @SuppressWarnings("null")
+    public String sendOtp(String email, String otpType) {
         Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isEmpty()) {
@@ -66,15 +90,21 @@ public class AuthService {
 
         User user = userOptional.get();
 
-        String otp = String.valueOf(100000 + new Random().nextInt(900000));
+        String otp = String.valueOf(100000 + secureRandom.nextInt(900000));
 
         user.setOtp(otp);
+        user.setOtpType(otpType);
 
         userRepository.save(user);
 
         emailService.sendOtpEmail(email, otp);
 
         return "OTP sent to email";
+    }
+
+    // fallback for existing flows or simple controller usage
+    public String sendOtp(String email) {
+        return sendOtp(email, "password_recovery");
     }
 
     // VERIFY OTP
@@ -88,6 +118,11 @@ public class AuthService {
         User user = userOptional.get();
 
         if (user.getOtp() != null && user.getOtp().equals(otp)) {
+            // Mark user as verified and clear the OTP after successful verification
+            user.setVerified(true);
+            user.setOtp(null);
+            user.setOtpType(null);
+            userRepository.save(user);
             return "OTP verified";
         }
 
@@ -95,6 +130,7 @@ public class AuthService {
     }
 
     // RESET PASSWORD
+    @SuppressWarnings("null")
     public String resetPassword(String email, String newPassword) {
         Optional<User> userOptional = userRepository.findByEmail(email);
 
@@ -111,28 +147,29 @@ public class AuthService {
 
         return "Password updated successfully";
     }
-    
-    public void deleteAccount(Long userId) {
+
+    public void deleteAccount(@NonNull Long userId) {
         // Step 1 — delete profile first to avoid foreign key error
         Optional<UserProfileDetails> profile = userProfileRepository.findByUserId(userId);
         profile.ifPresent(userProfileRepository::delete);
 
         // Step 2 — delete user
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        User user = Objects.requireNonNull(
+                userRepository.findById(userId)
+                        .orElseThrow(() -> new RuntimeException("User not found with id: " + userId)));
         userRepository.delete(user);
     }
 
-    public void updateUserName(Long userId, String newName) {
+    public void updateUserName(@NonNull Long userId, String newName) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         user.setName(newName);
         userRepository.save(user);
     }
 
-    public void updateUserEmail(Long userId, String newEmail) {
+    public void updateUserEmail(@NonNull Long userId, String newEmail) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         user.setEmail(newEmail);
         userRepository.save(user);
     }

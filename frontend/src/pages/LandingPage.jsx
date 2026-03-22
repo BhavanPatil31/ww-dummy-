@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle } from "react-icons/fi";
 
-function LandingPage({ openLogin, user, onLogout }) {
+function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -49,6 +49,17 @@ function LandingPage({ openLogin, user, onLogout }) {
           </nav>
 
           <div className="auth-buttons">
+            <div className="theme-switcher">
+              <select
+                value={theme || "system"}
+                onChange={(e) => setTheme && setTheme(e.target.value)}
+              >
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+
             {user ? (
               <div className="user-profile">
                 <div className="user-badge">

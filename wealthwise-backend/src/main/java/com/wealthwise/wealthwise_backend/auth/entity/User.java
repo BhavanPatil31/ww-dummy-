@@ -23,6 +23,12 @@ public class User {
     @Column(name = "otp")
     private String otp;
 
+    @Column(name = "otp_type")
+    private String otpType;
+
+    @Column
+    private Boolean verified;
+
     private LocalDateTime created_date;
 
     public User() {
@@ -71,6 +77,22 @@ public class User {
 
     public void setOtp(String otp) {
         this.otp = otp;
+    }
+
+    public String getOtpType() {
+        return otpType;
+    }
+
+    public void setOtpType(String otpType) {
+        this.otpType = otpType;
+    }
+
+    public Boolean getVerified() {
+        return verified;
+    }
+
+    public void setVerified(Boolean verified) {
+        this.verified = verified;
     }
 
     public LocalDateTime getCreated_date() {
