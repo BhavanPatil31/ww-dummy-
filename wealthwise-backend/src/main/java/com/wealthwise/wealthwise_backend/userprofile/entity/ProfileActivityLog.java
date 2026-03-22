@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.userprofile.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
@@ -29,28 +29,63 @@ public class ProfileActivityLog {
     @Column(name = "changed_at", updatable = false)
     private LocalDateTime changedAt;
 
-    public ProfileActivityLog() {}
+    public ProfileActivityLog() {
+    }
 
     public ProfileActivityLog(Long userId, String changedField, String oldValue, String newValue) {
-        this.userId       = userId;
+        this.userId = userId;
         this.changedField = changedField;
-        this.oldValue     = oldValue;
-        this.newValue     = newValue;
+        this.oldValue = oldValue;
+        this.newValue = newValue;
     }
 
     // Getters
-    public Long getLogId()            { return logId; }
-    public Long getUserId()           { return userId; }
-    public String getChangedField()   { return changedField; }
-    public String getOldValue()       { return oldValue; }
-    public String getNewValue()       { return newValue; }
-    public LocalDateTime getChangedAt() { return changedAt; }
+    public Long getLogId() {
+        return logId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public String getChangedField() {
+        return changedField;
+    }
+
+    public String getOldValue() {
+        return oldValue;
+    }
+
+    public String getNewValue() {
+        return newValue;
+    }
+
+    public LocalDateTime getChangedAt() {
+        return changedAt;
+    }
 
     // Setters
-    public void setLogId(Long logId)              { this.logId = logId; }
-    public void setUserId(Long userId)            { this.userId = userId; }
-    public void setChangedField(String f)         { this.changedField = f; }
-    public void setOldValue(String oldValue)      { this.oldValue = oldValue; }
-    public void setNewValue(String newValue)      { this.newValue = newValue; }
-    public void setChangedAt(LocalDateTime date)  { this.changedAt = date; }
+    public void setLogId(Long logId) {
+        this.logId = logId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public void setChangedField(String f) {
+        this.changedField = f;
+    }
+
+    public void setOldValue(String oldValue) {
+        this.oldValue = oldValue;
+    }
+
+    public void setNewValue(String newValue) {
+        this.newValue = newValue;
+    }
+
+    public void setChangedAt(LocalDateTime date) {
+        this.changedAt = date;
+    }
 }

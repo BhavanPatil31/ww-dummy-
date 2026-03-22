@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut, FiTrendingUp } from 'react-icons/fi';
+import { FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut, FiTrendingUp, FiCheck, FiX } from 'react-icons/fi';
 import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
@@ -12,6 +12,10 @@ const COLORS = ['#1e293b', '#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'
 export default function Dashboard({ user, onLogout, onProfileUpdate }) {
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const notificationRef = useRef(null);
 
     // Initialize from localStorage or default to 'dashboard'
     const [activeView, setActiveView] = useState(() => {
@@ -110,6 +114,95 @@ export default function Dashboard({ user, onLogout, onProfileUpdate }) {
         }
     }, [user, activeView]);
 
+    const fetchNotifications = useCallback(async () => {
+        if (!user) return;
+        try {
+            const token = localStorage.getItem("jwt_token");
+            const userId = user?.userId || user?.id;
+            const response = await axios.get(`http://localhost:8088/api/notifications/user/${userId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            setNotifications(response.data);
+            setUnreadCount(response.data.filter(n => !n.read).length);
+        } catch (error) {
+            console.error("Error fetching notifications:", error);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications();
+            // Poll for new notifications every 10 seconds to pop up faster
+            const intervalId = setInterval(fetchNotifications, 10000);
+            return () => clearInterval(intervalId);
+        }
+    }, [user, fetchNotifications]);
+
+    // Close notifications dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+        };
+
+        if (showNotifications) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showNotifications]);
+
+    const handleMarkAsRead = async (id) => {
+        try {
+            const token = localStorage.getItem("jwt_token");
+            await axios.put(`http://localhost:8088/api/notifications/${id}/read`, {}, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (error) {
+            console.error("Error marking notification as read:", error);
+        }
+    };
+
+    const handleKeepUnread = async (id) => {
+        try {
+            const token = localStorage.getItem("jwt_token");
+            await axios.put(`http://localhost:8088/api/notifications/${id}/unread`, {}, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            // State remains same regarding count, but we might want to refresh from backend to ensure sync
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n));
+            // Recalculate unread count just in case
+            const response = await axios.get(`http://localhost:8088/api/notifications/user/${user?.userId || user?.id}/unread-count`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            setUnreadCount(response.data.unreadCount);
+        } catch (error) {
+            console.error("Error keeping notification unread:", error);
+        }
+    };
+
+    const handleClearAll = async () => {
+        if (!window.confirm("Are you sure you want to clear all notifications?")) return;
+        try {
+            const token = localStorage.getItem("jwt_token");
+            const userId = user?.userId || user?.id;
+            await axios.delete(`http://localhost:8088/api/notifications/user/${userId}/clear-all`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            setNotifications([]);
+            setUnreadCount(0);
+        } catch (error) {
+            console.error("Error clearing notifications:", error);
+        }
+    };
+
     return (
         <div className="dashboard-container">
             {/* Sidebar Navigation */}
@@ -186,7 +279,87 @@ export default function Dashboard({ user, onLogout, onProfileUpdate }) {
                                 {loading ? "Syncing..." : "Refresh"}
                             </button>
                         )}
-                        <button className="icon-btn" title="Notifications"><FiBell /></button>
+                        <div className="notification-container" ref={notificationRef}>
+                            <button 
+                                className="icon-btn" 
+                                title="Notifications"
+                                onClick={() => setShowNotifications(!showNotifications)}
+                            >
+                                <FiBell />
+                                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+                            </button>
+
+                            {showNotifications && (
+                                <div className="notification-dropdown">
+                                        <div className="notification-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <h3 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
+                                                {notifications.length > 0 && (
+                                                    <button 
+                                                        onClick={handleClearAll}
+                                                        style={{ 
+                                                            background: 'rgba(239, 68, 68, 0.1)', 
+                                                            border: '1px solid rgba(239, 68, 68, 0.2)', 
+                                                            color: '#ef4444', 
+                                                            fontSize: '0.7rem', 
+                                                            cursor: 'pointer',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '4px',
+                                                            fontWeight: '600',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onMouseOver={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
+                                                        onMouseOut={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
+                                                    >
+                                                        Clear All
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <button 
+                                                onClick={() => setShowNotifications(false)}
+                                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                                title="Close"
+                                            >
+                                                <FiX size={18} />
+                                            </button>
+                                        </div>
+                                    <div className="notification-list">
+                                        {notifications.length > 0 ? (
+                                            notifications.map(notification => (
+                                                <div key={notification.id} className={`notification-item ${notification.read ? 'read' : ''}`}>
+                                                    <div className="notification-content">
+                                                        <p>{notification.message}</p>
+                                                    </div>
+                                                    <div className="notification-footer">
+                                                        <span className="notification-time">
+                                                            {new Date(notification.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        <div className="notification-actions">
+                                                            <button 
+                                                                className="action-btn check" 
+                                                                title="Mark as Read"
+                                                                onClick={() => handleMarkAsRead(notification.id)}
+                                                            >
+                                                                <FiCheck />
+                                                            </button>
+                                                            <button 
+                                                                className="action-btn wrong" 
+                                                                title="Keep Unread"
+                                                                onClick={() => handleKeepUnread(notification.id)}
+                                                            >
+                                                                <FiX />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="no-notifications">No notifications yet</div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <div
                             className={`profile-btn ${activeView === 'profile' ? 'active' : ''}`}
                             onClick={() => setActiveView('profile')}
