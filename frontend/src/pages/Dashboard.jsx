@@ -9,7 +9,7 @@ import '../styles/Dashboard.css';
 
 const COLORS = ['#1e293b', '#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'];
 
-export default function Dashboard({ user, onLogout, onProfileUpdate }) {
+export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme }) {
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState([]);
@@ -393,6 +393,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate }) {
                             onBack={() => setActiveView('dashboard')}
                             onLogout={onLogout}
                             onProfileUpdate={onProfileUpdate}
+                            theme={theme}
+                            setTheme={setTheme}
                         />
                     ) : (
                         <div className="dashboard-content">

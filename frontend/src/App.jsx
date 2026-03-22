@@ -11,11 +11,17 @@ import ForgotPasswordModal from "./components/ForgotPasswordModal";
 import "./App.css";
 
 function App() {
+    const THEME_STORAGE_KEY = "wealthwise_theme";
 
     // ✅ 1. Initialize from localStorage
     const [currentUser, setCurrentUser] = useState(() => {
         const saved = localStorage.getItem("wealthwise_user");
         return saved ? JSON.parse(saved) : null;
+    });
+
+    const [theme, setTheme] = useState(() => {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        return saved ? saved : "system";
     });
 
     const [currentPage, setCurrentPage] = useState(() => {
@@ -34,6 +40,22 @@ function App() {
     useEffect(() => {
         localStorage.setItem("wealthwise_current_page", currentPage);
     }, [currentPage]);
+
+    // ✅ Theme handling (light / dark / system)
+    useEffect(() => {
+        const root = document.documentElement;
+
+        // Remove any explicit theme classes, then apply desired one
+        root.classList.remove("theme-light", "theme-dark");
+
+        if (theme === "light") {
+            root.classList.add("theme-light");
+        } else if (theme === "dark") {
+            root.classList.add("theme-dark");
+        }
+
+        localStorage.setItem("wealthwise_theme", theme);
+    }, [theme]);
 
     // ✅ 3. Logout logic
     const handleLogout = () => {
@@ -61,6 +83,8 @@ function App() {
                     user={currentUser}
                     onLogout={handleLogout}
                     onProfileUpdate={handleProfileUpdate}
+                    theme={theme}
+                    setTheme={setTheme}
                 />
 
             /* LANDING PAGE */
@@ -69,6 +93,8 @@ function App() {
                     openLogin={() => setShowLogin(true)}
                     user={currentUser}
                     onLogout={handleLogout}
+                    theme={theme}
+                    setTheme={setTheme}
                 />
             )}
 

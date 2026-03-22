@@ -16,8 +16,9 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
 
         message.setTo(toEmail);
-        message.setSubject("WealthWise Password Reset OTP");
-        message.setText("Your OTP for resetting password is: " + otp);
+        message.setSubject("WealthWise OTP Verification");
+        message.setText("Your WealthWise OTP is: " + otp + "\n\n" +
+                "Use this to verify your account or reset your password.");
 
         mailSender.send(message);
     }
