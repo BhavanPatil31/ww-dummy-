@@ -2,7 +2,7 @@ package com.wealthwise.wealthwise_backend.userprofile.controller;
 
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateEmailRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateNameRequest;
-import com.wealthwise.wealthwise_backend.userprofile.dto.UpdatePasswordRequest;
+
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdatePhoneRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UserProfileDTO;
 import com.wealthwise.wealthwise_backend.userprofile.service.UserProfileService;
@@ -75,15 +75,7 @@ public class UserProfileController {
         }
     }
 
-    @PatchMapping("/{profileId}/password")
-    public ResponseEntity<?> updatePassword(@PathVariable Long profileId,
-                                             @RequestBody UpdatePasswordRequest request) {
-        try {
-            return ResponseEntity.ok(service.updatePassword(profileId, request));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
+ 
     
  // ✅ ADD this new 
     @PatchMapping("/{profileId}/phone")
