@@ -5,12 +5,43 @@
   --bg-secondary: #0f172a;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
+
+  --card-bg: rgba(15, 23, 42, 0.6);
+  --card-border: rgba(255, 255, 255, 0.15);
+  --card-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+
+  --input-bg: rgba(11, 17, 32, 0.6);
+  --input-border: rgba(255, 255, 255, 0.15);
+  --input-text: var(--text-primary);
+  --input-shadow: rgba(0, 0, 0, 0.25);
+
+  --button-primary: #22c55e;
+  --button-primary-hover: #16a34a;
+  --button-text: #0b1120;
+
+  --modal-bg: rgba(11, 17, 32, 0.9);
+  --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  --overlay-bg: rgba(11, 17, 32, 0.75);
+
+  --border-color: rgba(255, 255, 255, 0.1);
+  --divider: rgba(148, 163, 184, 0.3);
+
   --accent-color: #6366f1;
   --accent-hover: #4f46e5;
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   --glass-bg: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+  /* Legacy / component compatibility variables */
+  --fintech-blue: var(--bg-secondary);
+  --fintech-blue-light: var(--card-bg);
+  --fintech-green: var(--button-primary);
+  --fintech-green-hover: var(--button-primary-hover);
+  --text-white: #ffffff;
+  --text-gray: var(--text-secondary);
+  --transition: var(--transition-smooth);
+
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -62,4 +93,110 @@ button {
 
 .animate-fade-in {
   animation: fadeIn 0.8s ease-out forwards;
+}
+
+/* --------- Theme support --------- */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+
+    --card-bg: #ffffff;
+    --card-border: rgba(148, 163, 184, 0.4);
+    --card-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+
+    --input-bg: #ffffff;
+    --input-border: #e2e8f0;
+    --input-text: #1e293b;
+    --input-shadow: rgba(15, 23, 42, 0.08);
+
+    --button-primary: #2563eb;
+    --button-primary-hover: #1d4ed8;
+    --button-text: #ffffff;
+
+    --modal-bg: #ffffff;
+    --modal-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    --overlay-bg: rgba(15, 23, 42, 0.35);
+
+    --border-color: rgba(148, 163, 184, 0.4);
+    --divider: rgba(148, 163, 184, 0.3);
+
+    --accent-color: #6366f1;
+    --accent-hover: #4f46e5;
+    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(148, 163, 184, 0.4);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  }
+}
+
+.theme-light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+
+  --card-bg: #ffffff;
+  --card-border: rgba(148, 163, 184, 0.4);
+  --card-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+
+  --input-bg: #ffffff;
+  --input-border: #e2e8f0;
+  --input-text: #1e293b;
+  --input-shadow: rgba(15, 23, 42, 0.08);
+
+  --button-primary: #2563eb;
+  --button-primary-hover: #1d4ed8;
+  --button-text: #ffffff;
+
+  --modal-bg: #ffffff;
+  --modal-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  --overlay-bg: rgba(15, 23, 42, 0.35);
+
+  --border-color: rgba(148, 163, 184, 0.4);
+  --divider: rgba(148, 163, 184, 0.3);
+
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(148, 163, 184, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+}
+
+.theme-dark {
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+
+  --card-bg: rgba(15, 23, 42, 0.6);
+  --card-border: rgba(255, 255, 255, 0.15);
+  --card-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+
+  --input-bg: rgba(11, 17, 32, 0.6);
+  --input-border: rgba(255, 255, 255, 0.15);
+  --input-text: var(--text-primary);
+  --input-shadow: rgba(0, 0, 0, 0.25);
+
+  --button-primary: #22c55e;
+  --button-primary-hover: #16a34a;
+  --button-text: #0b1120;
+
+  --modal-bg: rgba(11, 17, 32, 0.9);
+  --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  --overlay-bg: rgba(11, 17, 32, 0.75);
+
+  --border-color: rgba(255, 255, 255, 0.1);
+  --divider: rgba(148, 163, 184, 0.3);
+
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }

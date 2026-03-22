@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
+import org.springframework.lang.NonNull;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,7 +24,7 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> register(@RequestBody User user) {
         User savedUser = authService.register(user);
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Account created successfully");
+        response.put("message", "Account created successfully. Please verify the OTP sent to your email before login.");
         response.put("user", savedUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -31,34 +32,41 @@ public class AuthController {
     // LOGIN
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody User user) {
-        Optional<String> tokenOpt = authService.login(user.getEmail(), user.getPassword());
         Map<String, Object> response = new HashMap<>();
-        if (tokenOpt.isPresent()) {
-            response.put("message", "Login Successful");
-            Optional<User> loggedUser = authService.getUserByEmail(user.getEmail());
-            if (loggedUser.isPresent()) {
-                response.put("name",   loggedUser.get().getName());
-                response.put("userId", loggedUser.get().getUser_id());
-                response.put("email",  loggedUser.get().getEmail());
+        try {
+            Optional<String> tokenOpt = authService.login(user.getEmail(), user.getPassword());
+            if (tokenOpt.isPresent()) {
+                response.put("message", "Login Successful");
+                Optional<User> loggedUser = authService.getUserByEmail(user.getEmail());
+                if (loggedUser.isPresent()) {
+                    response.put("name",   loggedUser.get().getName());
+                    response.put("userId", loggedUser.get().getUser_id());
+                    response.put("email",  loggedUser.get().getEmail());
+                }
+                response.put("token", tokenOpt.get());
+                return ResponseEntity.ok(response);
             }
-            response.put("token", tokenOpt.get());
-            return ResponseEntity.ok(response);
+            response.put("error", "Invalid Credentials");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        } catch (com.wealthwise.wealthwise_backend.auth.exception.AccountNotVerifiedException ex) {
+            response.put("error", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
         }
-        response.put("error", "Invalid Credentials");
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
     // SEND OTP
     @PostMapping("/send-otp")
     public ResponseEntity<Map<String, String>> sendOtp(@RequestBody Map<String, String> body) {
         String email = body.get("email");
-        String result = authService.sendOtp(email);
+        String otpType = body.getOrDefault("otp_type", "password_recovery");
+        String result = authService.sendOtp(email, otpType);
         Map<String, String> response = new HashMap<>();
         if (result.equals("User not found")) {
             response.put("error", result);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
         response.put("message", result);
+        response.put("otp_type", otpType);
         return ResponseEntity.ok(response);
     }
 
@@ -94,7 +102,7 @@ public class AuthController {
 
     // ✅ DELETE ACCOUNT
     @DeleteMapping("/delete/{userId}")
-    public ResponseEntity<Map<String, String>> deleteAccount(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, String>> deleteAccount(@PathVariable @NonNull Long userId) {
         Map<String, String> response = new HashMap<>();
         try {
             authService.deleteAccount(userId);
