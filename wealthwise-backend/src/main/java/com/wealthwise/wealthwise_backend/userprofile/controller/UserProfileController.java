@@ -88,6 +88,17 @@ public class UserProfileController {
         }
     }
 
+    // ✅ ADD this new endpoint for details
+    @PatchMapping("/{profileId}/details")
+    public ResponseEntity<?> updateDetails(@PathVariable Long profileId,
+                                          @RequestBody UserProfileDTO request) {
+        try {
+            return ResponseEntity.ok(service.updateDetails(profileId, request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{profileId}")
     public ResponseEntity<?> delete(@PathVariable Long profileId) {
         try {

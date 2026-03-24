@@ -33,6 +33,18 @@ public class UserProfileDetails {
     @Column(name = "password")
     private String password;
 
+    @Column(name = "gender", length = 10)
+    private String gender;
+
+    @Column(name = "tax_id", length = 50)
+    private String taxId;
+
+    @Column(name = "tax_country", length = 50)
+    private String taxCountry;
+
+    @Column(name = "residential_address", columnDefinition = "TEXT")
+    private String residentialAddress;
+
     @CreationTimestamp
     @Column(name = "created_date", updatable = false)
     private LocalDateTime createdDate;
@@ -65,6 +77,22 @@ public class UserProfileDetails {
         return password;
     }
 
+    public String getGender() {
+        return gender;
+    }
+
+    public String getTaxId() {
+        return taxId;
+    }
+
+    public String getTaxCountry() {
+        return taxCountry;
+    }
+
+    public String getResidentialAddress() {
+        return residentialAddress;
+    }
+
     public LocalDateTime getCreatedDate() {
         return createdDate;
     }
@@ -92,6 +120,22 @@ public class UserProfileDetails {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public void setTaxId(String taxId) {
+        this.taxId = taxId;
+    }
+
+    public void setTaxCountry(String taxCountry) {
+        this.taxCountry = taxCountry;
+    }
+
+    public void setResidentialAddress(String residentialAddress) {
+        this.residentialAddress = residentialAddress;
     }
 
     public void setCreatedDate(LocalDateTime d) {
@@ -132,6 +176,26 @@ public class UserProfileDetails {
             return this;
         }
 
+        public Builder gender(String gender) {
+            this.gender = gender;
+            return this;
+        }
+
+        public Builder taxId(String taxId) {
+            this.taxId = taxId;
+            return this;
+        }
+
+        public Builder taxCountry(String taxCountry) {
+            this.taxCountry = taxCountry;
+            return this;
+        }
+
+        public Builder residentialAddress(String residentialAddress) {
+            this.residentialAddress = residentialAddress;
+            return this;
+        }
+
         public UserProfileDetails build() {
             UserProfileDetails p = new UserProfileDetails();
             p.userId = this.userId;
@@ -139,6 +203,10 @@ public class UserProfileDetails {
             p.email = this.email;
             p.phone = this.phone;
             p.password = this.password;
+            p.gender = this.gender;
+            p.taxId = this.taxId;
+            p.taxCountry = this.taxCountry;
+            p.residentialAddress = this.residentialAddress;
             return p;
         }
     }

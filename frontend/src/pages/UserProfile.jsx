@@ -10,34 +10,74 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
     const [message, setMessage] = useState({ text: "", type: "" });
     const [activeTab, setActiveTab] = useState("view");
     const [deleteConfirm, setDeleteConfirm] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+    const [avatarUrl, setAvatarUrl] = useState(null);
 
-    // ✅ Single edit form for all fields
     const [editForm, setEditForm] = useState({
-        name: "",
+        firstName: "",
+        lastName: "",
         email: "",
-        phone: "",
-
+        mobileNumber: "",
+        gender: "",
+        taxId: "",
+        taxCountry: "",
+        residentialAddress: ""
     });
 
     useEffect(() => {
         const uid = user?.userId || user?.id;
-        if (uid) fetchProfileByUserId(uid);
+        if (uid) {
+            fetchProfileByUserId(uid);
+            const savedAvatar = localStorage.getItem(`avatar_${uid}`);
+            if (savedAvatar) setAvatarUrl(savedAvatar);
+        }
     }, [user]);
+
+    const handleAvatarUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAvatarUrl(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleAvatarDelete = () => {
+        setAvatarUrl(null);
+    };
 
     // ✅ Prefill from profile OR from user object if profile is missing
     useEffect(() => {
         if (profile) {
+            const nameParts = (profile.name || "").split(" ");
+            const fName = nameParts[0] || "";
+            const lName = nameParts.slice(1).join(" ") || "";
             setEditForm(prev => ({
                 ...prev,
-                name: profile.name || "",
+                firstName: fName,
+                lastName: lName,
                 email: profile.email || "",
-                phone: profile.phone || "",
+                mobileNumber: profile.phone || "",
+                gender: profile.gender || "",
+                taxId: profile.taxId || "",
+                taxCountry: profile.taxCountry || "",
+                residentialAddress: profile.residentialAddress || ""
             }));
         } else if (user) {
+            const nameParts = (user.name || "").split(" ");
+            const fName = nameParts[0] || "";
+            const lName = nameParts.slice(1).join(" ") || "";
             setEditForm(prev => ({
                 ...prev,
-                name: user.name || "",
+                firstName: fName,
+                lastName: lName,
                 email: user.email || "",
+                gender: "",
+                taxId: "",
+                taxCountry: "",
+                residentialAddress: ""
             }));
         }
     }, [profile, user]);
@@ -65,6 +105,13 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
     const saveAllChanges = async () => {
         setLoading(true);
         const uid = user?.userId || user?.id;
+        const finalName = `${editForm.firstName} ${editForm.lastName}`.trim();
+
+        if (avatarUrl) {
+            localStorage.setItem(`avatar_${uid}`, avatarUrl);
+        } else {
+            localStorage.removeItem(`avatar_${uid}`);
+        }
 
         try {
             // ─── CREATE PROFILE IF MISSING ───
@@ -74,10 +121,10 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         userId: uid,
-                        name: editForm.name.trim(),
+                        name: finalName,
                         email: editForm.email.trim(),
-                        phone: editForm.phone.trim(),
-                        password: editForm.newPassword || "dummy_pass_123" // password is required by backend DTO
+                        phone: editForm.mobileNumber.trim(),
+                        password: "dummy_pass_123" // password is required by backend DTO
                     }),
                 });
 
@@ -93,11 +140,11 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
                 return;
             }
             // Update name if changed
-            if (editForm.name.trim() && editForm.name.trim() !== profile.name) {
+            if (finalName && finalName !== profile.name) {
                 const res = await fetch(`${API_BASE}/${profile.profileId}/name`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: editForm.name.trim() }),
+                    body: JSON.stringify({ name: finalName }),
                 });
                 if (!res.ok) {
                     const text = await res.text();
@@ -128,11 +175,11 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
             }
 
             // Update phone if changed
-            if (editForm.phone.trim() && editForm.phone.trim() !== profile.phone) {
+            if (editForm.mobileNumber.trim() && editForm.mobileNumber.trim() !== profile.phone) {
                 const res = await fetch(`${API_BASE}/${profile.profileId}/phone`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ phone: editForm.phone.trim() }),
+                    body: JSON.stringify({ phone: editForm.mobileNumber.trim() }),
                 });
                 if (!res.ok) {
                     const text = await res.text();
@@ -142,6 +189,23 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
                 }
                 const updated = await res.json();
                 setProfile(updated);
+            }
+
+            // ✅ Update details (gender, taxId, taxCountry, residentialAddress)
+            const detailsPayload = {
+                gender: editForm.gender,
+                taxId: editForm.taxId,
+                taxCountry: editForm.taxCountry,
+                residentialAddress: editForm.residentialAddress
+            };
+            const detailsRes = await fetch(`${API_BASE}/${profile.profileId}/details`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(detailsPayload),
+            });
+            if (!detailsRes.ok) {
+                 const text = await detailsRes.text();
+                 throw new Error(text || "Failed to update detailed information");
             }
 
             // Update password only if user filled it
@@ -179,7 +243,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
             }
 
             showMessage("Profile updated successfully!", "success");
-            
+
             // ✅ Refresh profile data from server
             const finalRes = await fetch(`${API_BASE}/user/${uid}`);
             if (finalRes.ok) {
@@ -197,9 +261,11 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
                 confirmPassword: "",
             }));
 
+            setIsEditing(false);
+
         } catch (err) {
             console.error("Save error:", err);
-            showMessage("Cannot connect to server", "error");
+            showMessage(err.message || "Cannot connect to server", "error");
         }
         setLoading(false);
     };
@@ -229,174 +295,189 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate, t
         setLoading(false);
     };
 
-    // ✅ Tabs for embedded view
-    const tabs = [
-        { key: "view",   label: "View" },
-        { key: "edit",   label: "Edit Profile" },
-        { key: "delete", label: "Delete Account" },
-    ];
+    // Internal sidebar tab state
+    const [subTab, setSubTab] = useState("profile");
 
     return (
         <div className="profile-container-embedded">
-            <div className="profile-content">
-                
-                {/* BANNER */}
-                {message.text && (
-                    <div className={`profile-banner ${message.type}`}>
-                        {message.text}
+            <h2 className="account-settings-title">Account settings</h2>
+            <div className="profile-layout-wrapper">
+                {/* ─── INNER SIDEBAR ─── */}
+                <div className="profile-inner-sidebar">
+                    <div className={`profile-inner-sidebar-item ${subTab === 'profile' ? 'active' : ''}`} onClick={() => setSubTab('profile')}>
+                        <span className="icon">👤</span> Profile Settings
                     </div>
-                )}
 
-                {/* PROFILE CARD */}
-                {profile ? (
-                    <div className="profile-card">
-                        <div className="profile-avatar-large">
-                            {profile.name?.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <div className="profile-info-name">{profile.name}</div>
-                            <div className="profile-info-email">{profile.email}</div>
-                            <div className="profile-info-meta">
-                                {profile.phone || "No phone added"} &nbsp;|&nbsp; Member since {formatDate(profile.createdDate)}
-                            </div>
-                        </div>
-                        <div className="profile-active-badge">Active</div>
-                    </div>
-                ) : (
-                    <div className="profile-no-profile">
-                        {loading ? "Loading..." : "No profile found. Use Edit Profile tab below."}
-                    </div>
-                )}
-
-                {/* TABS */}
-                <div className="profile-tab-bar">
-                    {tabs.map(({ key, label }) => (
-                        <button
-                            key={key}
-                            className={`profile-tab ${activeTab === key ? "active" : ""} ${key === "delete" ? "delete-tab" : ""}`}
-                            onClick={() => setActiveTab(key)}
-                        >
-                            {label}
-                        </button>
-                    ))}
                 </div>
 
-                {/* TAB CARD */}
-                <div className="profile-tab-card">
+                {/* ─── MAIN FORM AREA ─── */}
+                <div className="profile-form-area">
+                    {message.text && (
+                        <div className={`profile-banner ${message.type}`} style={{ marginBottom: "20px" }}>
+                            {message.text}
+                        </div>
+                    )}
 
-                    {/* VIEW TAB */}
-                    {activeTab === "view" && (
+                    {subTab === 'profile' && (
                         <div>
-                            <h3>Profile Details</h3>
-                            {profile ? (
-                                <>
-                                    <div className="profile-detail-grid">
-                                        {[
-                                            { label: "Full Name",    value: profile.name },
-                                            { label: "Email",        value: profile.email },
-                                            { label: "Phone",        value: profile.phone || "Not set" },
-                                            { label: "Member Since", value: formatDate(profile.createdDate) },
-                                        ].map(({ label, value }) => (
-                                            <div key={label} className="profile-detail-row">
-                                                <span className="profile-detail-label">{label}</span>
-                                                <span className="profile-detail-value">{value}</span>
-                                            </div>
-                                        ))}
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                                <h3 style={{margin: 0, color: 'var(--text-white)'}}>Personal Details</h3>
+                                {!isEditing && (
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        style={{background: '#1d4ed8', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'}}
+                                    >
+                                        Edit Profile
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Avatar Section */}
+                            <div className="profile-avatar-section" style={{opacity: isEditing ? 1 : 0.7}}>
+                                <div className="avatar-wrapper">
+                                    {avatarUrl ? (
+                                        <img src={avatarUrl} alt="Avatar" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} />
+                                    ) : (
+                                        (profile?.name || user?.name || "U").charAt(0).toUpperCase()
+                                    )}
+                                     <label htmlFor="avatar-upload" className="avatar-badge" style={{display: isEditing ? 'flex' : 'none', cursor: 'pointer', zIndex: 10}}>📷</label>
+                                     <input id="avatar-upload" type="file" accept="image/*" style={{display: 'none'}} onChange={handleAvatarUpload} disabled={!isEditing} />
+                                </div>
+                                <div className="avatar-buttons" style={{display: isEditing ? 'flex' : 'none'}}>
+                                    <label htmlFor="avatar-upload" className="btn-upload" style={{cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>Upload New</label>
+                                    <button className="btn-delete-avatar" disabled={!isEditing} onClick={handleAvatarDelete}>Delete avatar</button>
+                                </div>
+                            </div>
+
+                            {isEditing ? (
+                                <div className="form-grid">
+                                    <div className="profile-input-group">
+                                        <label>First Name <span className="required-asterisk">*</span></label>
+                                        <input
+                                            type="text"
+                                            placeholder="First name"
+                                            value={editForm.firstName}
+                                            onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="profile-input-group">
+                                        <label>Last Name <span className="required-asterisk">*</span></label>
+                                        <input
+                                            type="text"
+                                            placeholder="Last name"
+                                            value={editForm.lastName}
+                                            onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                                        />
                                     </div>
 
-                                </>
+                                    <div className="profile-input-group">
+                                        <label>Email</label>
+                                        <input
+                                            type="email"
+                                            placeholder="examples@gmail.com"
+                                            value={editForm.email}
+                                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="profile-input-group">
+                                        <label>Mobile Number <span className="required-asterisk">*</span></label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. +1 234 567 8900"
+                                            value={editForm.mobileNumber}
+                                            onChange={(e) => setEditForm({ ...editForm, mobileNumber: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="profile-input-group">
+                                        <label>Gender</label>
+                                        <div className="gender-options">
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="gender"
+                                                    value="Male"
+                                                    checked={editForm.gender === "Male"}
+                                                    onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                                                />
+                                                Male
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="gender"
+                                                    value="Female"
+                                                    checked={editForm.gender === "Female"}
+                                                    onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                                                />
+                                                Female
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="profile-input-group">
+                                        <label>Tax Identification Number</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Tax ID"
+                                            value={editForm.taxId}
+                                            onChange={(e) => setEditForm({ ...editForm, taxId: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="profile-input-group">
+                                        <label>Tax Identification Country</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Country"
+                                            value={editForm.taxCountry}
+                                            onChange={(e) => setEditForm({ ...editForm, taxCountry: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="profile-input-group form-group-full">
+                                        <label>Residential Address</label>
+                                        <textarea
+                                            rows="3"
+                                            placeholder="lb street orogun ibadan"
+                                            value={editForm.residentialAddress}
+                                            onChange={(e) => setEditForm({ ...editForm, residentialAddress: e.target.value })}
+                                        ></textarea>
+                                    </div>
+
+                                    <div className="profile-input-group form-group-full" style={{ marginTop: '10px' }}>
+                                        <button
+                                            className="profile-save-btn"
+                                            onClick={saveAllChanges}
+                                            disabled={loading}
+                                            style={{ width: 'max-content', background: '#1d4ed8', color: '#fff' }}
+                                        >
+                                            {loading ? "Saving..." : "Save Changes"}
+                                        </button>
+                                    </div>
+                                </div>
                             ) : (
-                                <div className="profile-empty-text">No profile yet. Use Edit Profile tab.</div>
+                                <div className="profile-detail-grid">
+                                    {[
+                                        { label: "First Name", value: editForm.firstName || "Not set" },
+                                        { label: "Last Name", value: editForm.lastName || "Not set" },
+                                        { label: "Email", value: editForm.email || "Not set" },
+                                        { label: "Mobile Number", value: editForm.mobileNumber || "Not set" },
+                                        { label: "Gender", value: editForm.gender || "Not set" },
+                                        { label: "Tax ID", value: editForm.taxId || "Not set" },
+                                        { label: "Tax Country", value: editForm.taxCountry || "Not set" },
+                                        { label: "Residential Address", value: editForm.residentialAddress || "Not set" }
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="profile-detail-row">
+                                            <span className="profile-detail-label">{label}</span>
+                                            <span className="profile-detail-value" style={{maxWidth: '60%', textAlign: 'right'}}>{value}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                         </div>
                     )}
 
-                    {/* EDIT TAB */}
-                    {activeTab === "edit" && (
-                        <div>
-                            <h3>Edit Profile</h3>
-                            <p className="profile-sub-text">Only fill the fields you want to change. Others will remain as they are.</p>
 
-                            <div className="edit-section-title">Personal Information</div>
-                            
-                            <div className="profile-form-group">
-                                <label>Full Name</label>
-                                <input
-                                    type="text"
-                                    className="profile-input"
-                                    placeholder="Enter your name"
-                                    value={editForm.name}
-                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>Email Address</label>
-                                <input
-                                    type="email"
-                                    className="profile-input"
-                                    placeholder="Enter your email"
-                                    value={editForm.email}
-                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="profile-form-group">
-                                <label>Phone Number</label>
-                                <input
-                                    type="text"
-                                    className="profile-input"
-                                    placeholder="Enter your phone number"
-                                    value={editForm.phone}
-                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                />
-                            </div>
-
-                            
-                            <button
-                                className="profile-save-btn"
-                                onClick={saveAllChanges}
-                                disabled={loading}
-                            >
-                                {loading ? "Saving..." : (profile ? "Save Changes" : "Create Profile")}
-                            </button>
-                        </div>
-                    )}
-
-                    {/* DELETE TAB */}
-                    {activeTab === "delete" && (
-                        <div>
-                            <h3 className="delete-title">Delete Account</h3>
-                            <div className="delete-warning">
-                                <p className="delete-warning-title">Caution — This action is permanent!</p>
-                                <p className="delete-warning-text">Logging out will not delete your account. If you proceed:</p>
-                                <ul className="delete-warning-list">
-                                    <li>Your profile and settings will be permanently removed.</li>
-                                    <li>You will lose all your investments and portfolio history.</li>
-                                    <li>This account cannot be recovered.</li>
-                                </ul>
-                                <p className="delete-warning-text">Please type <strong>DELETE</strong> below to confirm.</p>
-                            </div>
-
-                            <div className="profile-form-group">
-                                <input
-                                    type="text"
-                                    className="profile-input delete-input"
-                                    placeholder='Type "DELETE" to confirm'
-                                    value={deleteConfirm}
-                                    onChange={(e) => setDeleteConfirm(e.target.value)}
-                                />
-                            </div>
-
-                            <button
-                                className="delete-btn"
-                                onClick={deleteAccount}
-                                disabled={loading || deleteConfirm !== "DELETE"}
-                            >
-                                {loading ? "Deleting..." : "Delete My Account Permanently"}
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

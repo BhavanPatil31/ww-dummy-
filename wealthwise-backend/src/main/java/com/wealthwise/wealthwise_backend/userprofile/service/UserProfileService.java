@@ -51,6 +51,10 @@ public class UserProfileService {
                 .email(dto.getEmail().trim())
                 .phone(dto.getPhone())
                 .password(passwordEncoder.encode(dto.getPassword()))
+                .gender(dto.getGender())
+                .taxId(dto.getTaxId())
+                .taxCountry(dto.getTaxCountry())
+                .residentialAddress(dto.getResidentialAddress())
                 .build();
 
         UserProfileDetails saved = repository.save(profile);
@@ -143,6 +147,25 @@ public class UserProfileService {
         return toDTO(saved);
     }
 
+    // UPDATE DETAILS (Gender, TaxId, TaxCountry, ResidentialAddress)
+    public UserProfileDTO updateDetails(Long profileId, UserProfileDTO request) {
+        UserProfileDetails profile = findById(profileId);
+
+        if (request.getGender() != null) profile.setGender(request.getGender());
+        if (request.getTaxId() != null) profile.setTaxId(request.getTaxId());
+        if (request.getTaxCountry() != null) profile.setTaxCountry(request.getTaxCountry());
+        if (request.getResidentialAddress() != null) profile.setResidentialAddress(request.getResidentialAddress());
+        
+        UserProfileDetails saved = repository.save(profile);
+
+        // ✅ Log the change
+        logRepository.save(new ProfileActivityLog(
+            saved.getUserId(), "Profile Details", "Old Details", "Updated Details"
+        ));
+
+        return toDTO(saved);
+    }
+
     // DELETE
     public void deleteProfile(Long profileId) {
         if (!repository.existsById(profileId))
@@ -168,6 +191,10 @@ public class UserProfileService {
                 .name(p.getName())
                 .email(p.getEmail())
                 .phone(p.getPhone())
+                .gender(p.getGender())
+                .taxId(p.getTaxId())
+                .taxCountry(p.getTaxCountry())
+                .residentialAddress(p.getResidentialAddress())
                 .createdDate(p.getCreatedDate())
                 .build();
     }
