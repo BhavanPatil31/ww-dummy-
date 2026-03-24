@@ -18,6 +18,17 @@ public class UserProfile {
     private String email;
 
     private String phone;
+    
+    private String gender;
+
+    @Column(name = "tax_id")
+    private String taxId;
+
+    @Column(name = "tax_country")
+    private String taxCountry;
+
+    @Column(name = "residential_address", columnDefinition = "TEXT")
+    private String residentialAddress;
 
     private LocalDateTime created_date;
 
@@ -75,5 +86,37 @@ public class UserProfile {
 
     public void setCreated_date(LocalDateTime created_date) {
         this.created_date = created_date;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public String getTaxId() {
+        return taxId;
+    }
+
+    public void setTaxId(String taxId) {
+        this.taxId = taxId;
+    }
+
+    public String getTaxCountry() {
+        return taxCountry;
+    }
+
+    public void setTaxCountry(String taxCountry) {
+        this.taxCountry = taxCountry;
+    }
+
+    public String getResidentialAddress() {
+        return residentialAddress;
+    }
+
+    public void setResidentialAddress(String residentialAddress) {
+        this.residentialAddress = residentialAddress;
     }
 }
