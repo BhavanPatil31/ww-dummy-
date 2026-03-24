@@ -20,11 +20,6 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "otp")
-    private String otp;
-
-    @Column(name = "otp_type")
-    private String otpType;
 
     @Column
     private Boolean verified;
@@ -71,21 +66,6 @@ public class User {
         this.password = password;
     }
 
-    public String getOtp() {
-        return otp;
-    }
-
-    public void setOtp(String otp) {
-        this.otp = otp;
-    }
-
-    public String getOtpType() {
-        return otpType;
-    }
-
-    public void setOtpType(String otpType) {
-        this.otpType = otpType;
-    }
 
     public Boolean getVerified() {
         return verified;

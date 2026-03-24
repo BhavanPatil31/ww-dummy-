@@ -150,6 +150,7 @@ public class UserProfileDetails {
     public static class Builder {
         private Long userId;
         private String name, email, phone, password;
+        private String gender, taxId, taxCountry, residentialAddress;
 
         public Builder userId(Long userId) {
             this.userId = userId;

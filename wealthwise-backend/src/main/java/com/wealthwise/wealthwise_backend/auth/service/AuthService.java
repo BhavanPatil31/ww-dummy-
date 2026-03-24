@@ -1,7 +1,10 @@
 package com.wealthwise.wealthwise_backend.auth.service;
 
+import com.wealthwise.wealthwise_backend.auth.entity.OtpVerification;
+import com.wealthwise.wealthwise_backend.auth.repository.OtpVerificationRepository;
 import com.wealthwise.wealthwise_backend.auth.entity.User;
 import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
+import java.time.LocalDateTime;
 import com.wealthwise.wealthwise_backend.auth.util.JwtUtil;
 import com.wealthwise.wealthwise_backend.userprofile.entity.UserProfileDetails;
 import com.wealthwise.wealthwise_backend.userprofile.repository.UserProfileRepository;
@@ -30,6 +33,9 @@ public class AuthService {
 
     @Autowired
     private UserProfileRepository userProfileRepository;
+
+    @Autowired
+    private OtpVerificationRepository otpVerificationRepository;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
@@ -91,10 +97,16 @@ public class AuthService {
 
         String otp = String.valueOf(100000 + secureRandom.nextInt(900000));
 
-        user.setOtp(otp);
-        user.setOtpType(otpType);
-
-        userRepository.save(user);
+        // Create new record in db
+        OtpVerification otpVerification = new OtpVerification();
+        otpVerification.setUserId(user.getUser_id());
+        otpVerification.setOtpCode(otp);
+        otpVerification.setOtpType(otpType);
+        otpVerification.setExpiryTime(LocalDateTime.now().plusMinutes(2)); // 2 minutes expiry
+        otpVerification.setIsUsed(false);
+        otpVerification.setAttempts(0);
+        
+        otpVerificationRepository.save(otpVerification);
 
         emailService.sendOtpEmail(email, otp);
 
@@ -116,16 +128,40 @@ public class AuthService {
 
         User user = userOptional.get();
 
-        if (user.getOtp() != null && user.getOtp().equals(otp)) {
-            // Mark user as verified and clear the OTP after successful verification
-            user.setVerified(true);
-            user.setOtp(null);
-            user.setOtpType(null);
-            userRepository.save(user);
-            return "OTP verified";
+        Optional<OtpVerification> otpOptional = otpVerificationRepository.findTopByUserIdOrderByIdDesc(user.getUser_id());
+
+        if (otpOptional.isEmpty()) {
+            return "No OTP found";
         }
 
-        return "Invalid OTP";
+        OtpVerification otpVerification = otpOptional.get();
+
+        if (Boolean.TRUE.equals(otpVerification.getIsUsed())) {
+            return "OTP already used";
+        }
+
+        if (otpVerification.getExpiryTime().isBefore(LocalDateTime.now())) {
+            return "OTP expired";
+        }
+
+        if (otpVerification.getAttempts() >= 5) {
+            return "Too many failed attempts";
+        }
+
+        if (!otpVerification.getOtpCode().equals(otp)) {
+            otpVerification.setAttempts(otpVerification.getAttempts() + 1);
+            otpVerificationRepository.save(otpVerification);
+            return "Invalid OTP";
+        }
+
+        // Mark user as verified and clear the OTP after successful verification
+        otpVerification.setIsUsed(true);
+        otpVerificationRepository.save(otpVerification);
+
+        user.setVerified(true);
+        userRepository.save(user);
+
+        return "OTP verified";
     }
 
     // RESET PASSWORD
