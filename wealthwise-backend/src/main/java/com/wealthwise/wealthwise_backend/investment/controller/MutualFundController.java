@@ -29,4 +29,9 @@ public class MutualFundController {
     public Map<String, Object> getFundDetails(@PathVariable String schemeCode) {
         return mutualFundService.getFundDetails(schemeCode);
     }
+
+    @GetMapping("/search")
+    public List<Map<String, Object>> searchFunds(String query) {
+        return mutualFundService.searchFunds(query);
+    }
 }

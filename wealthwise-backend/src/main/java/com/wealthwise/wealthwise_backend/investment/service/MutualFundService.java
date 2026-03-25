@@ -14,13 +14,13 @@ import java.util.Map;
 import javax.annotation.PostConstruct;
 
 @Service
-@SuppressWarnings("null")
 public class MutualFundService {
 
     @Autowired
     private RestTemplate restTemplate;
 
     private static final String MF_API_URL = "https://api.mfapi.in/mf";
+    private static final String MF_SEARCH_URL = "https://api.mfapi.in/mf/search?q=";
 
     private List<Map<String, Object>> cachedFundList = new ArrayList<>();
 
@@ -72,6 +72,23 @@ public class MutualFundService {
             System.err.println("MutualFundService: Error fetching details for " + schemeCode + ": " + e.getMessage());
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public List<Map<String, Object>> searchFunds(String query) {
+        String url = MF_SEARCH_URL + query;
+        try {
+            System.out.println("MutualFundService: Searching funds with query: " + query);
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("MutualFundService: Error searching funds for " + query + ": " + e.getMessage());
+            return new ArrayList<>();
         }
     }
 }

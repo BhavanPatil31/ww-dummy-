@@ -126,15 +126,38 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             return;
         }
 
-        const searchTimer = setTimeout(async () => {
-            const searchVal = formData.fundName.toLowerCase();
-            const results = mockFunds.filter(fund =>
-                fund.name.toLowerCase().includes(searchVal) ||
-                fund.code.includes(searchVal)
-            ).slice(0, 100);
+        // If user is clearing or data is very short, just use local mock top list
+        if (formData.fundName.length < 2) {
+            return;
+        }
 
-            setFilteredFunds(results);
-        }, 300);
+        const searchTimer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const response = await axios.get(`http://localhost:8088/api/mf/search`, {
+                    params: { query: formData.fundName }
+                });
+                
+                if (response.data) {
+                    const formatted = response.data.map(f => ({
+                        code: (f.schemeCode || f.scheme_code || "").toString(),
+                        name: f.schemeName || f.scheme_name || "Unknown Fund",
+                        nav: 0
+                    }));
+                    setFilteredFunds(formatted);
+                }
+            } catch (err) {
+                console.error("API Search failed, falling back to local filter", err);
+                const searchVal = formData.fundName.toLowerCase();
+                const results = mockFunds.filter(fund =>
+                    fund.name.toLowerCase().includes(searchVal) ||
+                    fund.code.includes(searchVal)
+                ).slice(0, 50);
+                setFilteredFunds(results);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500); // 500ms debounce
 
         return () => clearTimeout(searchTimer);
     }, [formData.fundName, mockFunds]);

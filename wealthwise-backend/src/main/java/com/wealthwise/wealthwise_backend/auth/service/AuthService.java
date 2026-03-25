@@ -40,7 +40,6 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @SuppressWarnings("null")
     public User register(User user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists: " + user.getEmail());
@@ -85,7 +84,6 @@ public class AuthService {
     }
 
     // SEND OTP
-    @SuppressWarnings("null")
     public String sendOtp(String email, String otpType) {
         Optional<User> userOptional = userRepository.findByEmail(email);
 
@@ -165,7 +163,6 @@ public class AuthService {
     }
 
     // RESET PASSWORD
-    @SuppressWarnings("null")
     public String resetPassword(String email, String newPassword) {
         Optional<User> userOptional = userRepository.findByEmail(email);
 
