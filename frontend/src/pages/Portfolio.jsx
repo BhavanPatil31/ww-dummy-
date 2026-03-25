@@ -5,6 +5,9 @@ import {
     FiTrendingUp, FiTrendingDown, FiX, FiCheckCircle,
     FiDollarSign, FiCalendar, FiTag, FiActivity, FiAlertTriangle, FiRefreshCw
 } from 'react-icons/fi';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
 import '../styles/Portfolio.css';
 
 const MOCK_FUNDS = [
@@ -116,6 +119,69 @@ export default function Portfolio({ user }) {
     const totalCurrentValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
     const totalPnL = totalCurrentValue - totalInvested;
     const totalReturn = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+    // ── Chart Data ─────────────────────────────────────────────
+    const generateChartData = () => {
+        if (!investments.length) return [];
+        const sortedByDate = [...investments].sort((a, b) => {
+            const d1 = new Date(a.buy_date || a.start_date || 0);
+            const d2 = new Date(b.buy_date || b.start_date || 0);
+            const t1 = isNaN(d1) ? 0 : d1.getTime();
+            const t2 = isNaN(d2) ? 0 : d2.getTime();
+            return t1 - t2;
+        });
+        
+        let cumulativeInvested = 0;
+        let cumulativeValue = 0;
+        const dataMap = {};
+        
+        sortedByDate.forEach(inv => {
+            const d = inv.buy_date || inv.start_date;
+            if (!d) return;
+            const dateObj = new Date(d);
+            if (isNaN(dateObj)) return;
+            
+            const monthYear = dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            
+            if (!dataMap[monthYear]) {
+                dataMap[monthYear] = {
+                    name: monthYear,
+                    investedAdded: 0,
+                    valueAdded: 0,
+                    timestamp: dateObj.getTime()
+                };
+            }
+            dataMap[monthYear].investedAdded += parseFloat(inv.amount || 0);
+            dataMap[monthYear].valueAdded += getCurrentValue(inv);
+        });
+
+        const sortedKeys = Object.values(dataMap).sort((a, b) => a.timestamp - b.timestamp);
+        
+        return sortedKeys.map(item => {
+            cumulativeInvested += item.investedAdded;
+            cumulativeValue += item.valueAdded;
+            return {
+                name: item.name,
+                Invested: cumulativeInvested,
+                Value: cumulativeValue
+            };
+        });
+    };
+
+    const chartData = generateChartData();
+
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="custom-tooltip" style={{ backgroundColor: 'rgba(20, 20, 30, 0.95)', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                    <p style={{ margin: 0, color: '#94a3b8', marginBottom: '8px', fontWeight: '600' }}>{label}</p>
+                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>Invested: <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>{formatCurrency(payload[0].value)}</span></p>
+                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>Value: <span style={{ color: '#22c55e', fontWeight: 'bold' }}>{formatCurrency(payload[1].value)}</span></p>
+                </div>
+            );
+        }
+        return null;
+    };
 
     // ── Sort ───────────────────────────────────────────────────
     const sorted = [...investments].sort((a, b) => {
@@ -259,26 +325,101 @@ export default function Portfolio({ user }) {
                 </button>
             </div>
 
-            {/* ── Summary Cards ── */}
-            <div className="portfolio-summary-grid">
-                <div className="p-summary-card">
-                    <span className="p-label">Total Invested</span>
-                    <span className="p-value">{formatCurrency(portfolioSummary?.total_invested)}</span>
+            {/* ── Dashboard Top Section ── */}
+            <div className="portfolio-dashboard-top">
+                {/* ── Portfolio Growth Chart ── */}
+                <div className="portfolio-chart-side">
+                    {investments.length > 0 ? (
+                        <div className="portfolio-chart-wrapper">
+                            <h3 className="chart-title">Portfolio Growth Timeline</h3>
+                            <div className="chart-container">
+                                <ResponsiveContainer width="100%" height={320}>
+                                    <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 25 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                        <XAxis 
+                                            dataKey="name" 
+                                            stroke="#94a3b8" 
+                                            tick={{ fill: '#94a3b8', fontSize: 11, angle: -45, textAnchor: 'end' }} 
+                                            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                                            tickLine={false}
+                                            height={50}
+                                            dy={15}
+                                        />
+                                        <YAxis 
+                                            stroke="#94a3b8" 
+                                            tick={{ fill: '#94a3b8', fontSize: 11 }} 
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
+                                            dx={-10}
+                                        />
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '15px' }} iconType="circle" />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="Invested" 
+                                            stroke="#3b82f6" 
+                                            strokeWidth={2.5} 
+                                            dot={chartData.length <= 1 ? { r: 4, fill: '#3b82f6', strokeWidth: 0 } : false}
+                                            activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} 
+                                            name="Total Invested"
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="Value" 
+                                            stroke="#22c55e" 
+                                            strokeWidth={3} 
+                                            dot={{ fill: '#22c55e', r: 4, strokeWidth: 0 }} 
+                                            activeDot={{ r: 7, fill: '#22c55e', stroke: '#fff', strokeWidth: 2 }} 
+                                            name="Current Value"
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="portfolio-chart-wrapper empty-chart-wrapper">
+                            <h3 className="chart-title">Portfolio Growth Timeline</h3>
+                            <div className="chart-empty-state">
+                                <FiActivity className="empty-icon-small" />
+                                <p>No data to visualize. Add your first investment!</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <div className={`p-summary-card ${(portfolioSummary?.return_percentage || 0) >= 0 ? 'highlight-green' : 'highlight-red'}`}>
-                    <span className="p-label">Total Return %</span>
-                    <span className={`p-value ${(portfolioSummary?.return_percentage || 0) >= 0 ? 'green' : 'red'}`}>
-                        {(portfolioSummary?.return_percentage || 0) >= 0 ? '+' : ''}
-                        {(portfolioSummary?.return_percentage || 0).toFixed(2)}%
-                    </span>
-                </div>
-                <div className="p-summary-card">
-                    <span className="p-label">XIRR</span>
-                    <span className="p-value blue">{(portfolioSummary?.xirr || 0).toFixed(2)}%</span>
-                </div>
-                <div className="p-summary-card">
-                    <span className="p-label">CAGR</span>
-                    <span className="p-value blue">{(portfolioSummary?.cagr || 0).toFixed(2)}%</span>
+
+                {/* ── Summary Cards ── */}
+                <div className="portfolio-summary-side">
+                    <div className="portfolio-summary-grid">
+                        <div className="p-summary-card">
+                            <span className="p-label">Current Value</span>
+                            <span className="p-value highlight-text">{formatCurrency(totalCurrentValue)}</span>
+                        </div>
+                        <div className="p-summary-card">
+                            <span className="p-label">Total Invested</span>
+                            <span className="p-value">{formatCurrency(totalInvested)}</span>
+                        </div>
+                        <div className={`p-summary-card ${totalPnL >= 0 ? 'highlight-green' : 'highlight-red'}`}>
+                            <span className="p-label">Total P&amp;L</span>
+                            <span className={`p-value ${totalPnL >= 0 ? 'green' : 'red'}`}>
+                                {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
+                            </span>
+                        </div>
+                        <div className={`p-summary-card ${totalReturn >= 0 ? 'highlight-green' : 'highlight-red'}`}>
+                            <span className="p-label">Returns %</span>
+                            <span className={`p-value ${totalReturn >= 0 ? 'green' : 'red'}`}>
+                                {totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(2)}%
+                            </span>
+                        </div>
+                        <div className="p-summary-card">
+                            <span className="p-label">XIRR</span>
+                            <span className="p-value blue">{(portfolioSummary?.xirr || 0).toFixed(2)}%</span>
+                        </div>
+                        <div className="p-summary-card">
+                            <span className="p-label">CAGR</span>
+                            <span className="p-value blue">{(portfolioSummary?.cagr || 0).toFixed(2)}%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
