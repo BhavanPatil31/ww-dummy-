@@ -1,3 +1,35 @@
+/* ── Theme-aware variables ── */
+:root {
+    --ai-input-bg: rgba(11, 17, 32, 0.6);
+    --ai-summary-bg: #1e293b;
+    --ai-text: #f8fafc;
+    --ai-text-muted: #94a3b8;
+    --ai-border: rgba(255, 255, 255, 0.1);
+    --ai-label-color: #cbd5e1;
+    --ai-suggestion-border: rgba(255,255,255,0.05);
+    --ai-suggestion-strong: #f8fafc;
+    --ai-summary-item-border: rgba(255, 255, 255, 0.05);
+    --ai-cancel-hover: rgba(255, 255, 255, 0.05);
+    --fintech-green: #22c55e;
+    --fintech-green-hover: #16a34a;
+    --transition: all 0.3s ease;
+}
+
+:root.theme-light {
+    --ai-input-bg: #FFFFFF;
+    --ai-summary-bg: #FFFFFF;
+    --ai-text: #0F172A;
+    --ai-text-muted: #64748B;
+    --ai-border: #E2E8F0;
+    --ai-label-color: #64748B;
+    --ai-suggestion-border: #E2E8F0;
+    --ai-suggestion-strong: #0F172A;
+    --ai-summary-item-border: #E2E8F0;
+    --ai-cancel-hover: #F1F5F9;
+    --fintech-green: #2563EB;
+    --fintech-green-hover: #1D4ED8;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
 
 .add-investment-container {
     padding: 20px 40px;
@@ -17,7 +49,7 @@
     border-radius: 16px;
     padding: 35px 40px;
     width: 100%;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--card-shadow, 0 20px 40px rgba(0, 0, 0, 0.12));
     border: 1px solid var(--border-color);
 }
 
@@ -28,7 +60,7 @@
 }
 
 .add-investment-card .subtitle {
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     font-size: 0.9rem;
     margin: 0 0 25px 0;
 }
@@ -41,7 +73,7 @@
 
 .toggle-group {
     display: flex;
-    background-color: var(--input-bg);
+    background-color: var(--ai-input-bg);
     border-radius: 10px;
     padding: 5px;
     gap: 5px;
@@ -52,7 +84,7 @@
     padding: 12px;
     border: none;
     background: transparent;
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     font-weight: 600;
     border-radius: 8px;
     cursor: pointer;
@@ -62,7 +94,7 @@
 .toggle-btn.active {
     background-color: var(--fintech-green);
     color: white;
-    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 
 .form-group {
@@ -72,8 +104,8 @@
 }
 
 .form-group label {
-    color: #cbd5e1;
-    font-size: 0.85rem;
+    color: var(--ai-label-color);
+    font-size: 13px;
     font-weight: 500;
 }
 
@@ -94,15 +126,15 @@
 .input-icon {
     position: absolute;
     left: 14px;
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     font-size: 1.1rem;
 }
 
 .input-wrapper input {
     width: 100%;
     padding: 12px 14px 12px 40px;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
+    background-color: var(--ai-input-bg);
+    border: 1px solid var(--ai-border);
     border-radius: 8px;
     color: var(--text-primary);
     font-size: 0.95rem;
@@ -112,15 +144,15 @@
 
 .input-wrapper input:focus {
     outline: none;
-    border-color: var(--fintech-green);
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .styled-select {
     width: 100%;
     padding: 12px 14px;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
+    background-color: var(--ai-input-bg);
+    border: 1px solid var(--ai-border);
     border-radius: 8px;
     color: var(--text-primary);
     font-size: 0.95rem;
@@ -138,16 +170,11 @@
     border-color: var(--fintech-green);
 }
 
-.styled-select:focus {
-    outline: none;
-    border-color: var(--fintech-green);
-}
-
 .styled-textarea {
     width: 100%;
     padding: 15px 14px 15px 40px;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
+    background-color: var(--ai-input-bg);
+    border: 1px solid var(--ai-border);
     border-radius: 8px;
     color: var(--text-primary);
     font-size: 0.95rem;
@@ -167,7 +194,7 @@
     gap: 8px;
 }
 .tooltip {
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     cursor: help;
 }
 
@@ -177,8 +204,8 @@
     top: 100%;
     left: 0;
     right: 0;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background-color: var(--ai-summary-bg);
+    border: 1px solid var(--ai-border);
     border-radius: 8px;
     max-height: 200px;
     overflow-y: auto;
@@ -191,7 +218,7 @@
 
 .suggestions-dropdown li {
     padding: 12px 15px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid var(--ai-suggestion-border);
     cursor: pointer;
     color: var(--text-primary);
     font-size: 0.9rem;
@@ -203,26 +230,26 @@
 }
 
 .suggestions-dropdown li strong {
-    color: var(--text-white);
+    color: var(--ai-suggestion-strong);
 }
 
 .suggestion-nav {
     margin-left: auto;
     color: var(--fintech-green);
     font-weight: 600;
-    background-color: rgba(34, 197, 94, 0.1);
+    background-color: rgba(37, 99, 235, 0.08);
     padding: 2px 6px;
     border-radius: 4px;
 }
 
 .suggestions-dropdown li:hover {
-    background-color: rgba(148, 163, 184, 0.15);
+    background-color: rgba(148, 163, 184, 0.1);
     color: var(--text-primary);
 }
 
 .no-suggestions {
     padding: 15px;
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     font-style: italic;
     font-size: 0.9rem;
     text-align: center;
@@ -231,7 +258,7 @@
 
 .helper-text {
     font-size: 0.8rem;
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     margin-top: 5px;
     margin-left: 5px;
 }
@@ -250,9 +277,9 @@
 .btn-cancel {
     flex: 1;
     padding: 14px;
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-white);
+    background-color: var(--btn-secondary-bg, transparent);
+    border: 1px solid var(--ai-border);
+    color: var(--btn-secondary-color, var(--text-primary));
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
@@ -260,13 +287,13 @@
 }
 
 .btn-cancel:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--btn-secondary-hover, var(--ai-cancel-hover));
 }
 
 .btn-submit {
     flex: 2;
     padding: 14px;
-    background-color: var(--fintech-green);
+    background: var(--button-primary, var(--fintech-green));
     border: none;
     color: white;
     border-radius: 8px;
@@ -276,12 +303,13 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: 0 4px 10px rgba(37,99,235,0.3);
 }
 
 .btn-submit:hover:not(:disabled) {
-    background-color: var(--fintech-green-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(34, 197, 94, 0.4);
+    background: var(--button-primary-hover, var(--fintech-green-hover));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(37,99,235,0.35);
 }
 
 .btn-submit:disabled {
@@ -301,12 +329,12 @@
 }
 
 .success-state h3 {
-    color: var(--text-white);
+    color: var(--text-primary);
     margin-bottom: 10px;
 }
 
 .success-state p {
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     font-size: 0.9rem;
 }
 
@@ -320,7 +348,7 @@
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* Fix input type number arrows for dark mode */
+/* Fix input type number arrows */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
     -webkit-appearance: none; 
@@ -339,18 +367,18 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 .live-summary-card {
-    background-color: var(--fintech-blue-light);
+    background-color: var(--ai-summary-bg);
     border-radius: 16px;
     padding: 30px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
+    box-shadow: var(--card-shadow, 0 15px 35px rgba(0, 0, 0, 0.15));
+    border: 1px solid var(--ai-border);
 }
 
 .live-summary-card h3 {
     margin: 0 0 20px 0;
-    color: var(--text-white);
+    color: var(--text-primary);
     font-size: 1.3rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--ai-border);
     padding-bottom: 15px;
 }
 
@@ -365,7 +393,7 @@ input[type=number]::-webkit-outer-spin-button {
     justify-content: space-between;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    border-bottom: 1px dashed var(--ai-summary-item-border);
 }
 
 .summary-item:last-child {
@@ -373,22 +401,22 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 .summary-item span {
-    color: var(--text-gray);
+    color: var(--ai-text-muted);
     font-size: 0.9rem;
 }
 
 .summary-item strong {
-    color: var(--text-white);
+    color: var(--text-primary);
     font-size: 1.05rem;
     font-weight: 600;
 }
 
 .highlight-box {
     margin-top: 10px;
-    background-color: rgba(34, 197, 94, 0.1);
+    background-color: rgba(37, 99, 235, 0.08);
     padding: 15px;
     border-radius: 10px;
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 .highlight-box span {
@@ -402,7 +430,7 @@ input[type=number]::-webkit-outer-spin-button {
 
 .highlight-box-secondary {
     margin-top: 5px;
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: rgba(59, 130, 246, 0.08);
     padding: 15px;
     border-radius: 10px;
     border: 1px solid rgba(59, 130, 246, 0.2);
@@ -415,6 +443,12 @@ input[type=number]::-webkit-outer-spin-button {
 .highlight-box-secondary strong {
     color: #3b82f6;
     font-size: 1.3rem;
+}
+
+/* Date input native calendar icon color fix for light mode */
+.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+    opacity: 0.6;
 }
 
 @media (max-width: 900px) {

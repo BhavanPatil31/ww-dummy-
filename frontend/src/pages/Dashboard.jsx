@@ -14,8 +14,10 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const notificationRef = useRef(null);
+    const profileDropdownRef = useRef(null);
 
     // Initialize from localStorage or default to 'dashboard'
     const [activeView, setActiveView] = useState(() => {
@@ -132,21 +134,22 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     useEffect(() => {
         if (user) {
             fetchNotifications();
-            // Poll for new notifications every 10 seconds to pop up faster
             const intervalId = setInterval(fetchNotifications, 10000);
             return () => clearInterval(intervalId);
         }
     }, [user, fetchNotifications]);
 
-    // Close notifications dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (notificationRef.current && !notificationRef.current.contains(event.target)) {
                 setShowNotifications(false);
             }
+            if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+                setShowProfileDropdown(false);
+            }
         };
 
-        if (showNotifications) {
+        if (showNotifications || showProfileDropdown) {
             document.addEventListener('mousedown', handleClickOutside);
         } else {
             document.removeEventListener('mousedown', handleClickOutside);
@@ -155,7 +158,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [showNotifications]);
+    }, [showNotifications, showProfileDropdown]);
 
     const handleMarkAsRead = async (id) => {
         try {
@@ -176,9 +179,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             await axios.put(`http://localhost:8088/api/notifications/${id}/unread`, {}, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            // State remains same regarding count, but we might want to refresh from backend to ensure sync
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n));
-            // Recalculate unread count just in case
             const response = await axios.get(`http://localhost:8088/api/notifications/user/${user?.userId || user?.id}/unread-count`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -205,7 +206,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     return (
         <div className="dashboard-container">
-            {/* Sidebar Navigation */}
             <aside className="dashboard-sidebar">
                 <div className="brand">
                     <h2>WealthWise</h2>
@@ -231,61 +231,29 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     </button>
                     <button className="nav-item"><FiTarget /> Goals</button>
                     <button className="nav-item"><FiFileText /> Tax Reports</button>
-                    <button 
-                        className={`nav-item ${activeView === 'profile' ? 'active' : ''}`} 
-                        onClick={() => setActiveView('profile')}
-                    >
-                        <FiUser /> My Profile
-                    </button>
                 </nav>
-                <div className="sidebar-bottom">
-                    <button className="logout-btn" onClick={onLogout}>
-                        <FiLogOut /> Logout
-                    </button>
-                </div>
             </aside>
 
-            {/* Main Content Area */}
             <main className="dashboard-main">
                 <header className="dashboard-header">
                     {(activeView === 'dashboard' || activeView === 'profile' || activeView === 'addInvestment' || activeView === 'portfolio') && (
                         <div className="welcome-section">
                             <h1>
                                 {activeView === 'dashboard' ? `Welcome back, ${user?.name || "Investor"}` :
-                                 activeView === 'profile' ? `Welcome back, ${user?.name || "Investor"}` :
+                                 activeView === 'profile' ? 'Account Overview' :
                                  activeView === 'addInvestment' ? 'Add Investment' :
                                  activeView === 'portfolio' ? 'My Portfolio' : 'Welcome'}
                             </h1>
                             <p>
                                 {activeView === 'dashboard' ? 'Here is your portfolio summary' :
-                                 activeView === 'profile' ? 'Manage your personal details' :
+                                 activeView === 'profile' ? 'Manage your personal details and account settings' :
                                  activeView === 'addInvestment' ? 'Add a new asset to your portfolio' :
                                  activeView === 'portfolio' ? 'Track, manage and analyse all your investments' :
                                  'Your financial overview'}
                             </p>
                         </div>
                     )}
-                    <div className="header-actions" style={{ marginLeft: (activeView === 'dashboard' || activeView === 'profile' || activeView === 'addInvestment' || activeView === 'portfolio') ? '0' : 'auto' }}>
-                        {activeView === 'dashboard' && (
-                            <button 
-                                className="refresh-btn" 
-                                onClick={fetchDashboardData} 
-                                disabled={loading}
-                                style={{
-                                    background: "rgba(34, 197, 94, 0.1)",
-                                    color: "#22c55e",
-                                    border: "1px solid rgba(34, 197, 94, 0.3)",
-                                    padding: "6px 12px",
-                                    borderRadius: "8px",
-                                    marginRight: "10px",
-                                    cursor: "pointer",
-                                    fontSize: "0.85rem",
-                                    fontWeight: "600"
-                                }}
-                            >
-                                {loading ? "Syncing..." : "Refresh"}
-                            </button>
-                        )}
+                    <div className="header-actions" style={{ marginLeft: (activeView === 'dashboard' || activeView === 'addInvestment' || activeView === 'portfolio') ? '0' : 'auto' }}>
                         <div className="notification-container" ref={notificationRef}>
                             <button 
                                 className="icon-btn" 
@@ -298,38 +266,38 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
                             {showNotifications && (
                                 <div className="notification-dropdown">
-                                        <div className="notification-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <h3 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
-                                                {notifications.length > 0 && (
-                                                    <button 
-                                                        onClick={handleClearAll}
-                                                        style={{ 
-                                                            background: 'rgba(239, 68, 68, 0.1)', 
-                                                            border: '1px solid rgba(239, 68, 68, 0.2)', 
-                                                            color: '#ef4444', 
-                                                            fontSize: '0.7rem', 
-                                                            cursor: 'pointer',
-                                                            padding: '2px 8px',
-                                                            borderRadius: '4px',
-                                                            fontWeight: '600',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                        onMouseOver={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
-                                                        onMouseOut={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
-                                                    >
-                                                        Clear All
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <button 
-                                                onClick={() => setShowNotifications(false)}
-                                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-                                                title="Close"
-                                            >
-                                                <FiX size={18} />
-                                            </button>
+                                    <div className="notification-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
+                                            {notifications.length > 0 && (
+                                                <button 
+                                                    onClick={handleClearAll}
+                                                    style={{ 
+                                                        background: 'rgba(239, 68, 68, 0.1)', 
+                                                        border: '1px solid rgba(239, 68, 68, 0.2)', 
+                                                        color: '#ef4444', 
+                                                        fontSize: '0.7rem', 
+                                                        cursor: 'pointer',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '4px',
+                                                        fontWeight: '600',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseOver={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
+                                                    onMouseOut={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
+                                                >
+                                                    Clear All
+                                                </button>
+                                            )}
                                         </div>
+                                        <button 
+                                            onClick={() => setShowNotifications(false)}
+                                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                            title="Close"
+                                        >
+                                            <FiX size={18} />
+                                        </button>
+                                    </div>
                                     <div className="notification-list">
                                         {notifications.length > 0 ? (
                                             notifications.map(notification => (
@@ -367,13 +335,39 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 </div>
                             )}
                         </div>
-                        <div
-                            className={`profile-btn ${activeView === 'profile' ? 'active' : ''}`}
-                            onClick={() => setActiveView('profile')}
-                            style={{ cursor: "pointer" }}
-                            title="View My Profile"
-                        >
-                            <FiUser /> {user?.name || "User"}
+                        
+                        <div className="profile-dropdown-container" ref={profileDropdownRef}>
+                            <div
+                                className={`profile-btn ${activeView === 'profile' ? 'active' : ''}`}
+                                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                                style={{ cursor: "pointer" }}
+                                title="Profile Settings"
+                            >
+                                <FiUser /> {user?.name || "User"}
+                            </div>
+
+                            {showProfileDropdown && (
+                                <div className="profile-dropdown">
+                                    <button 
+                                        className="profile-dropdown-item"
+                                        onClick={() => {
+                                            setActiveView('profile');
+                                            setShowProfileDropdown(false);
+                                        }}
+                                    >
+                                        <FiUser /> My Profile
+                                    </button>
+                                    <button 
+                                        className="profile-dropdown-item logout"
+                                        onClick={() => {
+                                            setShowProfileDropdown(false);
+                                            onLogout();
+                                        }}
+                                    >
+                                        <FiLogOut /> Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -405,7 +399,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         />
                     ) : (
                         <div className="dashboard-content">
-                            {/* Summary Metrics */}
                             <div className="metrics-grid">
                                 <div className="metric-card">
                                     <h3>Total Invested Amount</h3>
@@ -434,7 +427,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 </div>
                             </div>
 
-                            {/* Allocation Charts */}
                             <div className="charts-section">
                                 <div className="chart-card">
                                     <h3>Asset Allocation</h3>

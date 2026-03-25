@@ -78,7 +78,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg);
   line-height: 1;
 }
 
@@ -137,26 +137,26 @@
   outline: none;
   border-color: var(--button-primary);
   background: var(--input-bg);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .modal-input:focus+.input-label,
 .input-group:focus-within .input-label {
-  color: var(--fintech-green);
+  color: var(--button-primary);
 }
 
 .auth-btn {
   width: 100%;
   padding: 16px;
   margin-top: 12px;
-  background: var(--fintech-green);
-  color: var(--fintech-blue);
+  background: var(--button-primary);
+  color: var(--button-text);
   border: none;
   border-radius: 12px;
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
   transition: var(--transition);
   position: relative;
   overflow: hidden;
@@ -177,8 +177,8 @@
 
 .auth-btn:hover {
   transform: translateY(-2px);
-  background: var(--fintech-green-hover);
-  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+  background: var(--button-primary-hover);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
 }
 
 .auth-btn:hover::after {
@@ -186,7 +186,7 @@
 }
 
 .auth-btn:disabled {
-  background: rgba(34, 197, 94, 0.5);
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -202,7 +202,7 @@
 }
 
 .auth-link {
-  color: var(--fintech-green);
+  color: var(--button-primary);
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
@@ -216,7 +216,7 @@
   height: 1px;
   bottom: -2px;
   left: 0;
-  background-color: var(--fintech-green);
+  background-color: var(--button-primary);
   transform: scaleX(0);
   transform-origin: right;
   transition: transform 0.3s ease;
@@ -228,7 +228,7 @@
 }
 
 .auth-link:hover {
-  color: var(--fintech-green-hover);
+  color: var(--button-primary-hover);
 }
 
 .password-input-wrapper {

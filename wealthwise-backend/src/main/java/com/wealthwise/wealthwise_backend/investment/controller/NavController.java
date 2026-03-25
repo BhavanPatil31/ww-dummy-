@@ -17,7 +17,7 @@ public class NavController {
 
     @GetMapping("/{fundId}")
     public Double getNav(@PathVariable Long fundId, @RequestParam(required = false) String date) {
-        if (date != null && !date.isBlank()) {
+        if (date != null && !date.trim().isEmpty()) {
             return navService.getNavForDate(String.valueOf(fundId), date);
         }
         return navService.getLatestNav(String.valueOf(fundId));

@@ -145,7 +145,7 @@ function SignupModal({ closeSignup, openLogin }) {
                         </div>
 
                         <button type="submit" className="auth-btn" disabled={isLoading}>
-                            {isLoading ? "Creating..." : "Sign Up Free"}
+                            {isLoading ? "Creating..." : "Sign Up"}
                         </button>
                     </form>
                 )}
