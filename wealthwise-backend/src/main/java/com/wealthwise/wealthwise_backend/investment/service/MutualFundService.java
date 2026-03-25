@@ -57,6 +57,7 @@ public class MutualFundService {
         return cachedFundList;
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "navCache", key = "#schemeCode")
     public Map<String, Object> getFundDetails(String schemeCode) {
         String url = MF_API_URL + "/" + schemeCode;
         try {
