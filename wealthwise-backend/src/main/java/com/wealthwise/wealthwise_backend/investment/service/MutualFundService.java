@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.springframework.cache.annotation.Cacheable;
+
 @Service
 public class MutualFundService {
 
@@ -19,6 +21,7 @@ public class MutualFundService {
     private RestTemplate restTemplate;
 
     private static final String MF_API_URL = "https://api.mfapi.in/mf";
+    private static final String MF_SEARCH_URL = "https://api.mfapi.in/mf/search?q=";
 
     private List<Map<String, Object>> cachedFundList = new ArrayList<>();
 
@@ -52,6 +55,7 @@ public class MutualFundService {
         return cachedFundList;
     }
 
+    @Cacheable(value = "navCache", key = "#schemeCode")
     public Map<String, Object> getFundDetails(String schemeCode) {
         Objects.requireNonNull(schemeCode, "Scheme code cannot be null");
         String url = MF_API_URL + "/" + schemeCode;
@@ -70,6 +74,23 @@ public class MutualFundService {
         } catch (Exception e) {
             System.err.println("MutualFundService: Unexpected error fetching details for " + schemeCode + ", using fallback");
             return java.util.Collections.emptyMap();
+        }
+    }
+
+    public List<Map<String, Object>> searchFunds(String query) {
+        String url = MF_SEARCH_URL + query;
+        try {
+            System.out.println("MutualFundService: Searching funds with query: " + query);
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("MutualFundService: Error searching funds for " + query + ": " + e.getMessage());
+            return new ArrayList<>();
         }
     }
 }
