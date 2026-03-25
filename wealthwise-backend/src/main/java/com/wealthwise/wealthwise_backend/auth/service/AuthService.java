@@ -40,8 +40,8 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @SuppressWarnings("null")
     public User register(User user) {
+        Objects.requireNonNull(user, "User cannot be null");
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists: " + user.getEmail());
         }
@@ -50,31 +50,36 @@ public class AuthService {
         // Newly registered users must verify their account via OTP before logging in
         user.setVerified(false);
 
-        User savedUser = userRepository.save(user);
+        User savedUser = Objects.requireNonNull(userRepository.save(user), "Saved user cannot be null");
 
         // Send OTP to the user's email as part of the registration flow (login verification)
-        sendOtp(savedUser.getEmail(), "login");
+        sendOtp(Objects.requireNonNull(savedUser.getEmail(), "User email cannot be null"), "login");
 
         return savedUser;
     }
 
     public Optional<String> login(String email, String rawPassword) {
-        Optional<User> user = userRepository.findByEmail(email);
+        Objects.requireNonNull(email, "Email cannot be null");
+        Objects.requireNonNull(rawPassword, "Password cannot be null");
+        Optional<User> userOptional = userRepository.findByEmail(email);
 
         // Check if user exists and if the raw password matches the hashed password
-        if (user.isPresent() && passwordEncoder.matches(rawPassword, user.get().getPassword())) {
-            // Ensure the user has verified their email via OTP
-            Boolean verified = user.get().getVerified();
-            if (Boolean.FALSE.equals(verified)) {
-                // If not verified, generate and store a login OTP explicitly as login intent
-                sendOtp(email, "login");
-                throw new com.wealthwise.wealthwise_backend.auth.exception.AccountNotVerifiedException(
-                        "Account not verified. OTP sent to email with login intent.");
-            }
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            if (passwordEncoder.matches(rawPassword, user.getPassword())) {
+                // Ensure the user has verified their email via OTP
+                Boolean verified = user.getVerified();
+                if (Boolean.FALSE.equals(verified)) {
+                    // If not verified, generate and store a login OTP explicitly as login intent
+                    sendOtp(email, "login");
+                    throw new com.wealthwise.wealthwise_backend.auth.exception.AccountNotVerifiedException(
+                            "Account not verified. OTP sent to email with login intent.");
+                }
 
-            // Generate valid JWT using JwtUtil
-            String token = jwtUtil.generateToken(user.get().getEmail());
-            return Optional.of(token);
+                // Generate valid JWT using JwtUtil
+                String token = jwtUtil.generateToken(Objects.requireNonNull(user.getEmail(), "User email cannot be null"));
+                return Optional.of(Objects.requireNonNull(token, "Generated token cannot be null"));
+            }
         }
 
         return Optional.empty();
@@ -85,11 +90,12 @@ public class AuthService {
     }
 
     // SEND OTP
-    @SuppressWarnings("null")
     public String sendOtp(String email, String otpType) {
+        Objects.requireNonNull(email, "Email cannot be null");
+        Objects.requireNonNull(otpType, "OTP Type cannot be null");
         Optional<User> userOptional = userRepository.findByEmail(email);
 
-        if (userOptional.isEmpty()) {
+        if (!userOptional.isPresent()) {
             return "User not found";
         }
 
@@ -120,21 +126,13 @@ public class AuthService {
 
     // VERIFY OTP
     public String verifyOtp(String email, String otp) {
-        Optional<User> userOptional = userRepository.findByEmail(email);
+        Objects.requireNonNull(email, "Email cannot be null");
+        Objects.requireNonNull(otp, "OTP cannot be null");
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
 
-        if (userOptional.isEmpty()) {
-            return "User not found";
-        }
-
-        User user = userOptional.get();
-
-        Optional<OtpVerification> otpOptional = otpVerificationRepository.findTopByUserIdOrderByIdDesc(user.getUser_id());
-
-        if (otpOptional.isEmpty()) {
-            return "No OTP found";
-        }
-
-        OtpVerification otpVerification = otpOptional.get();
+        OtpVerification otpVerification = otpVerificationRepository.findTopByUserIdOrderByIdDesc(user.getUser_id())
+                .orElseThrow(() -> new RuntimeException("No OTP found for user: " + email));
 
         if (Boolean.TRUE.equals(otpVerification.getIsUsed())) {
             return "OTP already used";
@@ -165,15 +163,11 @@ public class AuthService {
     }
 
     // RESET PASSWORD
-    @SuppressWarnings("null")
     public String resetPassword(String email, String newPassword) {
-        Optional<User> userOptional = userRepository.findByEmail(email);
-
-        if (userOptional.isEmpty()) {
-            return "User not found";
-        }
-
-        User user = userOptional.get();
+        Objects.requireNonNull(email, "Email cannot be null");
+        Objects.requireNonNull(newPassword, "New Password cannot be null");
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
 
         // Hash the NEW password before saving
         user.setPassword(passwordEncoder.encode(newPassword));

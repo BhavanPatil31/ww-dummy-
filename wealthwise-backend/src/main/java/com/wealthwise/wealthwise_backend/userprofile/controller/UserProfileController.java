@@ -2,22 +2,17 @@ package com.wealthwise.wealthwise_backend.userprofile.controller;
 
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateEmailRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateNameRequest;
-
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdatePhoneRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UserProfileDTO;
 import com.wealthwise.wealthwise_backend.userprofile.service.UserProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Objects;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
@@ -28,92 +23,108 @@ public class UserProfileController {
     private UserProfileService service;
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody UserProfileDTO dto) {
+    @NonNull
+    public ResponseEntity<?> create(@RequestBody @Nullable UserProfileDTO dto) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(service.createProfile(dto));
+                    .body(service.createProfile(Objects.requireNonNull(dto, "Profile DTO is required")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @GetMapping("/{profileId}")
-    public ResponseEntity<?> getById(@PathVariable Long profileId) {
+    @NonNull
+    public ResponseEntity<?> getById(@PathVariable @Nullable Long profileId) {
         try {
-            return ResponseEntity.ok(service.getProfileById(profileId));
+            return ResponseEntity.ok(service.getProfileById(Objects.requireNonNull(profileId, "Profile ID is required")));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getByUserId(@PathVariable Long userId) {
+    @NonNull
+    public ResponseEntity<?> getByUserId(@PathVariable @Nullable Long userId) {
         try {
-            return ResponseEntity.ok(service.getProfileByUserId(userId));
+            return ResponseEntity.ok(service.getProfileByUserId(Objects.requireNonNull(userId, "User ID is required")));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
     @PatchMapping("/{profileId}/name")
-    public ResponseEntity<?> updateName(@PathVariable Long profileId,
-                                         @RequestBody UpdateNameRequest request) {
+    @NonNull
+    public ResponseEntity<?> updateName(@PathVariable @Nullable Long profileId,
+                                         @RequestBody @Nullable UpdateNameRequest request) {
         try {
-            return ResponseEntity.ok(service.updateName(profileId, request));
+            return ResponseEntity.ok(service.updateName(
+                Objects.requireNonNull(profileId, "Profile ID is required"),
+                Objects.requireNonNull(request, "Request body is required")
+            ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @PatchMapping("/{profileId}/email")
-    public ResponseEntity<?> updateEmail(@PathVariable Long profileId,
-                                          @RequestBody UpdateEmailRequest request) {
+    @NonNull
+    public ResponseEntity<?> updateEmail(@PathVariable @Nullable Long profileId,
+                                          @RequestBody @Nullable UpdateEmailRequest request) {
         try {
-            return ResponseEntity.ok(service.updateEmail(profileId, request));
+            return ResponseEntity.ok(service.updateEmail(
+                Objects.requireNonNull(profileId, "Profile ID is required"),
+                Objects.requireNonNull(request, "Request body is required")
+            ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
- 
-    
- // ✅ ADD this new 
     @PatchMapping("/{profileId}/phone")
-    public ResponseEntity<?> updatePhone(@PathVariable Long profileId,
-                                          @RequestBody UpdatePhoneRequest request) {
+    @NonNull
+    public ResponseEntity<?> updatePhone(@PathVariable @Nullable Long profileId,
+                                          @RequestBody @Nullable UpdatePhoneRequest request) {
         try {
-            return ResponseEntity.ok(service.updatePhone(profileId, request));
+            return ResponseEntity.ok(service.updatePhone(
+                Objects.requireNonNull(profileId, "Profile ID is required"),
+                Objects.requireNonNull(request, "Request body is required")
+            ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // ✅ ADD this new endpoint for details
     @PatchMapping("/{profileId}/details")
-    public ResponseEntity<?> updateDetails(@PathVariable Long profileId,
-                                          @RequestBody UserProfileDTO request) {
+    @NonNull
+    public ResponseEntity<?> updateDetails(@PathVariable @Nullable Long profileId,
+                                          @RequestBody @Nullable UserProfileDTO request) {
         try {
-            return ResponseEntity.ok(service.updateDetails(profileId, request));
+            return ResponseEntity.ok(service.updateDetails(
+                Objects.requireNonNull(profileId, "Profile ID is required"),
+                Objects.requireNonNull(request, "Request body is required")
+            ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @DeleteMapping("/{profileId}")
-    public ResponseEntity<?> delete(@PathVariable Long profileId) {
+    @NonNull
+    public ResponseEntity<?> delete(@PathVariable @Nullable Long profileId) {
         try {
-            service.deleteProfile(profileId);
+            service.deleteProfile(Objects.requireNonNull(profileId, "Profile ID is required"));
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
-    
- // ✅ ADD this in UserProfileController.java
+
     @GetMapping("/user/{userId}/activity-log")
-    public ResponseEntity<?> getActivityLog(@PathVariable Long userId) {
+    @NonNull
+    public ResponseEntity<?> getActivityLog(@PathVariable @Nullable Long userId) {
         try {
-            return ResponseEntity.ok(service.getActivityLog(userId));
+            return ResponseEntity.ok(service.getActivityLog(Objects.requireNonNull(userId, "User ID is required")));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }

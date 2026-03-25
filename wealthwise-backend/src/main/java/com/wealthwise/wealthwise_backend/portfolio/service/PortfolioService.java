@@ -11,6 +11,7 @@ import com.wealthwise.wealthwise_backend.investment.service.NavService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class PortfolioService {
@@ -25,13 +26,15 @@ public class PortfolioService {
     private NavService navService;
 
     public Portfolio getPortfolioByUserId(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
         return portfolioRepository.findByUserId(userId)
                 .orElseGet(() -> updatePortfolio(userId));
     }
 
     @Transactional
     public Portfolio updatePortfolio(Long userId) {
-        List<Investment> investments = investmentRepository.findByUserId(userId);
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> investments = Objects.requireNonNull(investmentRepository.findByUserId(userId), "Investment list cannot be null");
         
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalUnits = BigDecimal.ZERO;
@@ -85,6 +88,6 @@ public class PortfolioService {
         portfolio.setXirr(returnPercentage.multiply(BigDecimal.valueOf(0.8))); 
         portfolio.setCagr(returnPercentage.multiply(BigDecimal.valueOf(0.9)));
 
-        return portfolioRepository.save(portfolio);
+        return Objects.requireNonNull(portfolioRepository.save(portfolio), "Saved portfolio cannot be null");
     }
 }

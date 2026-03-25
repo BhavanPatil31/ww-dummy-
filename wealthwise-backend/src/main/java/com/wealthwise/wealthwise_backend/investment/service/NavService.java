@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -33,10 +34,10 @@ public class NavService {
                     null,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
-            return response.getBody() != null ? response.getBody() : List.of();
+            return response.getBody() != null ? response.getBody() : Collections.emptyList();
         } catch (Exception e) {
             System.err.println("Error searching funds: " + e.getMessage());
-            return List.of();
+            return Collections.emptyList();
         }
     }
 
@@ -69,7 +70,7 @@ public class NavService {
             return 1.0;
         }
 
-        if (selectedDate == null || selectedDate.isBlank()) {
+        if (selectedDate == null || selectedDate.trim().isEmpty()) {
             return getLatestNav(fundId);
         }
 

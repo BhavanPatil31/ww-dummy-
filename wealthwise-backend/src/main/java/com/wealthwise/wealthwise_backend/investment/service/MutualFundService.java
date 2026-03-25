@@ -10,11 +10,9 @@ import org.springframework.http.ResponseEntity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import javax.annotation.PostConstruct;
+import java.util.Objects;
 
 @Service
-@SuppressWarnings("null")
 public class MutualFundService {
 
     @Autowired
@@ -24,14 +22,11 @@ public class MutualFundService {
 
     private List<Map<String, Object>> cachedFundList = new ArrayList<>();
 
-    @PostConstruct
-    public void init() {
-        System.out.println("MutualFundService: Starting to fetch fund list from " + MF_API_URL);
-        getFundList(); // Warm up cache on startup
-    }
+    // Removed @PostConstruct to implement lazy loading and avoid startup failures
+    // getFundList() will be called on-demand
 
     public List<Map<String, Object>> getFundList() {
-        if (cachedFundList == null || cachedFundList.isEmpty()) {
+        if (cachedFundList.isEmpty()) {
             try {
                 // Fetch the list of all funds from mfapi
                 ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
@@ -41,23 +36,24 @@ public class MutualFundService {
                         new ParameterizedTypeReference<List<Map<String, Object>>>() {}
                 );
                 
-                if (response.getBody() != null) {
-                    cachedFundList = response.getBody();
+                List<Map<String, Object>> body = response.getBody();
+                if (body != null) {
+                    cachedFundList = body;
                     System.out.println("MutualFundService: Successfully fetched " + cachedFundList.size() + " funds.");
                 } else {
                     System.out.println("MutualFundService: API returned empty body.");
-                    cachedFundList = new ArrayList<>();
                 }
+            } catch (org.springframework.web.client.RestClientException e) {
+                System.err.println("MutualFundService: MF API unavailable, using fallback");
             } catch (Exception e) {
-                System.err.println("MutualFundService: Error fetching funds: " + e.getMessage());
-                e.printStackTrace();
-                cachedFundList = new ArrayList<>();
+                System.err.println("MutualFundService: Unexpected error fetching funds, using fallback");
             }
         }
         return cachedFundList;
     }
 
     public Map<String, Object> getFundDetails(String schemeCode) {
+        Objects.requireNonNull(schemeCode, "Scheme code cannot be null");
         String url = MF_API_URL + "/" + schemeCode;
         try {
             System.out.println("MutualFundService: Fetching details for scheme: " + schemeCode);
@@ -67,11 +63,13 @@ public class MutualFundService {
                     null,
                     new ParameterizedTypeReference<Map<String, Object>>() {}
             );
-            return response.getBody();
+            return Objects.requireNonNull(response.getBody(), "Fund details body cannot be null for scheme: " + schemeCode);
+        } catch (org.springframework.web.client.RestClientException e) {
+            System.err.println("MutualFundService: MF API unavailable for scheme " + schemeCode + ", using fallback");
+            return java.util.Collections.emptyMap();
         } catch (Exception e) {
-            System.err.println("MutualFundService: Error fetching details for " + schemeCode + ": " + e.getMessage());
-            e.printStackTrace();
-            return null;
+            System.err.println("MutualFundService: Unexpected error fetching details for " + schemeCode + ", using fallback");
+            return java.util.Collections.emptyMap();
         }
     }
 }

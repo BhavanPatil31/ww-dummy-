@@ -2,7 +2,6 @@ package com.wealthwise.wealthwise_backend.userprofile.service;
 
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateEmailRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdateNameRequest;
-
 import com.wealthwise.wealthwise_backend.userprofile.dto.UpdatePhoneRequest;
 import com.wealthwise.wealthwise_backend.userprofile.dto.UserProfileDTO;
 import com.wealthwise.wealthwise_backend.userprofile.entity.ProfileActivityLog;
@@ -10,40 +9,36 @@ import com.wealthwise.wealthwise_backend.userprofile.entity.UserProfileDetails;
 import com.wealthwise.wealthwise_backend.userprofile.repository.ProfileActivityLogRepository;
 import com.wealthwise.wealthwise_backend.userprofile.repository.UserProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
-@SuppressWarnings("null")
 public class UserProfileService {
 
     @Autowired
     private UserProfileRepository repository;
 
     @Autowired
-    private ProfileActivityLogRepository logRepository; // ✅ ADDED
+    private ProfileActivityLogRepository logRepository;
 
     @Autowired
-    private com.wealthwise.wealthwise_backend.auth.service.AuthService authService; // ✅ Sync to Auth table
+    private com.wealthwise.wealthwise_backend.auth.service.AuthService authService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    // CREATE
-    public UserProfileDTO createProfile(UserProfileDTO dto) {
-        if (dto.getUserId() == null)
-            throw new IllegalArgumentException("userId is required");
-        if (dto.getName() == null || dto.getName().trim().isEmpty())
-            throw new IllegalArgumentException("Name is required");
-        if (dto.getEmail() == null || dto.getEmail().trim().isEmpty())
-            throw new IllegalArgumentException("Email is required");
-        if (dto.getPassword() == null || dto.getPassword().trim().isEmpty())
-            throw new IllegalArgumentException("Password is required");
+    @NonNull
+    public UserProfileDTO createProfile(@NonNull UserProfileDTO dto) {
+        if (dto.getUserId() == null) throw new IllegalArgumentException("userId is required");
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) throw new IllegalArgumentException("Name is required");
+        if (dto.getEmail() == null || dto.getEmail().trim().isEmpty()) throw new IllegalArgumentException("Email is required");
+        if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) throw new IllegalArgumentException("Password is required");
 
         Optional<UserProfileDetails> existingEmail = repository.findByEmail(dto.getEmail());
-        if (existingEmail.isPresent())
-            throw new IllegalArgumentException("Email already registered");
+        if (existingEmail.isPresent()) throw new IllegalArgumentException("Email already registered");
 
         UserProfileDetails profile = UserProfileDetails.builder()
                 .userId(dto.getUserId())
@@ -56,136 +51,127 @@ public class UserProfileService {
                 .taxCountry(dto.getTaxCountry())
                 .residentialAddress(dto.getResidentialAddress())
                 .build();
+        UserProfileDetails savedEntity = repository.save(profile);
+        UserProfileDetails saved = Objects.requireNonNull(savedEntity, "Saved profile cannot be null");
 
-        UserProfileDetails saved = repository.save(profile);
-
-        // ✅ Log profile creation
         logRepository.save(new ProfileActivityLog(
-            saved.getUserId(), "PROFILE CREATED", null, "Profile created"
+            Objects.requireNonNull(saved.getUserId(), "User ID cannot be null"), "PROFILE CREATED", null, "Profile created"
         ));
 
         return toDTO(saved);
     }
 
-    // GET by profileId
-    public UserProfileDTO getProfileById(Long profileId) {
+    @NonNull
+    public UserProfileDTO getProfileById(@NonNull Long profileId) {
         return toDTO(findById(profileId));
     }
 
-    // GET by userId
-    public UserProfileDTO getProfileByUserId(Long userId) {
-        UserProfileDetails profile = repository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Profile not found for userId: " + userId));
+    @NonNull
+    public UserProfileDTO getProfileByUserId(@NonNull Long userId) {
+        // ✅ Explicitly guarantee the found entity is non-null
+        UserProfileDetails profile = Objects.requireNonNull(
+            repository.findByUserId(userId).orElseThrow(() -> new RuntimeException("Profile not found for userId: " + userId)),
+            "Found profile is null"
+        );
         return toDTO(profile);
     }
 
-    // UPDATE NAME
-    public UserProfileDTO updateName(Long profileId, UpdateNameRequest request) {
-        if (request.getName() == null || request.getName().trim().isEmpty())
-            throw new IllegalArgumentException("Name cannot be empty");
+    @NonNull
+    public UserProfileDTO updateName(@NonNull Long profileId, @NonNull UpdateNameRequest request) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) throw new IllegalArgumentException("Name cannot be empty");
+        
         UserProfileDetails profile = findById(profileId);
-
-        String oldName = profile.getName(); // ✅ save old value
-
+        String oldName = profile.getName();
         profile.setName(request.getName().trim());
-        UserProfileDetails saved = repository.save(profile);
+        
+        UserProfileDetails savedEntity = repository.save(profile);
+        UserProfileDetails saved = Objects.requireNonNull(savedEntity, "Saved profile cannot be null");
 
-        // ✅ Sync to Auth table
-        authService.updateUserName(profile.getUserId(), saved.getName());
-
-        // ✅ Log the change
-        logRepository.save(new ProfileActivityLog(
-            saved.getUserId(), "Name", oldName, saved.getName()
-        ));
+        authService.updateUserName(Objects.requireNonNull(profile.getUserId(), "User ID cannot be null"), Objects.requireNonNull(saved.getName(), "Name cannot be null"));
+        logRepository.save(new ProfileActivityLog(saved.getUserId(), "Name", oldName, saved.getName()));
 
         return toDTO(saved);
     }
 
-    // UPDATE EMAIL
-    public UserProfileDTO updateEmail(Long profileId, UpdateEmailRequest request) {
-        if (request.getNewEmail() == null || request.getNewEmail().trim().isEmpty())
-            throw new IllegalArgumentException("Email cannot be empty");
+    @NonNull
+    public UserProfileDTO updateEmail(@NonNull Long profileId, @NonNull UpdateEmailRequest request) {
+        if (request.getNewEmail() == null || request.getNewEmail().trim().isEmpty()) throw new IllegalArgumentException("Email cannot be empty");
+        
         Optional<UserProfileDetails> existing = repository.findByEmail(request.getNewEmail());
-        if (existing.isPresent() && !existing.get().getProfileId().equals(profileId))
-            throw new IllegalArgumentException("Email already in use");
+        if (existing.isPresent() && !existing.get().getProfileId().equals(profileId)) throw new IllegalArgumentException("Email already in use");
 
         UserProfileDetails profile = findById(profileId);
-
-        String oldEmail = profile.getEmail(); // ✅ save old value
-
+        String oldEmail = profile.getEmail();
         profile.setEmail(request.getNewEmail().trim());
-        UserProfileDetails saved = repository.save(profile);
+        
+        UserProfileDetails savedEntity = repository.save(profile);
+        UserProfileDetails saved = Objects.requireNonNull(savedEntity, "Saved profile cannot be null");
 
-        // ✅ Sync to Auth table
-        authService.updateUserEmail(profile.getUserId(), saved.getEmail());
-
-        // ✅ Log the change
-        logRepository.save(new ProfileActivityLog(
-            saved.getUserId(), "Email", oldEmail, saved.getEmail()
-        ));
+        authService.updateUserEmail(Objects.requireNonNull(profile.getUserId(), "User ID cannot be null"), Objects.requireNonNull(saved.getEmail(), "Email cannot be null"));
+        logRepository.save(new ProfileActivityLog(saved.getUserId(), "Email", oldEmail, saved.getEmail()));
 
         return toDTO(saved);
     }
 
-    // UPDATE PHONE
-    public UserProfileDTO updatePhone(Long profileId, UpdatePhoneRequest request) {
-        if (request.getPhone() == null || request.getPhone().trim().isEmpty())
-            throw new IllegalArgumentException("Phone cannot be empty");
+    @NonNull
+    public UserProfileDTO updatePhone(@NonNull Long profileId, @NonNull UpdatePhoneRequest request) {
+        if (request.getPhone() == null || request.getPhone().trim().isEmpty()) throw new IllegalArgumentException("Phone cannot be empty");
 
         UserProfileDetails profile = findById(profileId);
-
-        String oldPhone = profile.getPhone(); // ✅ save old value
-
+        String oldPhone = profile.getPhone();
         profile.setPhone(request.getPhone().trim());
-        UserProfileDetails saved = repository.save(profile);
+        
+        UserProfileDetails savedEntity = repository.save(profile);
+        UserProfileDetails saved = Objects.requireNonNull(savedEntity, "Saved profile cannot be null");
 
-        // ✅ Log the change
-        logRepository.save(new ProfileActivityLog(
-            saved.getUserId(), "Phone", oldPhone, saved.getPhone()
-        ));
+        logRepository.save(new ProfileActivityLog(saved.getUserId(), "Phone", oldPhone, saved.getPhone()));
 
         return toDTO(saved);
     }
 
-    // UPDATE DETAILS (Gender, TaxId, TaxCountry, ResidentialAddress)
-    public UserProfileDTO updateDetails(Long profileId, UserProfileDTO request) {
+    @NonNull
+    public UserProfileDTO updateDetails(@NonNull Long profileId, @NonNull UserProfileDTO request) {
         UserProfileDetails profile = findById(profileId);
-
         if (request.getGender() != null) profile.setGender(request.getGender());
         if (request.getTaxId() != null) profile.setTaxId(request.getTaxId());
         if (request.getTaxCountry() != null) profile.setTaxCountry(request.getTaxCountry());
         if (request.getResidentialAddress() != null) profile.setResidentialAddress(request.getResidentialAddress());
         
-        UserProfileDetails saved = repository.save(profile);
+        UserProfileDetails savedEntity = repository.save(profile);
+        UserProfileDetails saved = Objects.requireNonNull(savedEntity, "Saved profile cannot be null");
 
-        // ✅ Log the change
-        logRepository.save(new ProfileActivityLog(
-            saved.getUserId(), "Profile Details", "Old Details", "Updated Details"
-        ));
+        logRepository.save(new ProfileActivityLog(saved.getUserId(), "Profile Details", "Old Details", "Updated Details"));
 
         return toDTO(saved);
     }
 
-    // DELETE
-    public void deleteProfile(Long profileId) {
-        if (!repository.existsById(profileId))
-            throw new RuntimeException("Profile not found with id: " + profileId);
+    public void deleteProfile(@NonNull Long profileId) {
+        if (!repository.existsById(profileId)) throw new RuntimeException("Profile not found with id: " + profileId);
         repository.deleteById(profileId);
     }
 
-    // ✅ GET ACTIVITY LOG
-    public List<ProfileActivityLog> getActivityLog(Long userId) {
-        return logRepository.findByUserIdOrderByChangedAtDesc(userId);
+    @NonNull
+    public List<ProfileActivityLog> getActivityLog(@NonNull Long userId) {
+        // ✅ Wrap the list return to guarantee non-nullity
+        return Objects.requireNonNull(
+            logRepository.findByUserIdOrderByChangedAtDesc(userId),
+            "Activity log is null"
+        );
     }
 
-    // Private helpers
-    private UserProfileDetails findById(Long profileId) {
-        return repository.findById(profileId)
-                .orElseThrow(() -> new RuntimeException("Profile not found with id: " + profileId));
+    @NonNull
+    private UserProfileDetails findById(@NonNull Long profileId) {
+        // ✅ Dual guarantee for findById
+        return Objects.requireNonNull(
+            repository.findById(profileId).orElseThrow(() -> new RuntimeException("Profile not found with id: " + profileId)),
+            "Found profile details are null"
+        );
     }
 
-    private UserProfileDTO toDTO(UserProfileDetails p) {
-        return UserProfileDTO.builder()
+    @NonNull
+    private UserProfileDTO toDTO(@NonNull UserProfileDetails p) {
+        // ✅ Wrap the build result to satisfy @NonNull return contract
+        return Objects.requireNonNull(UserProfileDTO.builder()
                 .profileId(p.getProfileId())
                 .userId(p.getUserId())
                 .name(p.getName())
@@ -196,6 +182,6 @@ public class UserProfileService {
                 .taxCountry(p.getTaxCountry())
                 .residentialAddress(p.getResidentialAddress())
                 .createdDate(p.getCreatedDate())
-                .build();
+                .build(), "Built DTO is null");
     }
 }
