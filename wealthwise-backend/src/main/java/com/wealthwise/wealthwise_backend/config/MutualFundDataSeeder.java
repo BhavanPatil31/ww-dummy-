@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class MutualFundDataSeeder implements CommandLineRunner {
@@ -62,7 +63,7 @@ public class MutualFundDataSeeder implements CommandLineRunner {
                     new MutualFund("119551", "Tata Digital India Fund - Direct Plan - Growth", 1),
                     new MutualFund("120318", "Kotak Flexicap Fund - Direct Plan - Growth", 1)
                 );
-                mutualFundRepository.saveAll(predefinedFunds);
+                mutualFundRepository.saveAll(Objects.requireNonNull(predefinedFunds));
                 System.out.println("Inserted 40 explicit funds successfully.");
             }
         } catch (Exception e) {
