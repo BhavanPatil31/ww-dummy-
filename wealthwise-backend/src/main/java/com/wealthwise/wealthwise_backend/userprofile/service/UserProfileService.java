@@ -8,6 +8,7 @@ import com.wealthwise.wealthwise_backend.userprofile.entity.ProfileActivityLog;
 import com.wealthwise.wealthwise_backend.userprofile.entity.UserProfileDetails;
 import com.wealthwise.wealthwise_backend.userprofile.repository.ProfileActivityLogRepository;
 import com.wealthwise.wealthwise_backend.userprofile.repository.UserProfileRepository;
+import com.wealthwise.wealthwise_backend.auth.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,7 +27,7 @@ public class UserProfileService {
     private ProfileActivityLogRepository logRepository;
 
     @Autowired
-    private com.wealthwise.wealthwise_backend.auth.service.AuthService authService;
+    private AuthService authService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 

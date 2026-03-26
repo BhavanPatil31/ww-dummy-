@@ -9,15 +9,22 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Arrays;
 import java.util.stream.Collectors;
+
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.lang.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class MutualFundService {
+    private static final Logger logger = LoggerFactory.getLogger(MutualFundService.class);
 
     @Autowired
     private RestTemplate restTemplate;
@@ -26,13 +33,15 @@ public class MutualFundService {
     private MutualFundRepository mutualFundRepository;
 
     private static final String MF_API_URL = "https://api.mfapi.in/mf";
+    private static final String MF_SEARCH_URL = "https://api.mfapi.in/mf/search?q=";
 
+    @NonNull
     public List<Map<String, Object>> getFundList() {
         List<MutualFund> funds = mutualFundRepository.findAll();
         
         // Fallback to static list if database seeding failed or table is empty
         if (funds.isEmpty()) {
-            return java.util.Arrays.asList(
+            return Objects.requireNonNull(Arrays.asList(
                 createMap("125497", "HDFC Top 100 Fund - Direct Plan - Growth"),
                 createMap("118834", "SBI Bluechip Fund - Direct Plan - Growth"),
                 createMap("118825", "Mirae Asset Large Cap Fund - Direct Plan - Growth"),
@@ -73,37 +82,63 @@ public class MutualFundService {
                 createMap("130324", "Kotak Bluechip Fund - Direct Plan - Growth"),
                 createMap("119551", "Tata Digital India Fund - Direct Plan - Growth"),
                 createMap("120318", "Kotak Flexicap Fund - Direct Plan - Growth")
-            );
+            ));
         }
 
-        return funds.stream().map(fund -> createMap(fund.getSchemeCode(), fund.getSchemeName())).collect(Collectors.toList());
+        return Objects.requireNonNull(funds.stream()
+                .map(fund -> createMap(
+                    Objects.requireNonNull(fund.getSchemeCode(), "Scheme code is null in DB"), 
+                    Objects.requireNonNull(fund.getSchemeName(), "Scheme name is null in DB")))
+                .collect(Collectors.toList()));
     }
 
-    private Map<String, Object> createMap(String code, String name) {
+    @NonNull
+    private Map<String, Object> createMap(@NonNull String code, @NonNull String name) {
         Map<String, Object> map = new HashMap<>();
         map.put("scheme_code", code);
         map.put("scheme_name", name);
         return map;
     }
 
-    public Map<String, Object> getFundDetails(String schemeCode) {
+    @NonNull
+    @Cacheable(value = "navCache", key = "#schemeCode")
+    public Map<String, Object> getFundDetails(@NonNull String schemeCode) {
         Objects.requireNonNull(schemeCode, "Scheme code cannot be null");
         String url = MF_API_URL + "/" + schemeCode;
         try {
-            System.out.println("MutualFundService: Fetching details for scheme: " + schemeCode);
+            logger.info("Fetching details for scheme: {}", schemeCode);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     null,
                     new ParameterizedTypeReference<Map<String, Object>>() {}
             );
-            return Objects.requireNonNull(response.getBody(), "Fund details body cannot be null for scheme: " + schemeCode);
+            return Objects.requireNonNull(response.getBody(), "Fund details body is null for scheme: " + schemeCode);
         } catch (org.springframework.web.client.RestClientException e) {
-            System.err.println("MutualFundService: MF API unavailable for scheme " + schemeCode + ", using fallback");
-            return java.util.Collections.emptyMap();
+            logger.error("MF API unavailable for scheme {}: {}", schemeCode, e.getMessage());
+            return Objects.requireNonNull(Collections.emptyMap());
         } catch (Exception e) {
-            System.err.println("MutualFundService: Unexpected error fetching details for " + schemeCode + ", using fallback");
-            return java.util.Collections.emptyMap();
+            logger.error("Unexpected error fetching details for {}: {}", schemeCode, e.getMessage());
+            return Objects.requireNonNull(Collections.emptyMap());
+        }
+    }
+
+    public @NonNull List<Map<String, Object>> searchFunds(@NonNull String query) {
+        if (query == null || query.trim().isEmpty()) return Objects.requireNonNull(Collections.emptyList());
+        String url = MF_SEARCH_URL + query.trim();
+        try {
+            logger.info("Searching funds with query: {}", query);
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            List<Map<String, Object>> body = response.getBody();
+            return Objects.requireNonNull(body != null ? body : Collections.emptyList());
+        } catch (Exception e) {
+            logger.error("Error searching funds for {}: {}", query, e.getMessage());
+            return Objects.requireNonNull(Collections.emptyList());
         }
     }
 }
