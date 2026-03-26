@@ -207,7 +207,7 @@
     background-color: var(--ai-summary-bg);
     border: 1px solid var(--ai-border);
     border-radius: 8px;
-    max-height: 200px;
+    max-height: 250px;
     overflow-y: auto;
     z-index: 100;
     list-style: none;
@@ -312,8 +312,8 @@
     box-shadow: 0 6px 14px rgba(37,99,235,0.35);
 }
 
-.btn-submit:disabled {
-    opacity: 0.7;
+.btn-submit:disabled, .disabled-btn {
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
@@ -459,4 +459,166 @@ input[type=number]::-webkit-outer-spin-button {
         position: static;
         width: 100%;
     }
+}
+
+/* --- Added Styles for Mutual Fund Enhancement --- */
+
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ef4444;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    z-index: 9999;
+    font-weight: 600;
+    animation: slideDown 0.3s ease-out forwards;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translate(-50%, -20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.fade-in-anim {
+    animation: fadeIn 0.5s ease-in-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-up-anim {
+    animation: slideUp 0.6s ease-out forwards;
+}
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-container {
+    position: relative;
+}
+
+.nice-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--ai-border);
+    border-radius: 10px;
+}
+
+.dropdown-category-header {
+    padding: 8px 15px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--ai-text-muted);
+    background-color: rgba(0,0,0,0.03);
+    border-bottom: 1px solid var(--ai-suggestion-border);
+    font-weight: 700;
+}
+.theme-light .dropdown-category-header {
+    background-color: #f8fafc;
+}
+
+.dropdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.dropdown-list li {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--ai-suggestion-border);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dropdown-list li:hover {
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.fund-item-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.fund-name-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80%;
+    color: var(--text-primary);
+}
+
+.fund-code-badge {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+    background-color: var(--ai-input-bg);
+    border: 1px solid var(--ai-border);
+    border-radius: 4px;
+    color: var(--ai-text-muted);
+}
+
+.readonly-input {
+    background-color: rgba(0,0,0,0.05) !important;
+    color: var(--text-primary) !important;
+    cursor: default;
+}
+.theme-light .readonly-input {
+    background-color: #f1f5f9 !important;
+}
+
+.input-warning {
+    border-color: #f59e0b !important;
+}
+
+.error-text {
+    color: #ef4444 !important;
+}
+
+.nav-date-text {
+    color: var(--ai-text-muted);
+    font-size: 0.75rem;
+    font-style: italic;
+    margin-left: 5px;
+}
+
+.inline-spinner {
+    position: absolute;
+    right: 15px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--ai-border);
+    border-top-color: var(--fintech-green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.spinner-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px;
+    color: var(--ai-text-muted);
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--ai-border);
+    border-top-color: var(--fintech-green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

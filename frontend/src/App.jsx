@@ -15,8 +15,13 @@ function App() {
 
     // ✅ 1. Initialize from localStorage
     const [currentUser, setCurrentUser] = useState(() => {
-        const saved = localStorage.getItem("wealthwise_user");
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = localStorage.getItem("wealthwise_user");
+            return (saved && saved !== "undefined") ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.warn("Failed to parse user state:", e);
+            return null;
+        }
     });
 
     const [theme, setTheme] = useState(() => {
@@ -25,10 +30,13 @@ function App() {
     });
 
     const [currentPage, setCurrentPage] = useState(() => {
-        // If user is logged in, default to dashboard. Else home.
-        const savedPage = localStorage.getItem("wealthwise_current_page");
-        if (savedPage) return savedPage;
-        return localStorage.getItem("jwt_token") ? "dashboard" : "home";
+        try {
+            const savedPage = localStorage.getItem("wealthwise_current_page");
+            if (savedPage) return savedPage;
+            return localStorage.getItem("jwt_token") ? "dashboard" : "home";
+        } catch (e) {
+            return "home";
+        }
     });
 
     const [showLogin, setShowLogin] = useState(false);

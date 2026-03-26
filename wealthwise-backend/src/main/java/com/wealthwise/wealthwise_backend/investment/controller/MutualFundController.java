@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.wealthwise.wealthwise_backend.investment.service.MutualFundService;
@@ -21,17 +23,17 @@ public class MutualFundController {
     private MutualFundService mutualFundService;
 
     @GetMapping("/list")
-    public List<Map<String, Object>> getFundList() {
+    public @NonNull List<Map<String, Object>> getFundList() {
         return mutualFundService.getFundList();
     }
 
     @GetMapping("/{schemeCode}")
-    public Map<String, Object> getFundDetails(@PathVariable String schemeCode) {
+    public @NonNull Map<String, Object> getFundDetails(@PathVariable @NonNull String schemeCode) {
         return mutualFundService.getFundDetails(schemeCode);
     }
 
     @GetMapping("/search")
-    public List<Map<String, Object>> searchFunds(String query) {
+    public @NonNull List<Map<String, Object>> searchFunds(@RequestParam @NonNull String query) {
         return mutualFundService.searchFunds(query);
     }
 }

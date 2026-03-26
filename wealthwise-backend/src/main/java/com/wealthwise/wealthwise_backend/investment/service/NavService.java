@@ -46,7 +46,7 @@ public class NavService {
     }
 
     public Double getLatestNav(String fundId) {
-        if (fundId == null || fundId.isBlank()) return 1.0;
+        if (fundId == null || fundId.trim().isEmpty()) return 1.0;
 
         try {
             MfApiResponse response = getFundData(fundId);
