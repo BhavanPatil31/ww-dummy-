@@ -51,6 +51,9 @@ public class UserProfileService {
                 .taxId(dto.getTaxId())
                 .taxCountry(dto.getTaxCountry())
                 .residentialAddress(dto.getResidentialAddress())
+                .occupation(dto.getOccupation())
+                .dob(dto.getDob())
+                .bio(dto.getBio())
                 .build();
         UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
 
@@ -145,6 +148,9 @@ public class UserProfileService {
         if (request.getTaxId() != null) profile.setTaxId(request.getTaxId());
         if (request.getTaxCountry() != null) profile.setTaxCountry(request.getTaxCountry());
         if (request.getResidentialAddress() != null) profile.setResidentialAddress(request.getResidentialAddress());
+        if (request.getOccupation() != null) profile.setOccupation(request.getOccupation());
+        if (request.getDob() != null) profile.setDob(request.getDob());
+        if (request.getBio() != null) profile.setBio(request.getBio());
         
         UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
 
@@ -187,6 +193,9 @@ public class UserProfileService {
                 .taxId(p.getTaxId())
                 .taxCountry(p.getTaxCountry())
                 .residentialAddress(p.getResidentialAddress())
+                .occupation(p.getOccupation())
+                .dob(p.getDob())
+                .bio(p.getBio())
                 .createdDate(p.getCreatedDate())
                 .build();
         if (dto == null) throw new RuntimeException("Built DTO is null");

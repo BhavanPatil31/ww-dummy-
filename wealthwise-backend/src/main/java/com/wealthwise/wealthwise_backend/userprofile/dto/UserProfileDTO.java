@@ -14,6 +14,9 @@ public class UserProfileDTO {
     private String taxId;
     private String taxCountry;
     private String residentialAddress;
+    private String occupation;
+    private String dob;
+    private String bio;
     private LocalDateTime createdDate;
 
     public UserProfileDTO() {}
@@ -29,6 +32,9 @@ public class UserProfileDTO {
     public String getTaxId()               { return taxId; }
     public String getTaxCountry()          { return taxCountry; }
     public String getResidentialAddress()  { return residentialAddress; }
+    public String getOccupation()          { return occupation; }
+    public String getDob()                 { return dob; }
+    public String getBio()                 { return bio; }
     public LocalDateTime getCreatedDate()  { return createdDate; }
 
     // Setters
@@ -42,6 +48,9 @@ public class UserProfileDTO {
     public void setTaxId(String taxId)                { this.taxId = taxId; }
     public void setTaxCountry(String taxCountry)      { this.taxCountry = taxCountry; }
     public void setResidentialAddress(String addr)    { this.residentialAddress = addr; }
+    public void setOccupation(String occ)             { this.occupation = occ; }
+    public void setDob(String d)                      { this.dob = d; }
+    public void setBio(String b)                      { this.bio = b; }
     public void setCreatedDate(LocalDateTime date)    { this.createdDate = date; }
 
     // Builder
@@ -52,6 +61,7 @@ public class UserProfileDTO {
         private Long userId;
         private String name, email, phone, password;
         private String gender, taxId, taxCountry, residentialAddress;
+        private String occupation, dob, bio;
         private LocalDateTime createdDate;
 
         public Builder profileId(Long profileId)       { this.profileId = profileId; return this; }
@@ -64,6 +74,9 @@ public class UserProfileDTO {
         public Builder taxId(String taxId)             { this.taxId = taxId; return this; }
         public Builder taxCountry(String taxCountry)   { this.taxCountry = taxCountry; return this; }
         public Builder residentialAddress(String addr) { this.residentialAddress = addr; return this; }
+        public Builder occupation(String occ)          { this.occupation = occ; return this; }
+        public Builder dob(String d)                   { this.dob = d; return this; }
+        public Builder bio(String b)                   { this.bio = b; return this; }
         public Builder createdDate(LocalDateTime date) { this.createdDate = date; return this; }
 
         public UserProfileDTO build() {
@@ -78,6 +91,9 @@ public class UserProfileDTO {
             dto.taxId       = this.taxId;
             dto.taxCountry  = this.taxCountry;
             dto.residentialAddress = this.residentialAddress;
+            dto.occupation  = this.occupation;
+            dto.dob         = this.dob;
+            dto.bio         = this.bio;
             dto.createdDate = this.createdDate;
             return dto;
         }

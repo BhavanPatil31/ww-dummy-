@@ -6,7 +6,9 @@ import {
     FiDollarSign, FiCalendar, FiTag, FiActivity, FiAlertTriangle, FiRefreshCw
 } from 'react-icons/fi';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+    ComposedChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, ReferenceLine, Legend,
+    AreaChart, Area, BarChart
 } from 'recharts';
 import '../styles/Portfolio.css';
 
@@ -88,7 +90,7 @@ export default function Portfolio({ user }) {
     const getCurrentNav = (inv) => {
         const navAtBuy = inv.nav_at_buy || 0;
         let currentNav = inv.current_nav || 0;
-        
+
         // If currentNav is still 0 or specifically the same as navAtBuy and we want to show growth in mock data
         // But with real API, we should trust the currentNav if it's set and non-zero
         if (!currentNav || currentNav === 0) {
@@ -120,63 +122,36 @@ export default function Portfolio({ user }) {
     const totalPnL = totalCurrentValue - totalInvested;
     const totalReturn = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
 
-    // ── Chart Data ─────────────────────────────────────────────
+    // ── Chart Data (P&L per investment, trading-bar style) ─────
     const generateChartData = () => {
         if (!investments.length) return [];
-        const sortedByDate = [...investments].sort((a, b) => {
+        const sorted = [...investments].sort((a, b) => {
             const d1 = new Date(a.buy_date || a.start_date || 0);
             const d2 = new Date(b.buy_date || b.start_date || 0);
-            const t1 = isNaN(d1) ? 0 : d1.getTime();
-            const t2 = isNaN(d2) ? 0 : d2.getTime();
-            return t1 - t2;
+            return (isNaN(d1) ? 0 : d1.getTime()) - (isNaN(d2) ? 0 : d2.getTime());
         });
-        
-        let cumulativeInvested = 0;
-        let cumulativeValue = 0;
-        const dataMap = {};
-        
-        sortedByDate.forEach(inv => {
-            const d = inv.buy_date || inv.start_date;
-            if (!d) return;
-            const dateObj = new Date(d);
-            if (isNaN(dateObj)) return;
-            
-            const monthYear = dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-            
-            if (!dataMap[monthYear]) {
-                dataMap[monthYear] = {
-                    name: monthYear,
-                    investedAdded: 0,
-                    valueAdded: 0,
-                    timestamp: dateObj.getTime()
-                };
-            }
-            dataMap[monthYear].investedAdded += parseFloat(inv.amount || 0);
-            dataMap[monthYear].valueAdded += getCurrentValue(inv);
-        });
-
-        const sortedKeys = Object.values(dataMap).sort((a, b) => a.timestamp - b.timestamp);
-        
-        return sortedKeys.map(item => {
-            cumulativeInvested += item.investedAdded;
-            cumulativeValue += item.valueAdded;
-            return {
-                name: item.name,
-                Invested: cumulativeInvested,
-                Value: cumulativeValue
-            };
+        return sorted.map(inv => {
+            const invested = parseFloat(inv.amount || 0);
+            const current = getCurrentValue(inv);
+            const pnl = parseFloat((current - invested).toFixed(0));
+            const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
+            const label = (inv.scheme_name || `Fund #${inv.fund_id}` || '?').slice(0, 10);
+            return { name: label, pnl, pct: parseFloat(pct), invested, current, fullName: inv.scheme_name || `Fund #${inv.fund_id}` };
         });
     };
 
     const chartData = generateChartData();
 
-    const CustomTooltip = ({ active, payload, label }) => {
+    const PnLTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
+            const d = payload[0].payload;
+            const isProfit = d.pnl >= 0;
             return (
-                <div className="custom-tooltip" style={{ backgroundColor: 'rgba(20, 20, 30, 0.95)', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                    <p style={{ margin: 0, color: '#94a3b8', marginBottom: '8px', fontWeight: '600' }}>{label}</p>
-                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>Invested: <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>{formatCurrency(payload[0].value)}</span></p>
-                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>Value: <span style={{ color: '#22c55e', fontWeight: 'bold' }}>{formatCurrency(payload[1].value)}</span></p>
+                <div style={{ background: 'rgba(10,15,30,0.97)', padding: '12px 16px', border: `1px solid ${isProfit ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: '180px' }}>
+                    <p style={{ margin: '0 0 8px', color: '#94a3b8', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{d.fullName}</p>
+                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Invested: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.invested)}</span></p>
+                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Current: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.current)}</span></p>
+                    <p style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800, color: isProfit ? '#22c55e' : '#ef4444' }}>{isProfit ? '+' : ''}{formatCurrency(d.pnl)} ({isProfit ? '+' : ''}{d.pct}%)</p>
                 </div>
             );
         }
@@ -331,49 +306,55 @@ export default function Portfolio({ user }) {
                 <div className="portfolio-chart-side">
                     {investments.length > 0 ? (
                         <div className="portfolio-chart-wrapper">
-                            <h3 className="chart-title">Portfolio Growth Timeline</h3>
+                            <div className="chart-header-row">
+                                <h3 className="chart-title">P&amp;L Per Investment</h3>
+                                <span className={`pnl-live-badge ${totalPnL >= 0 ? 'positive' : 'negative'}`}>
+                                    {totalPnL >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
+                                    {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
+                                    <span className="pnl-pct">({totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(2)}%)</span>
+                                </span>
+                            </div>
                             <div className="chart-container">
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 25 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                        <XAxis 
-                                            dataKey="name" 
-                                            stroke="#94a3b8" 
-                                            tick={{ fill: '#94a3b8', fontSize: 11, angle: -45, textAnchor: 'end' }} 
-                                            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
+                                        <defs>
+                                            <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#16a34a" stopOpacity={0.7} />
+                                            </linearGradient>
+                                            <linearGradient id="barRed" x1="0" y1="1" x2="0" y2="0">
+                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.7} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                                        <XAxis
+                                            dataKey="name"
+                                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                                            axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
                                             tickLine={false}
-                                            height={50}
-                                            dy={15}
+                                            dy={8}
                                         />
-                                        <YAxis 
-                                            stroke="#94a3b8" 
-                                            tick={{ fill: '#94a3b8', fontSize: 11 }} 
+                                        <YAxis
+                                            tick={{ fill: '#64748b', fontSize: 10 }}
                                             axisLine={false}
                                             tickLine={false}
-                                            tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
-                                            dx={-10}
+                                            tickFormatter={(val) => `${val >= 0 ? '+' : ''}₹${Math.abs(val / 1000).toFixed(0)}k`}
+                                            dx={-6}
                                         />
-                                        <Tooltip content={<CustomTooltip />} />
-                                        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '15px' }} iconType="circle" />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="Invested" 
-                                            stroke="#3b82f6" 
-                                            strokeWidth={2.5} 
-                                            dot={chartData.length <= 1 ? { r: 4, fill: '#3b82f6', strokeWidth: 0 } : false}
-                                            activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} 
-                                            name="Total Invested"
-                                        />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="Value" 
-                                            stroke="#22c55e" 
-                                            strokeWidth={3} 
-                                            dot={{ fill: '#22c55e', r: 4, strokeWidth: 0 }} 
-                                            activeDot={{ r: 7, fill: '#22c55e', stroke: '#fff', strokeWidth: 2 }} 
-                                            name="Current Value"
-                                        />
-                                    </LineChart>
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
+                                        <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                                        <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                                            {chartData.map((entry, i) => (
+                                                <Cell
+                                                    key={i}
+                                                    fill={entry.pnl >= 0 ? 'url(#barGreen)' : 'url(#barRed)'}
+                                                    stroke={entry.pnl >= 0 ? '#22c55e' : '#ef4444'}
+                                                    strokeWidth={1}
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
@@ -386,6 +367,43 @@ export default function Portfolio({ user }) {
                             </div>
                         </div>
                     )}
+
+                    {/* ── Best Performer + Portfolio Health below chart ── */}
+                    {investments.length > 0 && (() => {
+                        const best = [...investments].sort((a,b) => getReturnPct(b) - getReturnPct(a))[0];
+                        const diversification = new Set(investments.map(i => i.investment_type)).size;
+                        const score = Math.min(100, Math.round(
+                            (totalReturn >= 0 ? 40 : 10) +
+                            Math.min(diversification * 15, 30) +
+                            Math.min(investments.length * 5, 30)
+                        ));
+                        const scoreColor = score >= 70 ? 'green' : score >= 40 ? 'blue' : 'red';
+                        return (
+                            <div className="below-chart-row">
+                                {best && (
+                                    <div className="p-summary-card highlight-green">
+                                        <span className="p-label">🏆 Best Performer</span>
+                                        <span className="p-value green" style={{fontSize:'0.92rem', lineHeight:1.35}}>
+                                            {(best.scheme_name || `Fund #${best.fund_id}`).slice(0,30)}{(best.scheme_name||'').length>30?'…':''}
+                                        </span>
+                                        <span className="p-sub green">+{getReturnPct(best).toFixed(2)}% return</span>
+                                    </div>
+                                )}
+                                <div className="p-summary-card health-card">
+                                    <span className="p-label">📊 Portfolio Health</span>
+                                    <div className="health-bar-wrap">
+                                        <div className="health-bar-track">
+                                            <div className={`health-bar-fill ${scoreColor}`} style={{width:`${score}%`}} />
+                                        </div>
+                                        <span className={`p-value ${scoreColor}`}>{score}/100</span>
+                                    </div>
+                                    <span className="p-sub">
+                                        {score >= 70 ? 'Well diversified & growing' : score >= 40 ? 'Moderate — add more assets' : 'Add investments to improve'}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* ── Summary Cards ── */}
@@ -419,10 +437,192 @@ export default function Portfolio({ user }) {
                             <span className="p-label">CAGR</span>
                             <span className="p-value blue">{(portfolioSummary?.cagr || 0).toFixed(2)}%</span>
                         </div>
+
                     </div>
+
+                    {/* ── Allocation Bar Chart Sidebar ── */}
+                    {investments.length > 0 && (() => {
+                        const groups = {};
+                        investments.forEach(inv => {
+                            const t = inv.investment_type || 'Other';
+                            groups[t] = (groups[t] || 0) + getCurrentValue(inv);
+                        });
+                        const totalVal = Object.values(groups).reduce((s, v) => s + v, 0);
+                        const barData = Object.entries(groups).map(([name, value]) => ({
+                            name,
+                            value: parseFloat(value.toFixed(0)),
+                            pct: totalVal > 0 ? ((value / totalVal) * 100).toFixed(1) : '0.0'
+                        }));
+                        const BAR_COLORS = ['#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444','#14b8a6'];
+
+                        const AllocTooltip = ({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            const idx = barData.findIndex(b => b.name === d.name);
+                            const color = BAR_COLORS[idx % BAR_COLORS.length];
+                            return (
+                                <div style={{
+                                    background: '#0d1526',
+                                    border: `1px solid ${color}55`,
+                                    borderRadius: '10px',
+                                    padding: '10px 14px',
+                                    boxShadow: `0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px ${color}22`,
+                                    minWidth: '160px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                                        <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '0.85rem' }}>{d.name}</span>
+                                    </div>
+                                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+                                        Value: <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '0.88rem' }}>{formatCurrency(d.value)}</span>
+                                    </div>
+                                    <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '2px' }}>
+                                        Share: <span style={{ color, fontWeight: 700 }}>{d.pct}%</span>
+                                    </div>
+                                </div>
+                            );
+                        };
+
+                        return (
+                            <div className="sidebar-bar-chart-card">
+                                <h3 className="chart-title" style={{marginBottom:'16px'}}>Allocation Breakdown</h3>
+                                <ResponsiveContainer width="100%" height={barData.length * 52 + 10}>
+                                    <BarChart data={barData} layout="vertical" margin={{top:0,right:40,left:0,bottom:0}} barCategoryGap="35%">
+                                        <XAxis type="number" hide domain={[0, totalVal]} />
+                                        <YAxis type="category" dataKey="name" width={72}
+                                            tick={{fill:'#94a3b8', fontSize:11, fontWeight:600}}
+                                            axisLine={false} tickLine={false} />
+                                        <Tooltip content={<AllocTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)', rx: 6 }} />
+                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v, entry) => `${barData.find(b=>b.value===v)?.pct||''}%` }}>
+                                            {barData.map((entry, i) => (
+                                                <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
 
+
+            {/* ── Professional Features Row ── */}
+            {investments.length > 0 && (() => {
+                const sorted_by_ret = [...investments].sort((a,b) => getReturnPct(b) - getReturnPct(a));
+                const winners = sorted_by_ret.slice(0, 3);
+                const losers  = sorted_by_ret.slice().reverse().slice(0, 3).filter(i => getReturnPct(i) < getReturnPct(winners[winners.length-1]));
+                const types   = [...new Set(investments.map(i => i.investment_type || 'Other'))];
+                const avgReturn = investments.length > 0 ? investments.reduce((s,i) => s + getReturnPct(i), 0) / investments.length : 0;
+                const winRate   = investments.length > 0 ? Math.round((investments.filter(i => getReturnPct(i) >= 0).length / investments.length) * 100) : 0;
+                const maxConc   = Math.max(...types.map(t => {
+                    const val = investments.filter(i => (i.investment_type||'Other') === t).reduce((s,i) => s + getCurrentValue(i), 0);
+                    return totalCurrentValue > 0 ? (val / totalCurrentValue) * 100 : 0;
+                }));
+                const riskLevel = maxConc > 80 ? 'High' : maxConc > 50 ? 'Medium' : 'Low';
+                const riskColor = maxConc > 80 ? '#ef4444' : maxConc > 50 ? '#f59e0b' : '#22c55e';
+                return (
+                    <>
+                    {/* ── Ticker / Market Intel Strip ── */}
+                    <div className="market-intel-strip">
+                        <div className="intel-ticker-inner">
+                            <div className="intel-item"><span className="intel-label">Holdings</span><span className="intel-val">{investments.length}</span></div>
+                            <div className="intel-divider"/>
+                            <div className="intel-item"><span className="intel-label">Win Rate</span><span className="intel-val green">{winRate}%</span></div>
+                            <div className="intel-divider"/>
+                            <div className="intel-item"><span className="intel-label">Avg Return</span><span className={`intel-val ${avgReturn >= 0 ? 'green' : 'red'}`}>{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(2)}%</span></div>
+                            <div className="intel-divider"/>
+                            <div className="intel-item"><span className="intel-label">Asset Classes</span><span className="intel-val">{types.length}</span></div>
+                            <div className="intel-divider"/>
+                            <div className="intel-item"><span className="intel-label">Concentration Risk</span><span className="intel-val" style={{color: riskColor}}>{riskLevel} ({maxConc.toFixed(0)}%)</span></div>
+                            <div className="intel-divider"/>
+                            <div className="intel-item"><span className="intel-label">Portfolio Value</span><span className="intel-val">{formatCurrency(totalCurrentValue)}</span></div>
+                        </div>
+                    </div>
+
+                    {/* ── Top Movers + Risk Exposure ── */}
+                    <div className="pro-features-row">
+                        {/* Top Winners */}
+                        <div className="pro-card movers-card">
+                            <div className="pro-card-header">
+                                <span className="pro-card-title"><FiTrendingUp className="title-icon green-icon"/> Top Winners</span>
+                            </div>
+                            <div className="movers-list">
+                                {winners.map((inv, i) => {
+                                    const ret = getReturnPct(inv);
+                                    return (
+                                        <div key={i} className="mover-row">
+                                            <span className="mover-rank">{i+1}</span>
+                                            <div className="mover-info">
+                                                <span className="mover-name">{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0,26)}{(inv.scheme_name||'').length>26?'…':''}</span>
+                                                <span className="mover-type">{inv.investment_type}</span>
+                                            </div>
+                                            <span className="mover-ret positive">+{ret.toFixed(2)}%</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Top Losers */}
+                        <div className="pro-card movers-card">
+                            <div className="pro-card-header">
+                                <span className="pro-card-title"><FiTrendingDown className="title-icon red-icon"/> Underperformers</span>
+                            </div>
+                            <div className="movers-list">
+                                {sorted_by_ret.slice().reverse().slice(0, 3).map((inv, i) => {
+                                    const ret = getReturnPct(inv);
+                                    return (
+                                        <div key={i} className="mover-row">
+                                            <span className="mover-rank">{i+1}</span>
+                                            <div className="mover-info">
+                                                <span className="mover-name">{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0,26)}{(inv.scheme_name||'').length>26?'…':''}</span>
+                                                <span className="mover-type">{inv.investment_type}</span>
+                                            </div>
+                                            <span className={`mover-ret ${ret >= 0 ? 'positive' : 'negative'}`}>{ret >= 0 ? '+' : ''}{ret.toFixed(2)}%</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Risk Exposure Meter */}
+                        <div className="pro-card risk-card">
+                            <div className="pro-card-header">
+                                <span className="pro-card-title"><FiActivity className="title-icon blue-icon"/> Risk Exposure</span>
+                                <span className="risk-level-badge" style={{background: `${riskColor}20`, color: riskColor, border: `1px solid ${riskColor}40`}}>{riskLevel}</span>
+                            </div>
+                            <div className="risk-meter-wrap">
+                                <div className="risk-meter-track">
+                                    <div className="risk-meter-fill" style={{width:`${maxConc}%`, background: riskColor}} />
+                                    <div className="risk-zone low" />
+                                    <div className="risk-zone med" />
+                                    <div className="risk-zone high" />
+                                </div>
+                                <div className="risk-labels">
+                                    <span>Low</span><span>Med</span><span>High</span>
+                                </div>
+                            </div>
+                            <div className="risk-breakdown">
+                                {types.map((t, i) => {
+                                    const val = investments.filter(inv => (inv.investment_type||'Other') === t).reduce((s,inv) => s + getCurrentValue(inv), 0);
+                                    const pct = totalCurrentValue > 0 ? (val / totalCurrentValue) * 100 : 0;
+                                    const COLORS = ['#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444','#14b8a6'];
+                                    return (
+                                        <div key={i} className="risk-row">
+                                            <span className="risk-dot" style={{background: COLORS[i % COLORS.length]}} />
+                                            <span className="risk-name">{t}</span>
+                                            <div className="risk-bar-mini"><div style={{width:`${pct}%`, background: COLORS[i % COLORS.length], height:'100%', borderRadius:'4px'}} /></div>
+                                            <span className="risk-pct">{pct.toFixed(0)}%</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                    </>
+                );
+            })()}
 
             {/* ── Table ── */}
             {investments.length === 0 ? (
@@ -643,6 +843,7 @@ export default function Portfolio({ user }) {
                                         </div>
                                     )}
                                 </div>
+
                                 <div className="form-actions">
                                     <button type="button" className="btn-cancel" onClick={closeEdit}>Cancel</button>
                                     <button type="submit" className="btn-submit">Save Changes</button>

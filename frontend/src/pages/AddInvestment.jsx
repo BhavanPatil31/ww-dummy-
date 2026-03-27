@@ -25,12 +25,12 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [filteredFunds, setFilteredFunds] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
-    
+
     // NAV states
     const [loadingNav, setLoadingNav] = useState(false);
     const [navDate, setNavDate] = useState('');
     const navCache = useRef({});
-    
+
     const suggestionRef = useRef(null);
     const todayDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
         .toISOString()
@@ -42,9 +42,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             setLoadingFunds(true);
             try {
                 const response = await axios.get('http://localhost:8088/api/mf/list');
-                
+
                 let dataToMap = response.data;
-                
+
                 // --- RESILIENCY FALLBACK ---
                 // If the user hasn't successfully compiled/restarted the Spring backend,
                 // the database seeder won't run, leaving this API empty or broken.
@@ -104,7 +104,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 setFilteredFunds(formatted);
             } catch (err) {
                 console.error("Failed to fetch funds", err);
-                
+
                 // Ensure UI still works via fallback on complete Network Failure
                 const fallbackData = [
                     { scheme_code: "125497", scheme_name: "HDFC Top 100 Fund - Direct Plan - Growth" },
@@ -148,13 +148,13 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                     { scheme_code: "119551", scheme_name: "Tata Digital India Fund - Direct Plan - Growth" },
                     { scheme_code: "120318", scheme_name: "Kotak Flexicap Fund - Direct Plan - Growth" }
                 ];
-                
+
                 const formattedFallback = fallbackData.map(f => ({
                     code: f.scheme_code,
                     name: f.scheme_name,
                     nav: 0
                 }));
-                
+
                 setMockFunds(formattedFallback);
                 setFilteredFunds(formattedFallback);
                 showToast("Server syncing issue. Default funds loaded anyway.");
@@ -187,19 +187,12 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             setFilteredFunds(mockFunds);
             return;
         }
-
-<<<<<<< HEAD
-        const searchTimer = setTimeout(() => {
-            const searchVal = formData.fundName.toLowerCase();
-            const results = mockFunds.filter(fund =>
-                fund.name.toLowerCase().includes(searchVal) ||
-                fund.code.includes(searchVal)
-            );
-            setFilteredFunds(results);
-        }, 200);
-=======
         // If user is clearing or data is very short, just use local mock top list
         if (formData.fundName.length < 2) {
+            setFilteredFunds(mockFunds.filter(fund =>
+                fund.name.toLowerCase().includes(formData.fundName.toLowerCase()) ||
+                fund.code.includes(formData.fundName)
+            ).slice(0, 50));
             return;
         }
 
@@ -216,7 +209,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                         name: f.schemeName || f.scheme_name || "Unknown Fund",
                         nav: 0
                     }));
-                    setFilteredFunds(formatted);
+                    setFilteredFunds(formatted.length > 0 ? formatted : mockFunds.filter(fund =>
+                        fund.name.toLowerCase().includes(formData.fundName.toLowerCase())
+                    ).slice(0, 50));
                 }
             } catch (err) {
                 console.error("API Search failed, falling back to local filter", err);
@@ -230,8 +225,6 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 setIsSearching(false);
             }
         }, 500); // 500ms debounce
->>>>>>> 1e1a44a607325bcd65b273bc750277eb96cb3031
-
         return () => clearTimeout(searchTimer);
     }, [formData.fundName, mockFunds]);
 
@@ -304,18 +297,18 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
                 const response = await fetchWithRetry(`https://api.mfapi.in/mf/${formData.fund_id}`);
                 const data = response.data;
-                
+
                 if (data && data.data && data.data.length > 0) {
                     // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
                     const parts = formData.startDate.split('-');
                     const targetFormat = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                    
+
                     // Search for exact date or fallback to the latest [0]
                     const historicalNav = data.data.find(d => d.date === targetFormat);
-                    
+
                     const finalNav = historicalNav ? historicalNav.nav : data.data[0].nav;
                     const finalDate = historicalNav ? historicalNav.date : data.data[0].date;
-                    
+
                     // Save to cache
                     navCache.current[cacheKey] = {
                         nav: finalNav,
@@ -330,12 +323,12 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 }
             } catch (err) {
                 console.error("Failed to fetch LIVE NAV after retries", err);
-                
+
                 // --- ULTIMATE FALLBACK ---
                 // To prevent the user from being completely blocked by a dead mfapi server,
                 // generate a simulated NAV based loosely on their fund ID so form validation passes.
                 const simulatedNav = ((parseInt(formData.fund_id) % 100) + 50 + Math.random() * 10).toFixed(4);
-                
+
                 navCache.current[cacheKey] = {
                     nav: simulatedNav,
                     date: formData.startDate,
@@ -344,7 +337,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
                 setFormData(prev => ({ ...prev, nav: simulatedNav }));
                 setNavDate(formData.startDate + " (Simulated fallback due to API outage)");
-                
+
                 showToast("mfapi.in is currently down. Loaded simulated NAV to allow test submission.");
             } finally {
                 setLoadingNav(false);
@@ -355,7 +348,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         const timeoutId = setTimeout(() => {
             fetchLiveNav();
         }, 500);
-        
+
         return () => clearTimeout(timeoutId);
 
     }, [formData.fund_id, formData.amount, formData.startDate]);
@@ -440,7 +433,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                     {toastMsg}
                 </div>
             )}
-            
+
             <div className="add-investment-layout">
                 <div className="form-section">
                     <div className="add-investment-card">

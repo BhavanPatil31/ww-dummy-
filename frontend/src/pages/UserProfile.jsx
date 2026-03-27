@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { 
-  FiUser, FiMail, FiPhone, FiMapPin, FiCamera, 
-  FiTrash2, FiSave, FiEdit2, FiCheckCircle, FiAlertTriangle, 
-  FiGlobe, FiTarget, FiInfo, FiX, FiShield, FiClock
+import {
+    FiUser, FiMail, FiPhone, FiMapPin, FiCamera,
+    FiTrash2, FiSave, FiEdit2, FiCheckCircle, FiAlertTriangle,
+    FiGlobe, FiTarget, FiInfo, FiX, FiShield, FiClock, FiBriefcase, FiCalendar
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/UserProfile.css";
@@ -17,14 +17,10 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
     const [avatarUrl, setAvatarUrl] = useState(null);
 
     const [editForm, setEditForm] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        mobileNumber: "",
-        gender: "",
-        taxId: "",
-        taxCountry: "",
-        residentialAddress: ""
+        firstName: "", lastName: "", email: "",
+        mobileNumber: "", gender: "", taxId: "",
+        taxCountry: "", residentialAddress: "",
+        occupation: "", dob: "", bio: ""
     });
 
     useEffect(() => {
@@ -49,7 +45,10 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                 gender: profile.gender || "Male",
                 taxId: profile.taxId || "",
                 taxCountry: profile.taxCountry || "",
-                residentialAddress: profile.residentialAddress || ""
+                residentialAddress: profile.residentialAddress || "",
+                occupation: profile.occupation || "",
+                dob: profile.dob || "",
+                bio: profile.bio || ""
             });
         }
     }, [profile]);
@@ -98,11 +97,8 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        userId: uid,
-                        name: finalName,
-                        email: editForm.email,
-                        phone: editForm.mobileNumber,
-                        password: "dummy_pass_123"
+                        userId: uid, name: finalName, email: editForm.email,
+                        phone: editForm.mobileNumber, password: "dummy_pass_123"
                     }),
                 });
                 if (!res.ok) throw new Error("Failed to create profile");
@@ -113,10 +109,9 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        gender: editForm.gender,
-                        taxId: editForm.taxId,
-                        taxCountry: editForm.taxCountry,
-                        residentialAddress: editForm.residentialAddress
+                        gender: editForm.gender, taxId: editForm.taxId,
+                        taxCountry: editForm.taxCountry, residentialAddress: editForm.residentialAddress,
+                        occupation: editForm.occupation, dob: editForm.dob, bio: editForm.bio
                     }),
                 });
             }
@@ -138,113 +133,202 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="profile_v3_wrapper">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="profile_premium_wrapper">
+
             <AnimatePresence>
                 {message.text && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`toast_v2 ${message.type}`}>
+                    <motion.div initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 0, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }} className={`premium_toast ${message.type}`}>
                         {message.type === 'success' ? <FiCheckCircle /> : <FiAlertTriangle />}
                         <span>{message.text}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
 
+            {/* Cover & Hero Section */}
+            <div className="premium_hero_section">
+                <div className="premium_cover_photo">
+                    <div className="cover_overlay"></div>
+                </div>
 
-
-            {/* Identity Hero */}
-            <div className="profile_v3_hero">
-                <div className="v3_hero_avatar_box">
-                    <label className="v3_avatar_ring" title="Click to upload">
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt="Avatar" />
-                        ) : (
-                            <div className="v3_initials">{getInitials()}</div>
+                <div className="premium_hero_content">
+                    <div className="premium_avatar_container">
+                        <label className="premium_avatar_ring" title="Click to upload">
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt="Avatar" />
+                            ) : (
+                                <div className="premium_initials">{getInitials()}</div>
+                            )}
+                            <div className="avatar_upload_overlay"><FiCamera /></div>
+                            <input type="file" hidden accept="image/*" onChange={handleAvatarUpload} />
+                        </label>
+                        {avatarUrl && (
+                            <button className="premium_avatar_delete" onClick={handleAvatarDelete}><FiTrash2 /></button>
                         )}
-                        <input type="file" hidden accept="image/*" onChange={handleAvatarUpload} />
-                    </label>
-                    {avatarUrl && (
-                        <button className="v3_avatar_delete" onClick={handleAvatarDelete}><FiTrash2 /></button>
+                    </div>
+
+                    <div className="premium_hero_details">
+                        <h1 className="premium_display_name">{profile?.name || user?.name || "Investor Profile"}</h1>
+                        <p className="premium_subtitle">{editForm.occupation || "Active User"}</p>
+                        <div className="premium_badges">
+                            {profile ? (
+                                <span className="badge_status verified"><FiShield /> Verified Account</span>
+                            ) : (
+                                <span className="badge_status unverified"><FiAlertTriangle /> Unverified</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {!isEditing && (
+                        <button className="premium_btn_edit" onClick={() => setIsEditing(true)}>
+                            <FiEdit2 /> Edit Profile
+                        </button>
                     )}
                 </div>
-                <div className="v3_hero_info">
-                    <h1 className="v3_display_name">{profile?.name || user?.name || "Investor Profile"}</h1>
-                    <p className="v3_badge_subtitle">Active WealthWise Investor</p>
-                </div>
-
-                {!isEditing && (
-                    <button className="v3_action_edit" onClick={() => setIsEditing(true)}>
-                        <FiEdit2 /> Edit Profile
-                    </button>
-                )}
             </div>
 
-            {/* Main Content: Info Cards or Edit Form */}
-            <div className="profile_v3_content">
+            {/* Main Content Area - Single Column for all fields */}
+            <div className="premium_body_layout">
                 {isEditing ? (
-                    <div className="v3_edit_form_container">
-                        <div className="v3_form_grid">
-                            <div className="v3_input_card">
-                                <label>FIRST NAME</label>
-                                <input type="text" value={editForm.firstName} onChange={e => setEditForm({...editForm, firstName: e.target.value})} />
-                            </div>
-                            <div className="v3_input_card">
-                                <label>LAST NAME</label>
-                                <input type="text" value={editForm.lastName} onChange={e => setEditForm({...editForm, lastName: e.target.value})} />
-                            </div>
-                            <div className="v3_input_card">
-                                <label>EMAIL ADDRESS</label>
-                                <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
-                            </div>
-                            <div className="v3_input_card">
-                                <label>PHONE NUMBER</label>
-                                <input type="text" value={editForm.mobileNumber} onChange={e => setEditForm({...editForm, mobileNumber: e.target.value})} />
-                            </div>
-                            <div className="v3_input_card full">
-                                <label>GENDER</label>
-                                <div className="v3_gender_selection">
-                                    {['Male', 'Female', 'Other'].map(g => (
-                                        <button 
-                                            key={g} 
-                                            className={editForm.gender === g ? "active" : ""} 
-                                            onClick={() => setEditForm({...editForm, gender: g})}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="premium_edit_form">
+                        <div className="premium_glass_card">
+                            <h3 className="section_title"><FiUser /> Personal Details</h3>
+                            <div className="form_grid_2">
+                                <div className="premium_input_group">
+                                    <label>First Name</label>
+                                    <input type="text" value={editForm.firstName} onChange={e => setEditForm({ ...editForm, firstName: e.target.value })} />
+                                </div>
+                                <div className="premium_input_group">
+                                    <label>Last Name</label>
+                                    <input type="text" value={editForm.lastName} onChange={e => setEditForm({ ...editForm, lastName: e.target.value })} />
+                                </div>
+                                <div className="premium_input_group">
+                                    <label>Date of Birth</label>
+                                    <input type="date" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} />
+                                </div>
+                                <div className="premium_input_group">
+                                    <label>Occupation</label>
+                                    <input type="text" value={editForm.occupation} onChange={e => setEditForm({ ...editForm, occupation: e.target.value })} placeholder="e.g. Software Engineer" />
+                                </div>
+                                <div className="premium_input_group full_width">
+                                    <label>Bio</label>
+                                    <textarea rows="3" value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell us about yourself..."></textarea>
+                                </div>
+                                <div className="premium_input_group full_width">
+                                    <label>Gender</label>
+                                    <div className="premium_radio_group">
+                                        {['Male', 'Female', 'Other'].map(g => (
+                                            <button key={g} className={editForm.gender === g ? "active" : ""} onClick={() => setEditForm({ ...editForm, gender: g })}>{g}</button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                            <div className="v3_input_card full">
-                                <label>RESIDENTIAL ADDRESS</label>
-                                <textarea rows="3" value={editForm.residentialAddress} onChange={e => setEditForm({...editForm, residentialAddress: e.target.value})} />
+                        </div>
+
+                        <div className="premium_glass_card mt-4">
+                            <h3 className="section_title"><FiMail /> Contact & Location</h3>
+                            <div className="form_grid_2">
+                                <div className="premium_input_group">
+                                    <label>Email Address</label>
+                                    <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
+                                </div>
+                                <div className="premium_input_group">
+                                    <label>Phone Number</label>
+                                    <input type="text" value={editForm.mobileNumber} onChange={e => setEditForm({ ...editForm, mobileNumber: e.target.value })} />
+                                </div>
+                                <div className="premium_input_group full_width">
+                                    <label>Residential Address</label>
+                                    <textarea rows="2" value={editForm.residentialAddress} onChange={e => setEditForm({ ...editForm, residentialAddress: e.target.value })} />
+                                </div>
                             </div>
                         </div>
-                        <div className="v3_form_actions">
-                            <button className="btn_discard" onClick={() => setIsEditing(false)}>Cancel</button>
-                            <button className="btn_save" onClick={saveChanges} disabled={loading}>{loading ? "Saving..." : "Apply Changes"}</button>
+
+                        <div className="premium_glass_card mt-4">
+                            <h3 className="section_title"><FiShield /> Legal & Tax</h3>
+                            <div className="form_grid_2">
+                                <div className="premium_input_group">
+                                    <label>Tax ID</label>
+                                    <input type="text" value={editForm.taxId} onChange={e => setEditForm({ ...editForm, taxId: e.target.value })} />
+                                </div>
+                                <div className="premium_input_group">
+                                    <label>Tax Country</label>
+                                    <input type="text" value={editForm.taxCountry} onChange={e => setEditForm({ ...editForm, taxCountry: e.target.value })} />
+                                </div>
+                            </div>
                         </div>
-                    </div>
+
+                        <div className="premium_form_actions">
+                            <button className="btn_premium_cancel" onClick={() => setIsEditing(false)}>Cancel</button>
+                            <button className="btn_premium_save" onClick={saveChanges} disabled={loading}>
+                                {loading ? "Saving..." : <><FiSave /> Save Changes</>}
+                            </button>
+                        </div>
+                    </motion.div>
                 ) : (
-                    <div className="v3_info_grid">
-                        <div className="v3_info_card">
-                            <label><FiMail /> EMAIL ADDRESS</label>
-                            <span className="v3_value">{editForm.email}</span>
+                    /* Read-Only View showing ALL fields */
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="premium_view_layout">
+
+                        {editForm.bio && (
+                            <div className="premium_glass_card mb-4">
+                                <h3 className="section_title"><FiInfo /> About Me</h3>
+                                <p className="read_only_text">{editForm.bio}</p>
+                            </div>
+                        )}
+
+                        <div className="premium_glass_card mb-4">
+                            <h3 className="section_title"><FiUser /> Personal Details</h3>
+                            <div className="read_only_grid">
+                                <div className="read_only_item">
+                                    <label>Full Name</label>
+                                    <span>{editForm.firstName} {editForm.lastName}</span>
+                                </div>
+                                <div className="read_only_item">
+                                    <label>Occupation</label>
+                                    <span>{editForm.occupation || "--"}</span>
+                                </div>
+                                <div className="read_only_item">
+                                    <label>Date of Birth</label>
+                                    <span>{editForm.dob || "--"}</span>
+                                </div>
+                                <div className="read_only_item">
+                                    <label>Gender</label>
+                                    <span>{editForm.gender || "--"}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="v3_info_card">
-                            <label><FiPhone /> PHONE NUMBER</label>
-                            <span className="v3_value">{editForm.mobileNumber || "--"}</span>
+
+                        <div className="premium_glass_card mb-4">
+                            <h3 className="section_title"><FiMail /> Contact & Location</h3>
+                            <div className="read_only_grid">
+                                <div className="read_only_item">
+                                    <label>Email Address</label>
+                                    <span>{editForm.email || "--"}</span>
+                                </div>
+                                <div className="read_only_item">
+                                    <label>Phone Number</label>
+                                    <span>{editForm.mobileNumber || "--"}</span>
+                                </div>
+                                <div className="read_only_item full_width">
+                                    <label>Residential Address</label>
+                                    <span>{editForm.residentialAddress || "--"}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="v3_info_card">
-                            <label><FiTarget /> ACCOUNT STATUS</label>
-                            <span className="v3_value status_active">Active</span>
+
+                        <div className="premium_glass_card mb-4">
+                            <h3 className="section_title"><FiShield /> Legal & Tax</h3>
+                            <div className="read_only_grid">
+                                <div className="read_only_item">
+                                    <label>Tax ID</label>
+                                    <span>{editForm.taxId || "--"}</span>
+                                </div>
+                                <div className="read_only_item">
+                                    <label>Tax Country</label>
+                                    <span>{editForm.taxCountry || "--"}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="v3_info_card">
-                            <label><FiClock /> ACTIVE SINCE</label>
-                            <span className="v3_value">18 March 2026</span>
-                        </div>
-                        <div className="v3_info_card full">
-                            <label><FiMapPin /> PRIMARY RESIDENCE</label>
-                            <span className="v3_value">{editForm.residentialAddress || "Not Provided"}</span>
-                        </div>
-                    </div>
+
+                    </motion.div>
                 )}
             </div>
         </motion.div>

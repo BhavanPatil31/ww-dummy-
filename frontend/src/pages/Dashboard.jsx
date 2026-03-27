@@ -39,6 +39,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [activeView, setActiveView] = useState(
         () => localStorage.getItem('activeView') || 'dashboard'
     );
+    const [showNotifications, setShowNotifications] = useState(false);
 
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
@@ -140,6 +141,29 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             return () => clearInterval(id);
         }
     }, [user, fetchNotifications]);
+
+    const markNotificationAsRead = async (notifId) => {
+        try {
+            const token = localStorage.getItem('jwt_token');
+            await axios.put(`http://localhost:8088/api/notifications/${notifId}/read`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchNotifications();
+        } catch (err) { console.error("Failed to mark read", err); }
+    };
+
+    const clearAllNotifications = async () => {
+        if (!user) return;
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const userId = user?.userId || user?.id;
+            await axios.delete(`http://localhost:8088/api/notifications/user/${userId}/clear-all`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setNotifications([]);
+            setUnreadCount(0);
+        } catch (err) { console.error("Failed to clear", err); }
+    };
 
     // ── Derived metrics ──────────────────────────────────────────
     const metrics = useMemo(() => {
@@ -253,17 +277,66 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 <header className="dashboard-header">
                     <div className="welcome-section">
                         <h1>
-                            {activeView === 'dashboard' ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
-                                : activeView === 'profile' ? 'Account Overview' : 'WealthWise'}
+                            {activeView === 'dashboard'
+                                ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
+                                : activeView === 'profile'  ? 'Account Overview'
+                                : activeView === 'addInvestment' ? 'Add Investment'
+                                : activeView === 'portfolio' ? 'My Portfolio'
+                                : activeView === 'goals'    ? 'Goals & Targets'
+                                : 'WealthWise'}
                         </h1>
-                        <p>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        <p>
+                            {activeView === 'dashboard'
+                                ? new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                : activeView === 'addInvestment' ? 'Track a new mutual fund, SIP or lump-sum investment'
+                                : activeView === 'portfolio'     ? 'Monitor performance across all your holdings'
+                                : activeView === 'profile'       ? 'Manage your personal details and preferences'
+                                : activeView === 'goals'         ? 'Set and track your financial milestones'
+                                : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
                     </div>
                     <div className="header-actions">
-                        <button className="icon-btn" onClick={() => { }}>
-                            <FiBell />
-                            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-                        </button>
-                        <div className="profile-pill" onClick={() => setActiveView('profile')}>
+                        <div className="notification-wrapper">
+                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`} 
+                                onClick={() => setShowNotifications(!showNotifications)}>
+                                <FiBell />
+                                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+                            </button>
+                            
+                            {showNotifications && (
+                                <div className="notifications-dropdown">
+                                    <div className="notif-header">
+                                        <h3>Notifications</h3>
+                                        {notifications.length > 0 && (
+                                            <button onClick={clearAllNotifications} className="clear-all-btn">Clear All</button>
+                                        )}
+                                    </div>
+                                    <div className="notif-list">
+                                        {notifications.length === 0 ? (
+                                            <div className="notif-empty">No notifications</div>
+                                        ) : (
+                                            notifications.map(n => (
+                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`} 
+                                                    onClick={() => !n.read && markNotificationAsRead(n.id)}>
+                                                    <div className="notif-icon-circle">
+                                                        <FiAlertTriangle />
+                                                    </div>
+                                                    <div className="notif-content">
+                                                        <p className="notif-msg">{n.message}</p>
+                                                        <span className="notif-time">{formatDate(n.createdAt)}</span>
+                                                    </div>
+                                                    {!n.read && <div className="unread-dot"></div>}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="profile-pill" onClick={() => {
+                            setActiveView('profile');
+                            setShowNotifications(false);
+                        }}>
                             <FiUser /> {user?.name || 'User'}
                         </div>
                     </div>
