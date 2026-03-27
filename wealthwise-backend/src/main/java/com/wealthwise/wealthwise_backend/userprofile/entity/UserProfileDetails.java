@@ -45,6 +45,15 @@ public class UserProfileDetails {
     @Column(name = "residential_address", columnDefinition = "TEXT")
     private String residentialAddress;
 
+    @Column(name = "occupation", length = 100)
+    private String occupation;
+
+    @Column(name = "dob", length = 20)
+    private String dob;
+
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
     @CreationTimestamp
     @Column(name = "created_date", updatable = false)
     private LocalDateTime createdDate;
@@ -93,6 +102,18 @@ public class UserProfileDetails {
         return residentialAddress;
     }
 
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public String getDob() {
+        return dob;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
     public LocalDateTime getCreatedDate() {
         return createdDate;
     }
@@ -138,6 +159,18 @@ public class UserProfileDetails {
         this.residentialAddress = residentialAddress;
     }
 
+    public void setOccupation(String occupation) {
+        this.occupation = occupation;
+    }
+
+    public void setDob(String dob) {
+        this.dob = dob;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
     public void setCreatedDate(LocalDateTime d) {
         this.createdDate = d;
     }
@@ -151,6 +184,7 @@ public class UserProfileDetails {
         private Long userId;
         private String name, email, phone, password;
         private String gender, taxId, taxCountry, residentialAddress;
+        private String occupation, dob, bio;
 
         public Builder userId(Long userId) {
             this.userId = userId;
@@ -197,6 +231,21 @@ public class UserProfileDetails {
             return this;
         }
 
+        public Builder occupation(String occupation) {
+            this.occupation = occupation;
+            return this;
+        }
+
+        public Builder dob(String dob) {
+            this.dob = dob;
+            return this;
+        }
+
+        public Builder bio(String bio) {
+            this.bio = bio;
+            return this;
+        }
+
         public UserProfileDetails build() {
             UserProfileDetails p = new UserProfileDetails();
             p.userId = this.userId;
@@ -208,6 +257,9 @@ public class UserProfileDetails {
             p.taxId = this.taxId;
             p.taxCountry = this.taxCountry;
             p.residentialAddress = this.residentialAddress;
+            p.occupation = this.occupation;
+            p.dob = this.dob;
+            p.bio = this.bio;
             return p;
         }
     }

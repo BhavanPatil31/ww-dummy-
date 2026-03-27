@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
-import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon } from "react-icons/fi";
+import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
 function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
   const [scrolled, setScrolled] = useState(false);
@@ -230,9 +230,9 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
         <div className="footer-bottom">
           <p>&copy; {new Date().getFullYear()} WealthWise. All rights reserved.</p>
           <div className="social-icons">
-            <div className="social-circle"></div>
-            <div className="social-circle"></div>
-            <div className="social-circle"></div>
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Twitter"><FiTwitter /></a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Instagram"><FiInstagram /></a>
+            <a href="mailto:shankarrao0420@gmail.com" className="social-circle" title="Email Us"><FiMail /></a>
           </div>
         </div>
       </footer>
