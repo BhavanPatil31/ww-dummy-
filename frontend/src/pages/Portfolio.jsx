@@ -187,11 +187,12 @@ export default function Portfolio({ user }) {
     const openEdit = (inv) => {
         setSelectedInvestment(inv);
         setEditForm({
-            amount: inv.amount || '',
+            scheme_name: inv.scheme_name || '',
             nav_at_buy: inv.nav_at_buy || '',
+            amount: inv.amount || '',
             buy_date: inv.buy_date || inv.start_date || '',
-            frequency: inv.frequency || 'Monthly',
-            scheme_name: inv.scheme_name || ''
+            end_date: inv.end_date || '',
+            frequency: inv.frequency || 'Monthly'
         });
         setEditModalOpen(true);
     };
@@ -199,15 +200,20 @@ export default function Portfolio({ user }) {
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
+
+        const navAtBuy = parseFloat(editForm.nav_at_buy || selectedInvestment.nav_at_buy || 0);
+        const amountValue = parseFloat(editForm.amount || 0);
+
         const payload = {
             ...selectedInvestment,
-            ...editForm,
-            amount: parseFloat(editForm.amount),
-            amount_invested: parseFloat(editForm.amount),
-            nav_at_buy: parseFloat(editForm.nav_at_buy),
-            units: editForm.nav_at_buy > 0 ? parseFloat(editForm.amount) / parseFloat(editForm.nav_at_buy) : selectedInvestment.units,
+            amount: amountValue,
+            amount_invested: amountValue,
             buy_date: editForm.buy_date,
-            start_date: editForm.buy_date // Keep start_date in sync
+            start_date: editForm.buy_date,
+            end_date: editForm.end_date || null,
+            frequency: editForm.frequency,
+            nav_at_buy: navAtBuy,
+            units: navAtBuy > 0 ? amountValue / navAtBuy : selectedInvestment.units
         };
 
         try {
@@ -646,6 +652,9 @@ export default function Portfolio({ user }) {
                                 <th>
                                     Investment Date
                                 </th>
+                                <th>
+                                    End Date
+                                </th>
                                 <th className="th-sortable" onClick={() => handleSort('amount')}>
                                     Amount Invested {sortIcon('amount')}
                                 </th>
@@ -672,6 +681,7 @@ export default function Portfolio({ user }) {
                                             </div>
                                         </td>
                                         <td className="td-date">{formatDate(inv.buy_date || inv.start_date)}</td>
+                                        <td className="td-date">{formatDate(inv.end_date)}</td>
                                         <td className="td-amount">{formatCurrency(inv.amount)}</td>
                                         <td className={`td-return ${isPositive ? 'positive' : 'negative'}`}>
                                             <span className="return-badge">
@@ -728,6 +738,12 @@ export default function Portfolio({ user }) {
                                     <span className="detail-label"><FiCalendar /> Buy Date</span>
                                     <span className="detail-value">{formatDate(selectedInvestment.buy_date || selectedInvestment.start_date)}</span>
                                 </div>
+                                {selectedInvestment.end_date && (
+                                    <div className="detail-item">
+                                        <span className="detail-label"><FiCalendar /> End Date</span>
+                                        <span className="detail-value">{formatDate(selectedInvestment.end_date)}</span>
+                                    </div>
+                                )}
                                 <div className="detail-item">
                                     <span className="detail-label"><FiDollarSign /> Amount Invested</span>
                                     <span className="detail-value">{formatCurrency(selectedInvestment.amount)}</span>
@@ -744,7 +760,7 @@ export default function Portfolio({ user }) {
                                     <span className="detail-label"><FiActivity /> Current NAV (Est.)</span>
                                     <span className="detail-value">₹{getCurrentNav(selectedInvestment).toFixed(2)}</span>
                                 </div>
-                                {selectedInvestment.frequency && (
+                                {selectedInvestment.frequency && selectedInvestment.investment_type === 'SIP' && (
                                     <div className="detail-item">
                                         <span className="detail-label"><FiRefreshCw /> SIP Frequency</span>
                                         <span className="detail-value">{selectedInvestment.frequency}</span>
@@ -784,8 +800,8 @@ export default function Portfolio({ user }) {
                                         <input
                                             type="text"
                                             value={editForm.scheme_name}
-                                            onChange={(e) => setEditForm({ ...editForm, scheme_name: e.target.value })}
-                                            required
+                                            readOnly
+                                            style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
                                         />
                                     </div>
                                 </div>
@@ -809,8 +825,34 @@ export default function Portfolio({ user }) {
                                             <input
                                                 type="number"
                                                 value={editForm.nav_at_buy}
-                                                onChange={(e) => setEditForm({ ...editForm, nav_at_buy: e.target.value })}
-                                                required step="0.01"
+                                                readOnly
+                                                style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Current NAV</label>
+                                        <div className="input-wrapper">
+                                            <FiActivity className="input-icon" />
+                                            <input
+                                                type="number"
+                                                value={getCurrentNav(selectedInvestment).toFixed(2)}
+                                                readOnly
+                                                style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Units Held</label>
+                                        <div className="input-wrapper">
+                                            <FiActivity className="input-icon" />
+                                            <input
+                                                type="number"
+                                                value={parseFloat(selectedInvestment.units || 0).toFixed(4)}
+                                                readOnly
+                                                style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
                                             />
                                         </div>
                                     </div>
@@ -828,21 +870,32 @@ export default function Portfolio({ user }) {
                                             />
                                         </div>
                                     </div>
-                                    {selectedInvestment.investment_type === 'SIP' && (
-                                        <div className="form-group">
-                                            <label>SIP Frequency</label>
-                                            <select
-                                                className="styled-select"
-                                                value={editForm.frequency}
-                                                onChange={(e) => setEditForm({ ...editForm, frequency: e.target.value })}
-                                            >
-                                                <option value="Weekly">Weekly</option>
-                                                <option value="Monthly">Monthly</option>
-                                                <option value="Quarterly">Quarterly</option>
-                                            </select>
+                                    <div className="form-group">
+                                        <label>End Date (Optional)</label>
+                                        <div className="input-wrapper">
+                                            <FiCalendar className="input-icon" />
+                                            <input
+                                                type="date"
+                                                value={editForm.end_date}
+                                                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                                            />
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
+                                {selectedInvestment.investment_type === 'SIP' && (
+                                    <div className="form-group">
+                                        <label>SIP Frequency</label>
+                                        <select
+                                            className="styled-select"
+                                            value={editForm.frequency}
+                                            onChange={(e) => setEditForm({ ...editForm, frequency: e.target.value })}
+                                        >
+                                            <option value="Weekly">Weekly</option>
+                                            <option value="Monthly">Monthly</option>
+                                            <option value="Quarterly">Quarterly</option>
+                                        </select>
+                                    </div>
+                                )}
 
                                 <div className="form-actions">
                                     <button type="button" className="btn-cancel" onClick={closeEdit}>Cancel</button>
