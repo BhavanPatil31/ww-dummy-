@@ -1,0 +1,348 @@
+/* WealthWise Premium Tax Summary Theme */
+:root {
+    --ww-bg-main: #0b1120;
+    /* Deepest Navy Background */
+    --ww-bg-card: #151c2c;
+    /* Card background */
+    --ww-bg-hover: #1e293b;
+    /* Hover state */
+
+    --ww-text-main: #f8fafc;
+    /* Bright white text */
+    --ww-text-muted: #94a3b8;
+    /* Soft gray */
+
+    --ww-border: rgba(255, 255, 255, 0.08);
+
+    --ww-blue: #3b82f6;
+    --ww-purple: #8b5cf6;
+    --ww-orange: #f97316;
+    --ww-green: #10b981;
+    --ww-red: #ef4444;
+}
+
+/* Base Layout */
+.ww-tax-container {
+    background-color: var(--ww-bg-main);
+    min-height: 100vh;
+    padding: 32px 40px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--ww-text-main);
+    box-sizing: border-box;
+}
+
+/* Header */
+.ww-tax-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 32px;
+}
+
+.ww-title-section h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.ww-title-section p {
+    margin: 0;
+    color: var(--ww-text-muted);
+    font-size: 15px;
+}
+
+/* Outline Button */
+.ww-btn-outline {
+    background: transparent;
+    border: 1px solid var(--ww-border);
+    color: var(--ww-text-main);
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ww-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Grid Layout for Top Section */
+.ww-tax-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1.5fr;
+    /* FY Card is slightly narrower */
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+/* Cards */
+.ww-tax-card {
+    background: var(--ww-bg-card);
+    border: 1px solid var(--ww-border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.ww-tax-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.border-top-purple {
+    border-top: 4px solid var(--ww-purple);
+}
+
+.border-top-orange {
+    border-top: 4px solid var(--ww-orange);
+}
+
+.ww-card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.ww-card-label {
+    color: var(--ww-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.ww-tax-card h3 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    letter-spacing: -1px;
+}
+
+.ww-card-subtext {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ww-text-muted);
+}
+
+/* Small Badges inside Cards */
+.ww-badge-small {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ww-badge-small.purple {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+}
+
+.ww-badge-small.orange {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fdba74;
+}
+
+/* Financial Year Card specifics */
+.ww-fy-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.ww-card-top-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.ww-icon-blue {
+    color: var(--ww-blue);
+    font-size: 20px;
+}
+
+.ww-select-wrapper {
+    margin: 12px 0;
+    position: relative;
+}
+
+.ww-fy-select {
+    width: 100%;
+    appearance: none;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--ww-border);
+    color: var(--ww-text-main);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+}
+
+.ww-fy-select:focus {
+    border-color: var(--ww-blue);
+}
+
+.ww-fy-select option {
+    background: var(--ww-bg-main);
+    color: var(--ww-text-main);
+}
+
+.ww-card-help {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ww-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Table Section */
+.ww-tax-table-card {
+    background: var(--ww-bg-card);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid var(--ww-border);
+}
+
+.ww-table-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.ww-table-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ww-icon-btn {
+    background: transparent;
+    border: 1px solid var(--ww-border);
+    color: var(--ww-text-muted);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.ww-icon-btn:hover {
+    color: var(--ww-text-main);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Data Table */
+.ww-table-responsive {
+    overflow-x: auto;
+}
+
+.ww-data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ww-data-table th {
+    text-align: left;
+    padding: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ww-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--ww-border);
+}
+
+.ww-data-table td {
+    padding: 20px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--ww-border);
+    vertical-align: middle;
+}
+
+.ww-data-table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.ww-data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ww-td-primary {
+    font-weight: 500;
+    color: var(--ww-text-main);
+}
+
+.ww-td-muted {
+    color: var(--ww-text-muted);
+}
+
+.ww-td-bold {
+    font-weight: 600;
+}
+
+.ww-gain-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Text Colors */
+.ww-text-green {
+    color: var(--ww-green) !important;
+}
+
+.ww-text-red {
+    color: var(--ww-red) !important;
+}
+
+/* Tax Type Pills */
+.ww-type-pill {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.pill-ltcg {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.pill-stcg {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fdba74;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.ww-empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--ww-text-muted);
+    font-style: italic;
+    border: 1px dashed var(--ww-border);
+    border-radius: 12px;
+}

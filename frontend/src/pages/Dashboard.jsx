@@ -13,6 +13,7 @@ import {
 import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
+import TaxSummary from './TaxSummary';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
@@ -117,7 +118,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     }, [user, timeFrame, getCurrentValue, generateHistory]);
 
     useEffect(() => {
-        if (user && activeView === 'dashboard') fetchAllData();
+        if (user && (activeView === 'dashboard' || activeView === 'tax')) {
+            fetchAllData();
+        }
     }, [user, activeView, timeFrame]);
 
     // Notifications
@@ -259,13 +262,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
                         { view: 'addInvestment', icon: <FiPlus />, label: 'Add Investment' },
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
+                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
                             {icon} {label}
                         </button>
                     ))}
                     <button className="nav-item"><FiTarget /> Goals</button>
-                    <button className="nav-item"><FiFileText /> Tax Reports</button>
                 </nav>
                 <div className="sidebar-bottom">
                     <button className="logout-btn" onClick={onLogout}><FiLogOut /> Logout</button>
@@ -282,6 +285,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 : activeView === 'profile'  ? 'Account Overview'
                                 : activeView === 'addInvestment' ? 'Add Investment'
                                 : activeView === 'portfolio' ? 'My Portfolio'
+                                : activeView === 'tax' ? 'Tax Summary'
                                 : activeView === 'goals'    ? 'Goals & Targets'
                                 : 'WealthWise'}
                         </h1>
@@ -291,6 +295,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 : activeView === 'addInvestment' ? 'Track a new mutual fund, SIP or lump-sum investment'
                                 : activeView === 'portfolio'     ? 'Monitor performance across all your holdings'
                                 : activeView === 'profile'       ? 'Manage your personal details and preferences'
+                                : activeView === 'tax'           ? 'Review your realized capital gains and tax liabilities'
                                 : activeView === 'goals'         ? 'Set and track your financial milestones'
                                 : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
@@ -574,6 +579,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <AddInvestment user={user} onBackToDashboard={() => { fetchAllData(); setActiveView('dashboard'); }} />
                     ) : activeView === 'portfolio' ? (
                         <Portfolio user={user} />
+                    ) : activeView === 'tax' ? (
+                        <TaxSummary user={user} investments={investments} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
                     ) : null}
