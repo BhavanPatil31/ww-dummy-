@@ -37,4 +37,13 @@ public class InvestmentController {
     public void deleteInvestment(@PathVariable("id") Long id) {
         investmentService.deleteInvestment(id);
     }
+
+    @PostMapping("/{id}/sell")
+    public Investment sellInvestment(@PathVariable("id") Long id, @RequestBody(required = false) java.util.Map<String, String> payload) {
+        java.time.LocalDate sellDate = java.time.LocalDate.now();
+        if (payload != null && payload.containsKey("sellDate") && payload.get("sellDate") != null) {
+            sellDate = java.time.LocalDate.parse(payload.get("sellDate"));
+        }
+        return investmentService.sellInvestment(id, sellDate);
+    }
 }

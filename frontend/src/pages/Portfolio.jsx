@@ -38,8 +38,10 @@ export default function Portfolio({ user }) {
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [sellModalOpen, setSellModalOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [editForm, setEditForm] = useState({});
+    const [sellForm, setSellForm] = useState({ sell_date: '', sellNav: '' });
     const [actionStatus, setActionStatus] = useState({ type: '', message: '' });
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
 
@@ -55,7 +57,7 @@ export default function Portfolio({ user }) {
                 const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                investmentsData = invRes.data || [];
+                investmentsData = (invRes.data || []).filter(inv => !inv.end_date && inv.status !== 'SOLD');
             } catch (e) {
                 console.error("Error fetching investments", e);
             }
@@ -231,6 +233,50 @@ export default function Portfolio({ user }) {
         setTimeout(() => setActionStatus({ type: '', message: '' }), 3500);
     };
 
+    // ── Sell ───────────────────────────────────────────────────
+    const openSell = (inv) => {
+        setSelectedInvestment(inv);
+        const today = new Date().toISOString().split('T')[0];
+        setSellForm({ sell_date: today, sellNav: getCurrentNav(inv).toFixed(2) });
+        setSellModalOpen(true);
+    };
+    const closeSell = () => { setSellModalOpen(false); setSelectedInvestment(null); setSellForm({ sell_date: '', sellNav: '' }); };
+
+    const handleSellSubmit = async (e) => {
+        e.preventDefault();
+
+        // Prevent future dates
+        const selectedDate = new Date(sellForm.sell_date);
+        const todayDate = new Date();
+        todayDate.setHours(23, 59, 59, 999);
+        if (selectedDate > todayDate) {
+            setActionStatus({ type: 'error', message: 'Sell date cannot be in the future.' });
+            setTimeout(() => setActionStatus({ type: '', message: '' }), 3500);
+            return;
+        }
+
+        const payload = {
+            sellDate: sellForm.sell_date,
+            sellNav: String(sellForm.sellNav || 0),
+            status: 'SOLD'
+        };
+
+        try {
+            const token = localStorage.getItem("jwt_token");
+            const invId = selectedInvestment.investment_id || selectedInvestment.id;
+            await axios.post(`http://localhost:8088/api/investments/${invId}/sell`, payload, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            setActionStatus({ type: 'success', message: 'Investment sold successfully!' });
+            closeSell();
+            fetchInvestments();
+        } catch (err) {
+            console.error(err);
+            setActionStatus({ type: 'error', message: 'Sell out failed. Please try again.' });
+        }
+        setTimeout(() => setActionStatus({ type: '', message: '' }), 3500);
+    };
+
     // ── Delete ─────────────────────────────────────────────────
     const openDelete = (inv) => { setDeleteTarget(inv); setDeleteConfirmOpen(true); };
     const closeDelete = () => { setDeleteTarget(null); setDeleteConfirmOpen(false); };
@@ -376,7 +422,7 @@ export default function Portfolio({ user }) {
 
                     {/* ── Best Performer + Portfolio Health below chart ── */}
                     {investments.length > 0 && (() => {
-                        const best = [...investments].sort((a,b) => getReturnPct(b) - getReturnPct(a))[0];
+                        const best = [...investments].sort((a, b) => getReturnPct(b) - getReturnPct(a))[0];
                         const diversification = new Set(investments.map(i => i.investment_type)).size;
                         const score = Math.min(100, Math.round(
                             (totalReturn >= 0 ? 40 : 10) +
@@ -389,8 +435,8 @@ export default function Portfolio({ user }) {
                                 {best && (
                                     <div className="p-summary-card highlight-green">
                                         <span className="p-label">🏆 Best Performer</span>
-                                        <span className="p-value green" style={{fontSize:'0.92rem', lineHeight:1.35}}>
-                                            {(best.scheme_name || `Fund #${best.fund_id}`).slice(0,30)}{(best.scheme_name||'').length>30?'…':''}
+                                        <span className="p-value green" style={{ fontSize: '0.92rem', lineHeight: 1.35 }}>
+                                            {(best.scheme_name || `Fund #${best.fund_id}`).slice(0, 30)}{(best.scheme_name || '').length > 30 ? '…' : ''}
                                         </span>
                                         <span className="p-sub green">+{getReturnPct(best).toFixed(2)}% return</span>
                                     </div>
@@ -399,7 +445,7 @@ export default function Portfolio({ user }) {
                                     <span className="p-label">📊 Portfolio Health</span>
                                     <div className="health-bar-wrap">
                                         <div className="health-bar-track">
-                                            <div className={`health-bar-fill ${scoreColor}`} style={{width:`${score}%`}} />
+                                            <div className={`health-bar-fill ${scoreColor}`} style={{ width: `${score}%` }} />
                                         </div>
                                         <span className={`p-value ${scoreColor}`}>{score}/100</span>
                                     </div>
@@ -459,7 +505,7 @@ export default function Portfolio({ user }) {
                             value: parseFloat(value.toFixed(0)),
                             pct: totalVal > 0 ? ((value / totalVal) * 100).toFixed(1) : '0.0'
                         }));
-                        const BAR_COLORS = ['#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444','#14b8a6'];
+                        const BAR_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'];
 
                         const AllocTooltip = ({ active, payload }) => {
                             if (!active || !payload?.length) return null;
@@ -491,15 +537,15 @@ export default function Portfolio({ user }) {
 
                         return (
                             <div className="sidebar-bar-chart-card">
-                                <h3 className="chart-title" style={{marginBottom:'16px'}}>Allocation Breakdown</h3>
+                                <h3 className="chart-title" style={{ marginBottom: '16px' }}>Allocation Breakdown</h3>
                                 <ResponsiveContainer width="100%" height={barData.length * 52 + 10}>
-                                    <BarChart data={barData} layout="vertical" margin={{top:0,right:40,left:0,bottom:0}} barCategoryGap="35%">
+                                    <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 40, left: 0, bottom: 0 }} barCategoryGap="35%">
                                         <XAxis type="number" hide domain={[0, totalVal]} />
                                         <YAxis type="category" dataKey="name" width={72}
-                                            tick={{fill:'#94a3b8', fontSize:11, fontWeight:600}}
+                                            tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
                                             axisLine={false} tickLine={false} />
                                         <Tooltip content={<AllocTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)', rx: 6 }} />
-                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v, entry) => `${barData.find(b=>b.value===v)?.pct||''}%` }}>
+                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v, entry) => `${barData.find(b => b.value === v)?.pct || ''}%` }}>
                                             {barData.map((entry, i) => (
                                                 <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
                                             ))}
@@ -515,117 +561,117 @@ export default function Portfolio({ user }) {
 
             {/* ── Professional Features Row ── */}
             {investments.length > 0 && (() => {
-                const sorted_by_ret = [...investments].sort((a,b) => getReturnPct(b) - getReturnPct(a));
+                const sorted_by_ret = [...investments].sort((a, b) => getReturnPct(b) - getReturnPct(a));
                 const winners = sorted_by_ret.slice(0, 3);
-                const losers  = sorted_by_ret.slice().reverse().slice(0, 3).filter(i => getReturnPct(i) < getReturnPct(winners[winners.length-1]));
-                const types   = [...new Set(investments.map(i => i.investment_type || 'Other'))];
-                const avgReturn = investments.length > 0 ? investments.reduce((s,i) => s + getReturnPct(i), 0) / investments.length : 0;
-                const winRate   = investments.length > 0 ? Math.round((investments.filter(i => getReturnPct(i) >= 0).length / investments.length) * 100) : 0;
-                const maxConc   = Math.max(...types.map(t => {
-                    const val = investments.filter(i => (i.investment_type||'Other') === t).reduce((s,i) => s + getCurrentValue(i), 0);
+                const losers = sorted_by_ret.slice().reverse().slice(0, 3).filter(i => getReturnPct(i) < getReturnPct(winners[winners.length - 1]));
+                const types = [...new Set(investments.map(i => i.investment_type || 'Other'))];
+                const avgReturn = investments.length > 0 ? investments.reduce((s, i) => s + getReturnPct(i), 0) / investments.length : 0;
+                const winRate = investments.length > 0 ? Math.round((investments.filter(i => getReturnPct(i) >= 0).length / investments.length) * 100) : 0;
+                const maxConc = Math.max(...types.map(t => {
+                    const val = investments.filter(i => (i.investment_type || 'Other') === t).reduce((s, i) => s + getCurrentValue(i), 0);
                     return totalCurrentValue > 0 ? (val / totalCurrentValue) * 100 : 0;
                 }));
                 const riskLevel = maxConc > 80 ? 'High' : maxConc > 50 ? 'Medium' : 'Low';
                 const riskColor = maxConc > 80 ? '#ef4444' : maxConc > 50 ? '#f59e0b' : '#22c55e';
                 return (
                     <>
-                    {/* ── Ticker / Market Intel Strip ── */}
-                    <div className="market-intel-strip">
-                        <div className="intel-ticker-inner">
-                            <div className="intel-item"><span className="intel-label">Holdings</span><span className="intel-val">{investments.length}</span></div>
-                            <div className="intel-divider"/>
-                            <div className="intel-item"><span className="intel-label">Win Rate</span><span className="intel-val green">{winRate}%</span></div>
-                            <div className="intel-divider"/>
-                            <div className="intel-item"><span className="intel-label">Avg Return</span><span className={`intel-val ${avgReturn >= 0 ? 'green' : 'red'}`}>{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(2)}%</span></div>
-                            <div className="intel-divider"/>
-                            <div className="intel-item"><span className="intel-label">Asset Classes</span><span className="intel-val">{types.length}</span></div>
-                            <div className="intel-divider"/>
-                            <div className="intel-item"><span className="intel-label">Concentration Risk</span><span className="intel-val" style={{color: riskColor}}>{riskLevel} ({maxConc.toFixed(0)}%)</span></div>
-                            <div className="intel-divider"/>
-                            <div className="intel-item"><span className="intel-label">Portfolio Value</span><span className="intel-val">{formatCurrency(totalCurrentValue)}</span></div>
-                        </div>
-                    </div>
-
-                    {/* ── Top Movers + Risk Exposure ── */}
-                    <div className="pro-features-row">
-                        {/* Top Winners */}
-                        <div className="pro-card movers-card">
-                            <div className="pro-card-header">
-                                <span className="pro-card-title"><FiTrendingUp className="title-icon green-icon"/> Top Winners</span>
-                            </div>
-                            <div className="movers-list">
-                                {winners.map((inv, i) => {
-                                    const ret = getReturnPct(inv);
-                                    return (
-                                        <div key={i} className="mover-row">
-                                            <span className="mover-rank">{i+1}</span>
-                                            <div className="mover-info">
-                                                <span className="mover-name">{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0,26)}{(inv.scheme_name||'').length>26?'…':''}</span>
-                                                <span className="mover-type">{inv.investment_type}</span>
-                                            </div>
-                                            <span className="mover-ret positive">+{ret.toFixed(2)}%</span>
-                                        </div>
-                                    );
-                                })}
+                        {/* ── Ticker / Market Intel Strip ── */}
+                        <div className="market-intel-strip">
+                            <div className="intel-ticker-inner">
+                                <div className="intel-item"><span className="intel-label">Holdings</span><span className="intel-val">{investments.length}</span></div>
+                                <div className="intel-divider" />
+                                <div className="intel-item"><span className="intel-label">Win Rate</span><span className="intel-val green">{winRate}%</span></div>
+                                <div className="intel-divider" />
+                                <div className="intel-item"><span className="intel-label">Avg Return</span><span className={`intel-val ${avgReturn >= 0 ? 'green' : 'red'}`}>{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(2)}%</span></div>
+                                <div className="intel-divider" />
+                                <div className="intel-item"><span className="intel-label">Asset Classes</span><span className="intel-val">{types.length}</span></div>
+                                <div className="intel-divider" />
+                                <div className="intel-item"><span className="intel-label">Concentration Risk</span><span className="intel-val" style={{ color: riskColor }}>{riskLevel} ({maxConc.toFixed(0)}%)</span></div>
+                                <div className="intel-divider" />
+                                <div className="intel-item"><span className="intel-label">Portfolio Value</span><span className="intel-val">{formatCurrency(totalCurrentValue)}</span></div>
                             </div>
                         </div>
 
-                        {/* Top Losers */}
-                        <div className="pro-card movers-card">
-                            <div className="pro-card-header">
-                                <span className="pro-card-title"><FiTrendingDown className="title-icon red-icon"/> Underperformers</span>
-                            </div>
-                            <div className="movers-list">
-                                {sorted_by_ret.slice().reverse().slice(0, 3).map((inv, i) => {
-                                    const ret = getReturnPct(inv);
-                                    return (
-                                        <div key={i} className="mover-row">
-                                            <span className="mover-rank">{i+1}</span>
-                                            <div className="mover-info">
-                                                <span className="mover-name">{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0,26)}{(inv.scheme_name||'').length>26?'…':''}</span>
-                                                <span className="mover-type">{inv.investment_type}</span>
-                                            </div>
-                                            <span className={`mover-ret ${ret >= 0 ? 'positive' : 'negative'}`}>{ret >= 0 ? '+' : ''}{ret.toFixed(2)}%</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Risk Exposure Meter */}
-                        <div className="pro-card risk-card">
-                            <div className="pro-card-header">
-                                <span className="pro-card-title"><FiActivity className="title-icon blue-icon"/> Risk Exposure</span>
-                                <span className="risk-level-badge" style={{background: `${riskColor}20`, color: riskColor, border: `1px solid ${riskColor}40`}}>{riskLevel}</span>
-                            </div>
-                            <div className="risk-meter-wrap">
-                                <div className="risk-meter-track">
-                                    <div className="risk-meter-fill" style={{width:`${maxConc}%`, background: riskColor}} />
-                                    <div className="risk-zone low" />
-                                    <div className="risk-zone med" />
-                                    <div className="risk-zone high" />
+                        {/* ── Top Movers + Risk Exposure ── */}
+                        <div className="pro-features-row">
+                            {/* Top Winners */}
+                            <div className="pro-card movers-card">
+                                <div className="pro-card-header">
+                                    <span className="pro-card-title"><FiTrendingUp className="title-icon green-icon" /> Top Winners</span>
                                 </div>
-                                <div className="risk-labels">
-                                    <span>Low</span><span>Med</span><span>High</span>
+                                <div className="movers-list">
+                                    {winners.map((inv, i) => {
+                                        const ret = getReturnPct(inv);
+                                        return (
+                                            <div key={i} className="mover-row">
+                                                <span className="mover-rank">{i + 1}</span>
+                                                <div className="mover-info">
+                                                    <span className="mover-name">{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 26)}{(inv.scheme_name || '').length > 26 ? '…' : ''}</span>
+                                                    <span className="mover-type">{inv.investment_type}</span>
+                                                </div>
+                                                <span className="mover-ret positive">+{ret.toFixed(2)}%</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                            <div className="risk-breakdown">
-                                {types.map((t, i) => {
-                                    const val = investments.filter(inv => (inv.investment_type||'Other') === t).reduce((s,inv) => s + getCurrentValue(inv), 0);
-                                    const pct = totalCurrentValue > 0 ? (val / totalCurrentValue) * 100 : 0;
-                                    const COLORS = ['#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444','#14b8a6'];
-                                    return (
-                                        <div key={i} className="risk-row">
-                                            <span className="risk-dot" style={{background: COLORS[i % COLORS.length]}} />
-                                            <span className="risk-name">{t}</span>
-                                            <div className="risk-bar-mini"><div style={{width:`${pct}%`, background: COLORS[i % COLORS.length], height:'100%', borderRadius:'4px'}} /></div>
-                                            <span className="risk-pct">{pct.toFixed(0)}%</span>
-                                        </div>
-                                    );
-                                })}
+
+                            {/* Top Losers */}
+                            <div className="pro-card movers-card">
+                                <div className="pro-card-header">
+                                    <span className="pro-card-title"><FiTrendingDown className="title-icon red-icon" /> Underperformers</span>
+                                </div>
+                                <div className="movers-list">
+                                    {sorted_by_ret.slice().reverse().slice(0, 3).map((inv, i) => {
+                                        const ret = getReturnPct(inv);
+                                        return (
+                                            <div key={i} className="mover-row">
+                                                <span className="mover-rank">{i + 1}</span>
+                                                <div className="mover-info">
+                                                    <span className="mover-name">{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 26)}{(inv.scheme_name || '').length > 26 ? '…' : ''}</span>
+                                                    <span className="mover-type">{inv.investment_type}</span>
+                                                </div>
+                                                <span className={`mover-ret ${ret >= 0 ? 'positive' : 'negative'}`}>{ret >= 0 ? '+' : ''}{ret.toFixed(2)}%</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Risk Exposure Meter */}
+                            <div className="pro-card risk-card">
+                                <div className="pro-card-header">
+                                    <span className="pro-card-title"><FiActivity className="title-icon blue-icon" /> Risk Exposure</span>
+                                    <span className="risk-level-badge" style={{ background: `${riskColor}20`, color: riskColor, border: `1px solid ${riskColor}40` }}>{riskLevel}</span>
+                                </div>
+                                <div className="risk-meter-wrap">
+                                    <div className="risk-meter-track">
+                                        <div className="risk-meter-fill" style={{ width: `${maxConc}%`, background: riskColor }} />
+                                        <div className="risk-zone low" />
+                                        <div className="risk-zone med" />
+                                        <div className="risk-zone high" />
+                                    </div>
+                                    <div className="risk-labels">
+                                        <span>Low</span><span>Med</span><span>High</span>
+                                    </div>
+                                </div>
+                                <div className="risk-breakdown">
+                                    {types.map((t, i) => {
+                                        const val = investments.filter(inv => (inv.investment_type || 'Other') === t).reduce((s, inv) => s + getCurrentValue(inv), 0);
+                                        const pct = totalCurrentValue > 0 ? (val / totalCurrentValue) * 100 : 0;
+                                        const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'];
+                                        return (
+                                            <div key={i} className="risk-row">
+                                                <span className="risk-dot" style={{ background: COLORS[i % COLORS.length] }} />
+                                                <span className="risk-name">{t}</span>
+                                                <div className="risk-bar-mini"><div style={{ width: `${pct}%`, background: COLORS[i % COLORS.length], height: '100%', borderRadius: '4px' }} /></div>
+                                                <span className="risk-pct">{pct.toFixed(0)}%</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
-                    </div>
                     </>
                 );
             })()}
@@ -651,9 +697,6 @@ export default function Portfolio({ user }) {
                                 </th>
                                 <th>
                                     Investment Date
-                                </th>
-                                <th>
-                                    End Date
                                 </th>
                                 <th className="th-sortable" onClick={() => handleSort('amount')}>
                                     Amount Invested {sortIcon('amount')}
@@ -681,7 +724,6 @@ export default function Portfolio({ user }) {
                                             </div>
                                         </td>
                                         <td className="td-date">{formatDate(inv.buy_date || inv.start_date)}</td>
-                                        <td className="td-date">{formatDate(inv.end_date)}</td>
                                         <td className="td-amount">{formatCurrency(inv.amount)}</td>
                                         <td className={`td-return ${isPositive ? 'positive' : 'negative'}`}>
                                             <span className="return-badge">
@@ -690,6 +732,11 @@ export default function Portfolio({ user }) {
                                             </span>
                                         </td>
                                         <td className="td-actions">
+                                            {!inv.end_date && (
+                                                <button className="table-icon-btn sell" onClick={() => openSell(inv)} title="Sell Investment">
+                                                    <FiCheckCircle size={18} />
+                                                </button>
+                                            )}
                                             <button className="table-icon-btn view" onClick={() => openView(inv)} title="View Details">
                                                 <FiEye size={18} />
                                             </button>
@@ -801,7 +848,7 @@ export default function Portfolio({ user }) {
                                             type="text"
                                             value={editForm.scheme_name}
                                             readOnly
-                                            style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
+                                            style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
                                         />
                                     </div>
                                 </div>
@@ -826,7 +873,7 @@ export default function Portfolio({ user }) {
                                                 type="number"
                                                 value={editForm.nav_at_buy}
                                                 readOnly
-                                                style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
+                                                style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
                                             />
                                         </div>
                                     </div>
@@ -840,7 +887,7 @@ export default function Portfolio({ user }) {
                                                 type="number"
                                                 value={getCurrentNav(selectedInvestment).toFixed(2)}
                                                 readOnly
-                                                style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
+                                                style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
                                             />
                                         </div>
                                     </div>
@@ -852,7 +899,7 @@ export default function Portfolio({ user }) {
                                                 type="number"
                                                 value={parseFloat(selectedInvestment.units || 0).toFixed(4)}
                                                 readOnly
-                                                style={{backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed'}}
+                                                style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
                                             />
                                         </div>
                                     </div>
@@ -926,6 +973,78 @@ export default function Portfolio({ user }) {
                                     <FiTrash2 /> Delete
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Sell Modal ── */}
+            {sellModalOpen && selectedInvestment && (
+                <div className="modal-overlay" onClick={closeSell}>
+                    <div className="modal-card modal-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3><FiCheckCircle style={{ color: '#22c55e' }} /> Sell Investment</h3>
+                            <button className="modal-close" onClick={closeSell}><FiX /></button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="modal-subtitle">Realize your investment and transfer to Tax Reports</p>
+                            <h4 className="detail-fund-name" style={{ marginTop: '10px' }}>
+                                {selectedInvestment.scheme_name || `Fund #${selectedInvestment.fund_id}`}
+                            </h4>
+                            <div className="detail-grid" style={{ marginTop: '15px' }}>
+                                <div className="detail-item">
+                                    <span className="detail-label"><FiDollarSign /> Invested</span>
+                                    <span className="detail-value">{formatCurrency(selectedInvestment.amount)}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label"><FiActivity /> Current Value</span>
+                                    <span className="detail-value">{formatCurrency(getCurrentValue(selectedInvestment))}</span>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSellSubmit} className="edit-form" style={{ marginTop: '20px' }}>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Sell Date</label>
+                                        <div className="input-wrapper">
+                                            <FiCalendar className="input-icon" />
+                                            <input
+                                                type="date"
+                                                value={sellForm.sell_date}
+                                                onChange={(e) => setSellForm({ ...sellForm, sell_date: e.target.value })}
+                                                required
+                                                max={new Date().toISOString().split('T')[0]} // Block future dates
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Exit NAV (₹)</label>
+                                        <div className="input-wrapper">
+                                            <FiActivity className="input-icon" />
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={sellForm.sellNav || ''}
+                                                onChange={(e) => setSellForm({ ...sellForm, sellNav: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Real-time preview of the outcome */}
+                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase' }}>Estimated Payout</span>
+                                    <span style={{ color: '#10b981', fontSize: '18px', fontWeight: '700' }}>
+                                        {formatCurrency(parseFloat(selectedInvestment?.units || 0) * parseFloat(sellForm.sellNav || 0))}
+                                    </span>
+                                </div>
+
+                                <div className="form-actions" style={{ marginTop: '24px' }}>
+                                    <button type="button" className="btn-cancel" onClick={closeSell}>Cancel</button>
+                                    <button type="submit" className="btn-submit" style={{ backgroundColor: '#22c55e' }}>Confirm Sale</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

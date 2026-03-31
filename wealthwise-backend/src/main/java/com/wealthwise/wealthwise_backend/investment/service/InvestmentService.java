@@ -120,4 +120,21 @@ public class InvestmentService {
             portfolioService.updatePortfolio(userId);
         }
     }
+
+    @Transactional
+    public Investment sellInvestment(Long id, LocalDate sellDate) {
+        Objects.requireNonNull(id, "Investment ID cannot be null");
+        Investment inv = investmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
+
+        inv.setEndDate(sellDate != null ? sellDate : LocalDate.now());
+        Investment saved = investmentRepository.save(inv);
+
+        Long userId = saved.getUserId();
+        if (userId != null) {
+            portfolioService.updatePortfolio(userId);
+            notificationService.createNotification(userId, "You have successfully realized your investment in " + saved.getSchemeName() + ".", "INVESTMENT_SOLD");
+        }
+        return saved;
+    }
 }
