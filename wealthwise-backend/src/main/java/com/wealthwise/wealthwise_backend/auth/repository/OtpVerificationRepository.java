@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface OtpVerificationRepository extends JpaRepository<OtpVerification, Long> {
     Optional<OtpVerification> findTopByUserIdOrderByIdDesc(Long userId);
+    void deleteByUserId(Long userId);
 }

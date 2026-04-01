@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.TimeUnit;
 
 @Service
-@SuppressWarnings("null")
 public class TokenBlacklistService {
 
     @Autowired
