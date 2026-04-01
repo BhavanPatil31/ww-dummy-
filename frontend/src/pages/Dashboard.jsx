@@ -14,6 +14,7 @@ import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
+import GoalPlanning from './GoalPlanning';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
@@ -276,7 +277,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
                         { view: 'addInvestment', icon: <FiPlus />, label: 'Add Investment' },
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
-                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' }
+                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
+                        { view: 'goals', icon: <FiTarget />, label: 'Goals' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
                             {icon} {label}
@@ -598,6 +600,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <TaxSummary user={user} investments={investments} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
+                    ) : activeView === 'goals' ? (
+                        <GoalPlanning user={user} investments={investments} getCurrentValue={getCurrentValue} />
                     ) : null}
                 </div>
             </main>
