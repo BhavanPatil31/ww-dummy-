@@ -24,10 +24,7 @@ function App() {
         }
     });
 
-    const [theme, setTheme] = useState(() => {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
-        return saved ? saved : "system";
-    });
+    const [theme, setTheme] = useState("dark");
 
     const [currentPage, setCurrentPage] = useState(() => {
         try {
@@ -44,26 +41,18 @@ function App() {
     const [showForgot, setShowForgot] = useState(false);
     const [loginEmail, setLoginEmail] = useState("");
 
-    // ✅ 2. Persist page changes
+    // ✅ Theme handling (Locked to dark mode)
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.remove("theme-light");
+        root.classList.add("theme-dark");
+        localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    }, []);
+
+    // ✅ Persist page changes
     useEffect(() => {
         localStorage.setItem("wealthwise_current_page", currentPage);
     }, [currentPage]);
-
-    // ✅ Theme handling (light / dark / system)
-    useEffect(() => {
-        const root = document.documentElement;
-
-        // Remove any explicit theme classes, then apply desired one
-        root.classList.remove("theme-light", "theme-dark");
-
-        if (theme === "light") {
-            root.classList.add("theme-light");
-        } else if (theme === "dark") {
-            root.classList.add("theme-dark");
-        }
-
-        localStorage.setItem("wealthwise_theme", theme);
-    }, [theme]);
 
     // ✅ 3. Logout logic
     const handleLogout = () => {

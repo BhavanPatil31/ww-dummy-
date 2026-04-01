@@ -15,22 +15,6 @@
     --transition: all 0.3s ease;
 }
 
-:root.theme-light {
-    --ai-input-bg: #FFFFFF;
-    --ai-summary-bg: #FFFFFF;
-    --ai-text: #0F172A;
-    --ai-text-muted: #64748B;
-    --ai-border: #E2E8F0;
-    --ai-label-color: #64748B;
-    --ai-suggestion-border: #E2E8F0;
-    --ai-suggestion-strong: #0F172A;
-    --ai-summary-item-border: #E2E8F0;
-    --ai-cancel-hover: #F1F5F9;
-    --fintech-green: #2563EB;
-    --fintech-green-hover: #1D4ED8;
-    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
 .add-investment-container {
     padding: 20px 40px;
     height: 100%;
@@ -445,11 +429,7 @@ input[type=number]::-webkit-outer-spin-button {
     font-size: 1.3rem;
 }
 
-/* Date input native calendar icon color fix for light mode */
-.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0);
-    opacity: 0.6;
-}
+
 
 @media (max-width: 900px) {
     .add-investment-layout {
@@ -520,9 +500,7 @@ input[type=number]::-webkit-outer-spin-button {
     border-bottom: 1px solid var(--ai-suggestion-border);
     font-weight: 700;
 }
-.theme-light .dropdown-category-header {
-    background-color: #f8fafc;
-}
+
 
 .dropdown-list {
     list-style: none;
@@ -571,9 +549,7 @@ input[type=number]::-webkit-outer-spin-button {
     color: var(--text-primary) !important;
     cursor: default;
 }
-.theme-light .readonly-input {
-    background-color: #f1f5f9 !important;
-}
+
 
 .input-warning {
     border-color: #f59e0b !important;
@@ -621,4 +597,19 @@ input[type=number]::-webkit-outer-spin-button {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+.nav-error {
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.05) !important;
+}
+
+.loading-more-funds {
+    padding: 15px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--ai-text-muted);
+    font-style: italic;
+    border-top: 1px dashed var(--ai-border);
 }
