@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import {
     AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -14,6 +14,7 @@ import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
+import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
 import '../styles/Dashboard.css';
 
@@ -42,6 +43,18 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         () => localStorage.getItem('activeView') || 'dashboard'
     );
     const [showNotifications, setShowNotifications] = useState(false);
+    const notifRef = useRef(null);
+
+    // Close notifications on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
@@ -60,7 +73,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const getCurrentValue = useCallback((inv) => {
         const nav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
             : inv.nav_at_buy > 0 ? inv.nav_at_buy * (1 + 0.05 + ((inv.investment_id || 1) % 10) / 100)
-            : 0;
+                : 0;
         if (inv.units > 0 && nav > 0) return inv.units * nav;
         const pct = 0.05 + ((inv.investment_id || 1) % 10) / 100;
         return parseFloat(inv.amount || 0) * (1 + pct);
@@ -119,7 +132,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     }, [user, timeFrame, getCurrentValue, generateHistory]);
 
     useEffect(() => {
-        if (user && (activeView === 'dashboard' || activeView === 'tax')) {
+        if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
             fetchAllData();
         }
     }, [user, activeView, timeFrame]);
@@ -152,6 +165,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             await axios.put(`http://localhost:8088/api/notifications/${notifId}/read`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setShowNotifications(false);
             fetchNotifications();
         } catch (err) { console.error("Failed to mark read", err); }
     };
@@ -166,6 +180,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
             setNotifications([]);
             setUnreadCount(0);
+            setShowNotifications(false);
         } catch (err) { console.error("Failed to clear", err); }
     };
 
@@ -264,13 +279,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'addInvestment', icon: <FiPlus />, label: 'Add Investment' },
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
                         { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
+                        { view: 'goals', icon: <FiTarget />, label: 'Goals' },
                         { view: 'settings', icon: <FiSettings />, label: 'Settings' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
                             {icon} {label}
                         </button>
                     ))}
-                    <button className="nav-item"><FiTarget /> Goals</button>
                 </nav>
                 <div className="sidebar-bottom">
                     <button className="logout-btn" onClick={onLogout}><FiLogOut /> Logout</button>
@@ -284,34 +299,34 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <h1>
                             {activeView === 'dashboard'
                                 ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
-                                : activeView === 'profile'  ? 'Account Overview'
-                                : activeView === 'addInvestment' ? 'Add Investment'
-                                : activeView === 'portfolio' ? 'My Portfolio'
-                                : activeView === 'tax' ? 'Tax Summary'
-                                : activeView === 'settings' ? 'Settings'
-                                : activeView === 'goals'    ? 'Goals & Targets'
-                                : 'WealthWise'}
+                                : activeView === 'profile' ? 'Account Overview'
+                                    : activeView === 'addInvestment' ? 'Add Investment'
+                                        : activeView === 'portfolio' ? 'My Portfolio'
+                                            : activeView === 'tax' ? 'Tax Summary'
+                                                : activeView === 'settings' ? 'Settings'
+                                                    : activeView === 'goals' ? 'Goals & Targets'
+                                                        : 'WealthWise'}
                         </h1>
                         <p>
                             {activeView === 'dashboard'
                                 ? new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
                                 : activeView === 'addInvestment' ? 'Track a new mutual fund, SIP or lump-sum investment'
-                                : activeView === 'portfolio'     ? 'Monitor performance across all your holdings'
-                                : activeView === 'profile'       ? 'Manage your personal details and preferences'
-                                : activeView === 'tax'           ? 'Review your realized capital gains and tax liabilities'
-                                : activeView === 'settings'      ? 'Configure application preferences and security'
-                                : activeView === 'goals'         ? 'Set and track your financial milestones'
-                                : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                    : activeView === 'portfolio' ? 'Monitor performance across all your holdings'
+                                        : activeView === 'profile' ? 'Manage your personal details and preferences'
+                                            : activeView === 'tax' ? 'Review your realized capital gains and tax liabilities'
+                                                : activeView === 'settings' ? 'Configure application preferences and security'
+                                                    : activeView === 'goals' ? 'Set and track your financial milestones'
+                                                        : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     </div>
                     <div className="header-actions">
-                        <div className="notification-wrapper">
-                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`} 
+                        <div className="notification-wrapper" ref={notifRef}>
+                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`}
                                 onClick={() => setShowNotifications(!showNotifications)}>
                                 <FiBell />
                                 {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
                             </button>
-                            
+
                             {showNotifications && (
                                 <div className="notifications-dropdown">
                                     <div className="notif-header">
@@ -325,7 +340,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             <div className="notif-empty">No notifications</div>
                                         ) : (
                                             notifications.map(n => (
-                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`} 
+                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`}
                                                     onClick={() => !n.read && markNotificationAsRead(n.id)}>
                                                     <div className="notif-icon-circle">
                                                         <FiAlertTriangle />
@@ -587,6 +602,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <TaxSummary user={user} investments={investments} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
+                    ) : activeView === 'goals' ? (
+                        <GoalPlanning user={user} investments={investments} getCurrentValue={getCurrentValue} />
                     ) : activeView === 'settings' ? (
                         <Settings user={user} theme={theme} setTheme={setTheme} />
                     ) : null}

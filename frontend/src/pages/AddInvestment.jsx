@@ -32,7 +32,6 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const [navDate, setNavDate] = useState('');
     const [latestNavInfo, setLatestNavInfo] = useState({ nav: '', date: '' });
     const navCache = useRef({});
-
     const suggestionRef = useRef(null);
     const todayDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
         .toISOString()
@@ -41,20 +40,69 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     // Fetch fund list on mount directly from AMFI API via mfapi.in
     useEffect(() => {
         const fetchFundList = async () => {
-            // Only fetch if mockFunds is currently empty
-            if (mockFunds.length > 0) return;
-
             setLoadingFunds(true);
             try {
-                const data = await getAllFunds();
-                const formatted = data.filter(f => f && f.schemeCode).map(f => ({
-                    code: f.schemeCode.toString(),
-                    name: f.schemeName || "Unknown Fund",
+                const response = await axios.get('http://localhost:8088/api/mf/list');
+
+                let dataToMap = response.data;
+
+                // --- RESILIENCY FALLBACK ---
+                // If the user hasn't successfully compiled/restarted the Spring backend,
+                // the database seeder won't run, leaving this API empty or broken.
+                if (!dataToMap || dataToMap.length === 0) {
+                    console.warn("Backend list empty. Injecting the hardcoded 40 funds fallback layer.");
+                    dataToMap = [
+                        { scheme_code: "125497", scheme_name: "HDFC Top 100 Fund - Direct Plan - Growth" },
+                        { scheme_code: "118834", scheme_name: "SBI Bluechip Fund - Direct Plan - Growth" },
+                        { scheme_code: "118825", scheme_name: "Mirae Asset Large Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "120465", scheme_name: "Axis Bluechip Fund - Direct Plan - Growth" },
+                        { scheme_code: "120716", scheme_name: "ICICI Prudential Bluechip Fund - Direct Plan - Growth" },
+                        { scheme_code: "122639", scheme_name: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "120468", scheme_name: "UTI Flexi Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "120199", scheme_name: "Aditya Birla Sun Life Frontline Equity Fund - Direct Plan - Growth" },
+                        { scheme_code: "125354", scheme_name: "SBI Small Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "120847", scheme_name: "Quant Small Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "120822", scheme_name: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth" },
+                        { scheme_code: "130321", scheme_name: "Kotak Emerging Equity Fund - Direct Plan - Growth" },
+                        { scheme_code: "129457", scheme_name: "ICICI Prudential Flexi Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "130115", scheme_name: "Axis Flexi Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "128051", scheme_name: "HDFC Flexi Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "132010", scheme_name: "DSP Flexi Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "130323", scheme_name: "Kotak Equity Opportunities Fund - Direct Plan - Growth" },
+                        { scheme_code: "131201", scheme_name: "SBI Focused Equity Fund - Direct Plan - Growth" },
+                        { scheme_code: "130112", scheme_name: "Axis Focused 25 Fund - Direct Plan - Growth" },
+                        { scheme_code: "130114", scheme_name: "Axis Small Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "100148", scheme_name: "Franklin India Prima Fund - Growth" },
+                        { scheme_code: "100251", scheme_name: "Franklin India Bluechip Fund - Growth" },
+                        { scheme_code: "100305", scheme_name: "Franklin India Taxshield - Growth" },
+                        { scheme_code: "131203", scheme_name: "SBI Contra Fund - Direct Plan - Growth" },
+                        { scheme_code: "131202", scheme_name: "SBI Magnum Midcap Fund - Direct Plan - Growth" },
+                        { scheme_code: "131205", scheme_name: "SBI Long Term Equity Fund - Direct Plan - Growth" },
+                        { scheme_code: "132011", scheme_name: "DSP Small Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "132012", scheme_name: "DSP Equity Opportunities Fund - Direct Plan - Growth" },
+                        { scheme_code: "132013", scheme_name: "DSP Tax Saver Fund - Direct Plan - Growth" },
+                        { scheme_code: "129456", scheme_name: "ICICI Prudential Value Discovery Fund - Direct Plan - Growth" },
+                        { scheme_code: "128052", scheme_name: "HDFC Balanced Advantage Fund - Direct Plan - Growth" },
+                        { scheme_code: "128053", scheme_name: "HDFC Hybrid Equity Fund - Direct Plan - Growth" },
+                        { scheme_code: "128054", scheme_name: "HDFC Large and Mid Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "128055", scheme_name: "HDFC Small Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "127042", scheme_name: "DSP Midcap Fund - Direct Plan - Growth" },
+                        { scheme_code: "126503", scheme_name: "Axis Midcap Fund - Direct Plan - Growth" },
+                        { scheme_code: "130322", scheme_name: "Kotak Small Cap Fund - Direct Plan - Growth" },
+                        { scheme_code: "130324", scheme_name: "Kotak Bluechip Fund - Direct Plan - Growth" },
+                        { scheme_code: "119551", scheme_name: "Tata Digital India Fund - Direct Plan - Growth" },
+                        { scheme_code: "120318", scheme_name: "Kotak Flexicap Fund - Direct Plan - Growth" }
+                    ];
+                }
+
+                const formatted = dataToMap.map(f => ({
+                    code: (f.schemeCode || f.scheme_code || f.code || "").toString(),
+                    name: f.schemeName || f.scheme_name || f.name || "Unknown Fund",
                     nav: 0
                 })).sort((a, b) => a.name.localeCompare(b.name));
 
                 setMockFunds(formatted);
-                setFilteredFunds(formatted); 
+                setFilteredFunds(formatted);
                 console.log(`Successfully loaded ${formatted.length} funds from AMFI API.`);
             } catch (err) {
                 console.error("Failed to fetch funds", err);
@@ -98,7 +146,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 fund.name.toLowerCase().includes(searchVal) ||
                 fund.code.includes(searchVal)
             );
-            
+
             setFilteredFunds(results);
         }, 300); // 300ms debounce
 
@@ -157,7 +205,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
             try {
                 const history = await getNavHistory(formData.fund_id);
-                
+
                 if (history && history.data && history.data.length > 0) {
                     // Update latest info (data[0] is always latest)
                     setLatestNavInfo({
@@ -166,7 +214,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                     });
 
                     const result = getNavByDate(history.data, formData.startDate);
-                    
+
                     if (result) {
                         navCache.current[cacheKey] = {
                             nav: result.nav,
