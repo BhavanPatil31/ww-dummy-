@@ -6,12 +6,12 @@ import com.wealthwise.wealthwise_backend.auth.entity.User;
 import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
 import java.time.LocalDateTime;
 import com.wealthwise.wealthwise_backend.auth.util.JwtUtil;
-import com.wealthwise.wealthwise_backend.userprofile.entity.UserProfileDetails;
-import com.wealthwise.wealthwise_backend.userprofile.repository.UserProfileRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -32,10 +32,10 @@ public class AuthService {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
     private OtpVerificationRepository otpVerificationRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
@@ -52,7 +52,8 @@ public class AuthService {
 
         User savedUser = Objects.requireNonNull(userRepository.save(user), "Saved user cannot be null");
 
-        // Send OTP to the user's email as part of the registration flow (login verification)
+        // Send OTP to the user's email as part of the registration flow (login
+        // verification)
         sendOtp(Objects.requireNonNull(savedUser.getEmail(), "User email cannot be null"), "login");
 
         return savedUser;
@@ -77,7 +78,8 @@ public class AuthService {
                 }
 
                 // Generate valid JWT using JwtUtil
-                String token = jwtUtil.generateToken(Objects.requireNonNull(user.getEmail(), "User email cannot be null"));
+                String token = jwtUtil
+                        .generateToken(Objects.requireNonNull(user.getEmail(), "User email cannot be null"));
                 return Optional.of(Objects.requireNonNull(token, "Generated token cannot be null"));
             }
         }
@@ -111,7 +113,7 @@ public class AuthService {
         otpVerification.setExpiryTime(LocalDateTime.now().plusMinutes(2)); // 2 minutes expiry
         otpVerification.setIsUsed(false);
         otpVerification.setAttempts(0);
-        
+
         otpVerificationRepository.save(otpVerification);
 
         emailService.sendOtpEmail(email, otp);
@@ -177,16 +179,33 @@ public class AuthService {
         return "Password updated successfully";
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteAccount(@NonNull Long userId) {
-        // Step 1 — delete profile first to avoid foreign key error
-        Optional<UserProfileDetails> profile = userProfileRepository.findByUserId(userId);
-        profile.ifPresent(userProfileRepository::delete);
-
-        // Step 2 — delete user
-        User user = Objects.requireNonNull(
-                userRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("User not found with id: " + userId)));
-        userRepository.delete(user);
+        // Use Bulk JPQL Deletes to bypass Hibernate ActionQueue reordering which causes FK constraint violations
+        entityManager.createQuery("DELETE FROM ProfileActivityLog e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
+        
+        entityManager.createQuery("DELETE FROM TaxTransaction e WHERE e.userId = :userIdStr")
+            .setParameter("userIdStr", String.valueOf(userId)).executeUpdate();
+            
+        entityManager.createQuery("DELETE FROM OtpVerification e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
+            
+        entityManager.createQuery("DELETE FROM Notification e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
+            
+        entityManager.createQuery("DELETE FROM Investment e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
+            
+        entityManager.createQuery("DELETE FROM Portfolio e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
+            
+        entityManager.createQuery("DELETE FROM UserProfileDetails e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
+            
+        // Performs the final wipe of the core User entity
+        entityManager.createQuery("DELETE FROM User e WHERE e.user_id = :userId")
+            .setParameter("userId", userId).executeUpdate();
     }
 
     public void updateUserName(@NonNull Long userId, String newName) {

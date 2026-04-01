@@ -8,13 +8,12 @@ import {
     FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut,
     FiTrendingUp, FiTrendingDown, FiArrowUpRight, FiArrowDownRight,
     FiDollarSign, FiActivity, FiPieChart, FiZap, FiAward, FiStar,
-    FiAlertTriangle, FiRefreshCw, FiClock
+    FiAlertTriangle, FiRefreshCw, FiClock, FiSettings
 } from 'react-icons/fi';
 import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
-import GoalPlanning from './GoalPlanning';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
@@ -72,7 +71,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const getCurrentValue = useCallback((inv) => {
         const nav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
             : inv.nav_at_buy > 0 ? inv.nav_at_buy * (1 + 0.05 + ((inv.investment_id || 1) % 10) / 100)
-            : 0;
+                : 0;
         if (inv.units > 0 && nav > 0) return inv.units * nav;
         const pct = 0.05 + ((inv.investment_id || 1) % 10) / 100;
         return parseFloat(inv.amount || 0) * (1 + pct);
@@ -277,8 +276,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
                         { view: 'addInvestment', icon: <FiPlus />, label: 'Add Investment' },
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
-                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
-                        { view: 'goals', icon: <FiTarget />, label: 'Goals' }
+                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
                             {icon} {label}
@@ -297,32 +295,34 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <h1>
                             {activeView === 'dashboard'
                                 ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
-                                : activeView === 'profile'  ? 'Account Overview'
-                                : activeView === 'addInvestment' ? 'Add Investment'
-                                : activeView === 'portfolio' ? 'My Portfolio'
-                                : activeView === 'tax' ? 'Tax Summary'
-                                : activeView === 'goals'    ? 'Goals & Targets'
-                                : 'WealthWise'}
+                                : activeView === 'profile' ? 'Account Overview'
+                                    : activeView === 'addInvestment' ? 'Add Investment'
+                                        : activeView === 'portfolio' ? 'My Portfolio'
+                                            : activeView === 'tax' ? 'Tax Summary'
+                                                : activeView === 'settings' ? 'Settings'
+                                                    : activeView === 'goals' ? 'Goals & Targets'
+                                                        : 'WealthWise'}
                         </h1>
                         <p>
                             {activeView === 'dashboard'
                                 ? new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
                                 : activeView === 'addInvestment' ? 'Track a new mutual fund, SIP or lump-sum investment'
-                                : activeView === 'portfolio'     ? 'Monitor performance across all your holdings'
-                                : activeView === 'profile'       ? 'Manage your personal details and preferences'
-                                : activeView === 'tax'           ? 'Review your realized capital gains and tax liabilities'
-                                : activeView === 'goals'         ? 'Set and track your financial milestones'
-                                : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                    : activeView === 'portfolio' ? 'Monitor performance across all your holdings'
+                                        : activeView === 'profile' ? 'Manage your personal details and preferences'
+                                            : activeView === 'tax' ? 'Review your realized capital gains and tax liabilities'
+                                                : activeView === 'settings' ? 'Configure application preferences and security'
+                                                    : activeView === 'goals' ? 'Set and track your financial milestones'
+                                                        : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     </div>
                     <div className="header-actions">
                         <div className="notification-wrapper" ref={notifRef}>
-                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`} 
+                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`}
                                 onClick={() => setShowNotifications(!showNotifications)}>
                                 <FiBell />
                                 {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
                             </button>
-                            
+
                             {showNotifications && (
                                 <div className="notifications-dropdown">
                                     <div className="notif-header">
@@ -336,7 +336,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             <div className="notif-empty">No notifications</div>
                                         ) : (
                                             notifications.map(n => (
-                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`} 
+                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`}
                                                     onClick={() => !n.read && markNotificationAsRead(n.id)}>
                                                     <div className="notif-icon-circle">
                                                         <FiAlertTriangle />
@@ -598,8 +598,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <TaxSummary user={user} investments={investments} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
-                    ) : activeView === 'goals' ? (
-                        <GoalPlanning user={user} investments={investments} getCurrentValue={getCurrentValue} />
                     ) : null}
                 </div>
             </main>

@@ -1,0 +1,923 @@
+﻿javac : c:\Users\bhava\O
+neDrive\Desktop\ww(dummy
+)\wealthwise-backend\src
+\main\java\com\wealthwis
+e\wealthwise_backend\aut
+h\service\AuthService.ja
+va:3: error: package com
+.wealthwise.wealthwise_b
+ackend.auth.entity does 
+not exist
+At line:1 char:1
++ javac -cp . "c:\Users\
+bhava\OneDrive\Desktop\w
+w(dummy)\wealthwise-bac 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo      
+        : NotSpecified: 
+(c:\    Users\bhava\... 
+does n    ot 
+exist:String) [], R    
+emoteException
+    + 
+FullyQualifiedErrorI    
+d : NativeCommandError
+ 
+import com.wealthwise.we
+althwise_backend.auth.en
+tity.OtpVerification;
+                        
+                        
+    ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:4: 
+error: package com.wealt
+hwise.wealthwise_backend
+.auth.repository does 
+not exist
+import com.wealthwise.we
+althwise_backend.auth.re
+pository.OtpVerification
+Repository;
+                        
+                        
+        ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:5: 
+error: package com.wealt
+hwise.wealthwise_backend
+.auth.entity does not 
+exist
+import com.wealthwise.we
+althwise_backend.auth.en
+tity.User;
+                        
+                        
+    ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:6: 
+error: package com.wealt
+hwise.wealthwise_backend
+.auth.repository does 
+not exist
+import com.wealthwise.we
+althwise_backend.auth.re
+pository.UserRepository;
+                        
+                        
+        ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:8: 
+error: package com.wealt
+hwise.wealthwise_backend
+.auth.util does not 
+exist
+import com.wealthwise.we
+althwise_backend.auth.ut
+il.JwtUtil;
+                        
+                        
+  ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:9: 
+error: package com.wealt
+hwise.wealthwise_backend
+.userprofile.entity 
+does not exist
+import com.wealthwise.we
+althwise_backend.userpro
+file.entity.UserProfileD
+etails;
+                        
+                        
+           ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:10: 
+error: package com.wealt
+hwise.wealthwise_backend
+.userprofile.repository 
+does not exist
+import com.wealthwise.we
+althwise_backend.userpro
+file.repository.UserProf
+ileRepository;
+                        
+                        
+               ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:12: 
+error: package org.sprin
+gframework.beans.factory
+.annotation does not 
+exist
+import org.springframewo
+rk.beans.factory.annotat
+ion.Autowired;
+                        
+                        
+   ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:13: 
+error: package org.sprin
+gframework.security.cryp
+to.bcrypt does not exist
+import org.springframewo
+rk.security.crypto.bcryp
+t.BCryptPasswordEncoder;
+                        
+                        
+ ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:14: 
+error: package org.sprin
+gframework.stereotype 
+does not exist
+import org.springframewo
+rk.stereotype.Service;
+                        
+             ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:15: 
+error: package 
+javax.persistence does 
+not exist
+import javax.persistence
+.EntityManager;
+                        
+^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:16: 
+error: package 
+javax.persistence does 
+not exist
+import javax.persistence
+.PersistenceContext;
+                        
+^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:22: 
+error: package org.sprin
+gframework.lang does 
+not exist
+import org.springframewo
+rk.lang.NonNull;
+                        
+       ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:24: 
+error: cannot find 
+symbol
+@Service
+ ^
+  symbol: class Service
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:28: 
+error: cannot find 
+symbol
+    private 
+UserRepository 
+userRepository;
+            ^
+  symbol:   class 
+UserRepository
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:31: 
+error: cannot find 
+symbol
+    private 
+EmailService 
+emailService;
+            ^
+  symbol:   class 
+EmailService
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:34: 
+error: cannot find 
+symbol
+    private JwtUtil 
+jwtUtil;
+            ^
+  symbol:   class 
+JwtUtil
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:37: 
+error: cannot find 
+symbol
+    private 
+UserProfileRepository 
+userProfileRepository;
+            ^
+  symbol:   class 
+UserProfileRepository
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:40: 
+error: cannot find 
+symbol
+    private OtpVerificat
+ionRepository otpVerific
+ationRepository;
+            ^
+  symbol:   class OtpVer
+ificationRepository
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:43: 
+error: package com.wealt
+hwise.wealthwise_backend
+.portfolio.repository 
+does not exist
+    private com.wealthwi
+se.wealthwise_backend.po
+rtfolio.repository.Portf
+olioRepository 
+portfolioRepository;
+                        
+                        
+                  ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:46: 
+error: package com.wealt
+hwise.wealthwise_backend
+.investment.repository 
+does not exist
+    private com.wealthwi
+se.wealthwise_backend.in
+vestment.repository.Inve
+stmentRepository 
+investmentRepository;
+                        
+                        
+                   ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:49: 
+error: package com.wealt
+hwise.wealthwise_backend
+.notification does not 
+exist
+    private com.wealthwi
+se.wealthwise_backend.no
+tification.NotificationR
+epository 
+notificationRepository;
+                        
+                        
+          ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:52: 
+error: package com.wealt
+hwise.wealthwise_backend
+.tax.repository does 
+not exist
+    private com.wealthwi
+se.wealthwise_backend.ta
+x.repository.TaxTransact
+ionRepository taxTransac
+tionRepository;
+                        
+                        
+            ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:55: 
+error: package com.wealt
+hwise.wealthwise_backend
+.userprofile.repository 
+does not exist
+    private com.wealthwi
+se.wealthwise_backend.us
+erprofile.repository.Pro
+fileActivityLogRepositor
+y profileActivityLogRepo
+sitory;
+                        
+                        
+                    ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:58: 
+error: cannot find 
+symbol
+    private 
+EntityManager 
+entityManager;
+            ^
+  symbol:   class 
+EntityManager
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:60: 
+error: cannot find 
+symbol
+    private final 
+BCryptPasswordEncoder 
+passwordEncoder = new 
+BCryptPasswordEncoder();
+                  ^
+  symbol:   class 
+BCryptPasswordEncoder
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:63: 
+error: cannot find 
+symbol
+    public User 
+register(User user) {
+                        
+ ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:63: 
+error: cannot find 
+symbol
+    public User 
+register(User user) {
+           ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:110: 
+error: cannot find 
+symbol
+    public 
+Optional<User> 
+getUserByEmail(String 
+email) {
+                    ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:27: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:30: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:33: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:36: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:39: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:42: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:45: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:48: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:51: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:54: 
+error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class 
+Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:57: 
+error: cannot find 
+symbol
+    @PersistenceContext
+     ^
+  symbol:   class 
+PersistenceContext
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:203: 
+error: cannot find 
+symbol
+    public void 
+deleteAccount(@NonNull 
+Long userId) {
+                        
+       ^
+  symbol:   class 
+NonNull
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:202: 
+error: package org.sprin
+gframework.transaction.a
+nnotation does not exist
+    @org.springframework
+.transaction.annotation.
+Transactional
+                        
+                       ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:231: 
+error: cannot find 
+symbol
+    public void 
+updateUserName(@NonNull 
+Long userId, String 
+newName) {
+                        
+        ^
+  symbol:   class 
+NonNull
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:238: 
+error: cannot find 
+symbol
+    public void updateUs
+erEmail(@NonNull Long 
+userId, String 
+newEmail) {
+                        
+         ^
+  symbol:   class 
+NonNull
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:60: 
+error: cannot find 
+symbol
+    private final 
+BCryptPasswordEncoder 
+passwordEncoder = new 
+BCryptPasswordEncoder();
+                        
+                        
+              ^
+  symbol:   class 
+BCryptPasswordEncoder
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:73: 
+error: cannot find 
+symbol
+        User savedUser 
+= Objects.requireNonNull
+(userRepository.save(use
+r), "Saved user cannot 
+be null");
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:85: 
+error: cannot find 
+symbol
+        Optional<User> 
+userOptional = userRepos
+itory.findByEmail(email)
+;
+                 ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:89: 
+error: cannot find 
+symbol
+            User user = 
+userOptional.get();
+            ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:96: 
+error: package com.wealt
+hwise.wealthwise_backend
+.auth.exception does 
+not exist
+                    
+throw new com.wealthwise
+.wealthwise_backend.auth
+.exception.AccountNotVer
+ifiedException(
+                        
+                        
+                        
+      ^
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:118: 
+error: cannot find 
+symbol
+        Optional<User> 
+userOptional = userRepos
+itory.findByEmail(email)
+;
+                 ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:124: 
+error: cannot find 
+symbol
+        User user = 
+userOptional.get();
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:129: 
+error: cannot find 
+symbol
+        OtpVerification 
+otpVerification = new 
+OtpVerification();
+        ^
+  symbol:   class 
+OtpVerification
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:129: 
+error: cannot find 
+symbol
+        OtpVerification 
+otpVerification = new 
+OtpVerification();
+                        
+                      ^
+  symbol:   class 
+OtpVerification
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:153: 
+error: cannot find 
+symbol
+        User user = user
+Repository.findByEmail(e
+mail)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:156: 
+error: cannot find 
+symbol
+        OtpVerification 
+otpVerification = otpVer
+ificationRepository.find
+TopByUserIdOrderByIdDesc
+(user.getUser_id())
+        ^
+  symbol:   class 
+OtpVerification
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:191: 
+error: cannot find 
+symbol
+        User user = user
+Repository.findByEmail(e
+mail)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:232: 
+error: cannot find 
+symbol
+        User user = user
+Repository.findById(user
+Id)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\
+Desktop\ww(dummy)\wealth
+wise-backend\src\main\ja
+va\com\wealthwise\wealth
+wise_backend\auth\servic
+e\AuthService.java:239: 
+error: cannot find 
+symbol
+        User user = user
+Repository.findById(user
+Id)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+58 errors

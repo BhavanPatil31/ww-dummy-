@@ -14,7 +14,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -55,7 +54,8 @@ public class UserProfileService {
                 .dob(dto.getDob())
                 .bio(dto.getBio())
                 .build();
-        UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
+        if (profile == null) throw new RuntimeException("Profile cannot be null");
+        UserProfileDetails saved = repository.save(profile);
 
         Long userId = Optional.ofNullable(saved.getUserId())
                 .orElseThrow(() -> new RuntimeException("User ID cannot be null"));
@@ -77,7 +77,8 @@ public class UserProfileService {
         // ✅ Explicitly guarantee the found entity is non-null
         UserProfileDetails profile = repository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Profile not found for userId: " + userId));
-        return toDTO(Objects.requireNonNull(profile));
+        if (profile == null) throw new RuntimeException("Profile cannot be null");
+        return toDTO(profile);
     }
 
     @NonNull
@@ -88,14 +89,15 @@ public class UserProfileService {
         String oldName = profile.getName();
         profile.setName(request.getName().trim());
         
-        UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
+        UserProfileDetails saved = repository.save(profile);
 
         Long userId = Optional.ofNullable(profile.getUserId())
                 .orElseThrow(() -> new RuntimeException("User ID cannot be null"));
         String name = Optional.ofNullable(saved.getName())
                 .orElseThrow(() -> new RuntimeException("Name cannot be null"));
 
-        authService.updateUserName(Objects.requireNonNull(userId), name);
+        if (userId == null) throw new RuntimeException("User ID cannot be null");
+        authService.updateUserName(userId, name);
         logRepository.save(new ProfileActivityLog(userId, "Name", oldName, name));
 
         return toDTO(saved);
@@ -112,14 +114,15 @@ public class UserProfileService {
         String oldEmail = profile.getEmail();
         profile.setEmail(request.getNewEmail().trim());
         
-        UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
+        UserProfileDetails saved = repository.save(profile);
 
         Long userId = Optional.ofNullable(profile.getUserId())
                 .orElseThrow(() -> new RuntimeException("User ID cannot be null"));
         String email = Optional.ofNullable(saved.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email cannot be null"));
 
-        authService.updateUserEmail(Objects.requireNonNull(userId), email);
+        if (userId == null) throw new RuntimeException("User ID cannot be null");
+        authService.updateUserEmail(userId, email);
         logRepository.save(new ProfileActivityLog(userId, "Email", oldEmail, email));
 
         return toDTO(saved);
@@ -133,9 +136,10 @@ public class UserProfileService {
         String oldPhone = profile.getPhone();
         profile.setPhone(request.getPhone().trim());
         
-        UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
+        UserProfileDetails saved = repository.save(profile);
 
-        Long userId = Objects.requireNonNull(saved.getUserId(), "User ID cannot be null");
+        Long userId = saved.getUserId();
+        if (userId == null) throw new RuntimeException("User ID cannot be null");
         logRepository.save(new ProfileActivityLog(userId, "Phone", oldPhone, saved.getPhone()));
 
         return toDTO(saved);
@@ -152,9 +156,10 @@ public class UserProfileService {
         if (request.getDob() != null) profile.setDob(request.getDob());
         if (request.getBio() != null) profile.setBio(request.getBio());
         
-        UserProfileDetails saved = Objects.requireNonNull(repository.save(profile), "Saved profile cannot be null");
+        UserProfileDetails saved = repository.save(profile);
 
-        Long userId = Objects.requireNonNull(saved.getUserId(), "User ID cannot be null");
+        Long userId = saved.getUserId();
+        if (userId == null) throw new RuntimeException("User ID cannot be null");
         logRepository.save(new ProfileActivityLog(userId, "Profile Details", "Old Details", "Updated Details"));
 
         return toDTO(saved);
@@ -177,7 +182,8 @@ public class UserProfileService {
     private UserProfileDetails findById(@NonNull Long profileId) {
         UserProfileDetails profile = repository.findById(profileId)
                 .orElseThrow(() -> new RuntimeException("Profile not found with id: " + profileId));
-        return Objects.requireNonNull(profile);
+        if (profile == null) throw new RuntimeException("Profile cannot be null");
+        return profile;
     }
 
     @NonNull
