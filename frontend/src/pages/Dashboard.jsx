@@ -8,12 +8,13 @@ import {
     FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut,
     FiTrendingUp, FiTrendingDown, FiArrowUpRight, FiArrowDownRight,
     FiDollarSign, FiActivity, FiPieChart, FiZap, FiAward, FiStar,
-    FiAlertTriangle, FiRefreshCw, FiClock
+    FiAlertTriangle, FiRefreshCw, FiClock, FiSettings
 } from 'react-icons/fi';
 import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
+import Settings from './Settings';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
@@ -262,7 +263,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
                         { view: 'addInvestment', icon: <FiPlus />, label: 'Add Investment' },
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
-                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' }
+                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
+                        { view: 'settings', icon: <FiSettings />, label: 'Settings' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
                             {icon} {label}
@@ -286,6 +288,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 : activeView === 'addInvestment' ? 'Add Investment'
                                 : activeView === 'portfolio' ? 'My Portfolio'
                                 : activeView === 'tax' ? 'Tax Summary'
+                                : activeView === 'settings' ? 'Settings'
                                 : activeView === 'goals'    ? 'Goals & Targets'
                                 : 'WealthWise'}
                         </h1>
@@ -296,6 +299,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 : activeView === 'portfolio'     ? 'Monitor performance across all your holdings'
                                 : activeView === 'profile'       ? 'Manage your personal details and preferences'
                                 : activeView === 'tax'           ? 'Review your realized capital gains and tax liabilities'
+                                : activeView === 'settings'      ? 'Configure application preferences and security'
                                 : activeView === 'goals'         ? 'Set and track your financial milestones'
                                 : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
@@ -583,6 +587,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <TaxSummary user={user} investments={investments} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
+                    ) : activeView === 'settings' ? (
+                        <Settings user={user} theme={theme} setTheme={setTheme} />
                     ) : null}
                 </div>
             </main>

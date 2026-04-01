@@ -12,4 +12,6 @@ public interface ProfileActivityLogRepository extends JpaRepository<ProfileActiv
 
     @Query("SELECT l FROM ProfileActivityLog l WHERE l.userId = :userId ORDER BY l.changedAt DESC")
     List<ProfileActivityLog> findByUserIdOrderByChangedAtDesc(@Param("userId") Long userId);
+    
+    void deleteByUserId(Long userId);
 }

@@ -90,4 +90,30 @@ public class PortfolioService {
 
         return Objects.requireNonNull(portfolioRepository.save(portfolio), "Saved portfolio cannot be null");
     }
+
+    @Transactional(readOnly = true)
+    public String generateCsvExport(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> investments = investmentRepository.findByUserId(userId);
+        
+        StringBuilder csv = new StringBuilder();
+        csv.append("Scheme Name,Investment Type,Amount,Units,Buy Date,NAV at Buy,Current NAV,Current Value\n");
+        
+        if (investments != null) {
+            for (Investment inv : investments) {
+                String scheme = inv.getSchemeName() != null ? inv.getSchemeName().replace(",", " ") : "N/A";
+                String type = inv.getInvestmentType() != null ? inv.getInvestmentType() : "N/A";
+                double amount = inv.getAmount() != null ? inv.getAmount() : 0.0;
+                double units = inv.getUnits() != null ? inv.getUnits() : 0.0;
+                String buyDate = inv.getBuyDate() != null ? inv.getBuyDate().toString() : "N/A";
+                double navAtBuy = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 0.0;
+                double currentNav = inv.getCurrentNav() != null ? inv.getCurrentNav() : 0.0;
+                double currentValue = units * currentNav;
+
+                csv.append(String.format("%s,%s,%.2f,%.4f,%s,%.4f,%.4f,%.2f\n", 
+                    scheme, type, amount, units, buyDate, navAtBuy, currentNav, currentValue));
+            }
+        }
+        return csv.toString();
+    }
 }

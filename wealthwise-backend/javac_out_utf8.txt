@@ -1,0 +1,823 @@
+﻿javac : c:\Users\bhava\OneD
+rive\Desktop\ww(dummy)\weal
+thwise-backend\src\main\jav
+a\com\wealthwise\wealthwise
+_backend\auth\service\AuthS
+ervice.java:3: error: 
+package com.wealthwise.weal
+thwise_backend.auth.entity 
+does not exist
+At line:1 char:1
++ javac -cp . "c:\Users\bha
+va\OneDrive\Desktop\ww(dumm
+y)\wealthwise-bac ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (c:\  
+  Users\bhava\... does n   
+ ot exist:String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+import com.wealthwise.wealt
+hwise_backend.auth.entity.O
+tpVerification;
+                           
+                         ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:4: error: package com.w
+ealthwise.wealthwise_backen
+d.auth.repository does not 
+exist
+import com.wealthwise.wealt
+hwise_backend.auth.reposito
+ry.OtpVerificationRepositor
+y;
+                           
+                           
+  ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:5: error: package com.w
+ealthwise.wealthwise_backen
+d.auth.entity does not 
+exist
+import com.wealthwise.wealt
+hwise_backend.auth.entity.U
+ser;
+                           
+                         ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:6: error: package com.w
+ealthwise.wealthwise_backen
+d.auth.repository does not 
+exist
+import com.wealthwise.wealt
+hwise_backend.auth.reposito
+ry.UserRepository;
+                           
+                           
+  ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:8: error: package com.w
+ealthwise.wealthwise_backen
+d.auth.util does not exist
+import com.wealthwise.wealt
+hwise_backend.auth.util.Jwt
+Util;
+                           
+                       ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:9: error: package com.w
+ealthwise.wealthwise_backen
+d.userprofile.entity does 
+not exist
+import com.wealthwise.wealt
+hwise_backend.userprofile.e
+ntity.UserProfileDetails;
+                           
+                           
+     ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:10: error: package com.
+wealthwise.wealthwise_backe
+nd.userprofile.repository 
+does not exist
+import com.wealthwise.wealt
+hwise_backend.userprofile.r
+epository.UserProfileReposi
+tory;
+                           
+                           
+         ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:12: error: package org.
+springframework.beans.facto
+ry.annotation does not 
+exist
+import org.springframework.
+beans.factory.annotation.Au
+towired;
+                           
+                        ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:13: error: package org.
+springframework.security.cr
+ypto.bcrypt does not exist
+import org.springframework.
+security.crypto.bcrypt.BCry
+ptPasswordEncoder;
+                           
+                      ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:14: error: package org.
+springframework.stereotype 
+does not exist
+import org.springframework.
+stereotype.Service;
+                           
+          ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:15: error: package 
+javax.persistence does not 
+exist
+import javax.persistence.En
+tityManager;
+                        ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:16: error: package 
+javax.persistence does not 
+exist
+import javax.persistence.Pe
+rsistenceContext;
+                        ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:22: error: package 
+org.springframework.lang 
+does not exist
+import org.springframework.
+lang.NonNull;
+                           
+    ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:24: error: cannot find 
+symbol
+@Service
+ ^
+  symbol: class Service
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:28: error: cannot find 
+symbol
+    private UserRepository 
+userRepository;
+            ^
+  symbol:   class 
+UserRepository
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:31: error: cannot find 
+symbol
+    private EmailService 
+emailService;
+            ^
+  symbol:   class 
+EmailService
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:34: error: cannot find 
+symbol
+    private JwtUtil 
+jwtUtil;
+            ^
+  symbol:   class JwtUtil
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:37: error: cannot find 
+symbol
+    private 
+UserProfileRepository 
+userProfileRepository;
+            ^
+  symbol:   class 
+UserProfileRepository
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:40: error: cannot find 
+symbol
+    private 
+OtpVerificationRepository 
+otpVerificationRepository;
+            ^
+  symbol:   class 
+OtpVerificationRepository
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:43: error: package com.
+wealthwise.wealthwise_backe
+nd.portfolio.repository 
+does not exist
+    private com.wealthwise.
+wealthwise_backend.portfoli
+o.repository.PortfolioRepos
+itory portfolioRepository;
+                           
+                           
+            ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:46: error: package com.
+wealthwise.wealthwise_backe
+nd.investment.repository 
+does not exist
+    private com.wealthwise.
+wealthwise_backend.investme
+nt.repository.InvestmentRep
+ository 
+investmentRepository;
+                           
+                           
+             ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:49: error: package com.
+wealthwise.wealthwise_backe
+nd.notification does not 
+exist
+    private com.wealthwise.
+wealthwise_backend.notifica
+tion.NotificationRepository
+ notificationRepository;
+                           
+                           
+    ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:52: error: package com.
+wealthwise.wealthwise_backe
+nd.tax.repository does not 
+exist
+    private com.wealthwise.
+wealthwise_backend.tax.repo
+sitory.TaxTransactionReposi
+tory 
+taxTransactionRepository;
+                           
+                           
+      ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:55: error: package com.
+wealthwise.wealthwise_backe
+nd.userprofile.repository 
+does not exist
+    private com.wealthwise.
+wealthwise_backend.userprof
+ile.repository.ProfileActiv
+ityLogRepository profileAct
+ivityLogRepository;
+                           
+                           
+              ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:58: error: cannot find 
+symbol
+    private EntityManager 
+entityManager;
+            ^
+  symbol:   class 
+EntityManager
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:60: error: cannot find 
+symbol
+    private final 
+BCryptPasswordEncoder 
+passwordEncoder = new 
+BCryptPasswordEncoder();
+                  ^
+  symbol:   class 
+BCryptPasswordEncoder
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:63: error: cannot find 
+symbol
+    public User 
+register(User user) {
+                         ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:63: error: cannot find 
+symbol
+    public User 
+register(User user) {
+           ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:108: error: cannot 
+find symbol
+    public Optional<User> 
+getUserByEmail(String 
+email) {
+                    ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:27: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:30: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:33: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:36: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:39: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:42: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:45: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:48: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:51: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:54: error: cannot find 
+symbol
+    @Autowired
+     ^
+  symbol:   class Autowired
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:57: error: cannot find 
+symbol
+    @PersistenceContext
+     ^
+  symbol:   class 
+PersistenceContext
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:201: error: cannot 
+find symbol
+    public void 
+deleteAccount(@NonNull 
+Long userId) {
+                           
+    ^
+  symbol:   class NonNull
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:200: error: package org
+.springframework.transactio
+n.annotation does not exist
+    @org.springframework.tr
+ansaction.annotation.Transa
+ctional
+                           
+                    ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:229: error: cannot 
+find symbol
+    public void 
+updateUserName(@NonNull 
+Long userId, String 
+newName) {
+                           
+     ^
+  symbol:   class NonNull
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:236: error: cannot 
+find symbol
+    public void 
+updateUserEmail(@NonNull 
+Long userId, String 
+newEmail) {
+                           
+      ^
+  symbol:   class NonNull
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:60: error: cannot find 
+symbol
+    private final 
+BCryptPasswordEncoder 
+passwordEncoder = new 
+BCryptPasswordEncoder();
+                           
+                           
+        ^
+  symbol:   class 
+BCryptPasswordEncoder
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:73: error: cannot find 
+symbol
+        User savedUser = Ob
+jects.requireNonNull(userRe
+pository.save(user), 
+"Saved user cannot be 
+null");
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:84: error: cannot find 
+symbol
+        Optional<User> 
+userOptional = userReposito
+ry.findByEmail(email);
+                 ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:88: error: cannot find 
+symbol
+            User user = 
+userOptional.get();
+            ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:95: error: package com.
+wealthwise.wealthwise_backe
+nd.auth.exception does not 
+exist
+                    throw 
+new com.wealthwise.wealthwi
+se_backend.auth.exception.A
+ccountNotVerifiedException(
+                           
+                           
+                        ^
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:116: error: cannot 
+find symbol
+        Optional<User> 
+userOptional = userReposito
+ry.findByEmail(email);
+                 ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:122: error: cannot 
+find symbol
+        User user = 
+userOptional.get();
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:127: error: cannot 
+find symbol
+        OtpVerification 
+otpVerification = new 
+OtpVerification();
+        ^
+  symbol:   class 
+OtpVerification
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:127: error: cannot 
+find symbol
+        OtpVerification 
+otpVerification = new 
+OtpVerification();
+                           
+                   ^
+  symbol:   class 
+OtpVerification
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:151: error: cannot 
+find symbol
+        User user = userRep
+ository.findByEmail(email)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:154: error: cannot 
+find symbol
+        OtpVerification 
+otpVerification = otpVerifi
+cationRepository.findTopByU
+serIdOrderByIdDesc(user.get
+User_id())
+        ^
+  symbol:   class 
+OtpVerification
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:189: error: cannot 
+find symbol
+        User user = userRep
+ository.findByEmail(email)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:230: error: cannot 
+find symbol
+        User user = userRep
+ository.findById(userId)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+c:\Users\bhava\OneDrive\Des
+ktop\ww(dummy)\wealthwise-b
+ackend\src\main\java\com\we
+althwise\wealthwise_backend
+\auth\service\AuthService.j
+ava:237: error: cannot 
+find symbol
+        User user = userRep
+ository.findById(userId)
+        ^
+  symbol:   class User
+  location: class 
+AuthService
+58 errors
