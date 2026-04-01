@@ -40,19 +40,19 @@ export const getAllFunds = async () => {
 /**
  * Fetches full NAV history for a specific scheme code.
  * @param {string|number} schemeCode 
- * @returns {Promise<Object>} The API response containing meta and data (NAV history)
+ * @returns {Promise<Object|null>} The API response or null if unavailable
  */
 export const getNavHistory = async (schemeCode) => {
     try {
         const response = await axios.get(`${BASE_URL}/${schemeCode}`);
         if (response.data && response.data.status === "SUCCESS") {
-            // Check if data is empty as some schemes return { meta, data: [], status: "SUCCESS" }
+            // CRITICAL: Some schemes return { meta, data: [], status: "SUCCESS" }
             if (!response.data.data || response.data.data.length === 0) {
-                return null;
+                return null; 
             }
             return response.data;
         }
-        return null; // Invalid or broken data
+        return null;
     } catch (error) {
         console.error(`Error fetching NAV history for ${schemeCode}:`, error);
         return null;
@@ -60,12 +60,11 @@ export const getNavHistory = async (schemeCode) => {
 };
 
 /**
- * Finds the correct NAV for a selected date based on specific logic.
- * Logic:
+ * Finds the correct NAV for a selected date.
  * 1. Convert selected date -> DD-MM-YYYY
- * 2. Find NAV for selected date -> IF found, use it
- * 3. IF NOT found: Find nearest previous date NAV
- * 4. IF selected date > latest available NAV: Use latest NAV
+ * 2. If exact date exists -> use that
+ * 3. Else -> find nearest previous available date
+ * 4. If selected date > latest available date -> use latest
  * 
  * @param {Array} navData History array [ { date, nav } ]
  * @param {string} selectedDate "YYYY-MM-DD"
@@ -73,36 +72,31 @@ export const getNavHistory = async (schemeCode) => {
 export const getNavByDate = (navData, selectedDate) => {
     if (!navData || navData.length === 0) return null;
 
-    // Helper to parse "DD-MM-YYYY" into a generic numeric value for comparison
     const parseDateValue = (str) => {
         const [d, m, y] = str.split('-').map(Number);
         const date = new Date(y, m - 1, d);
-        date.setHours(0, 0, 0, 0); // Normalize time
+        date.setHours(0, 0, 0, 0);
         return date.getTime();
     };
 
-    // Sort descending by date (latest first) to guarantee data order
+    // Ensure data is sorted by date descending (latest first)
     const sortedData = [...navData].sort((a, b) => parseDateValue(b.date) - parseDateValue(a.date));
 
     const [y, m, d] = selectedDate.split('-').map(Number);
-    const selectedDateObj = new Date(y, m - 1, d);
-    selectedDateObj.setHours(0, 0, 0, 0);
-    const selectedTime = selectedDateObj.getTime();
+    const selectedTime = new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+    
+    const latestTime = parseDateValue(sortedData[0].date);
 
-    const latestDateValue = parseDateValue(sortedData[0].date);
-
-    // FIX: If selected date is in the future OR exactly matches/exceeds latest available:
-    // ALWAYS treat data[0] as the latest NAV
-    if (selectedTime >= latestDateValue) {
+    // If selected date is exactly latest OR in the future, return latest
+    if (selectedTime >= latestTime) {
         return sortedData[0];
     }
 
-    // Iterate from latest to oldest, pick first NAV where: navDate <= selectedDate
-    // find() on a descending array automatically does this.
-    const result = sortedData.find(item => parseDateValue(item.date) <= selectedTime);
+    // Find the first entry where the date is less than or equal to the selected date
+    // Since sortedData is latest first, the first one we hit is the "nearest previous"
+    const match = sortedData.find(item => parseDateValue(item.date) <= selectedTime);
 
-    // If no match found (selected date is before fund existed), return null to show "NAV unavailable"
-    return result || null;
+    return match || null;
 };
 
 /**
