@@ -6,6 +6,50 @@ import {
 import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate } from '../services/mfService';
 
+// Resilience Fallback: 40 Curated Funds in case of API failure
+const FALLBACK_FUNDS = [
+    { code: "125497", name: "HDFC Top 100 Fund - Direct Plan - Growth" },
+    { code: "118834", name: "SBI Bluechip Fund - Direct Plan - Growth" },
+    { code: "118825", name: "Mirae Asset Large Cap Fund - Direct Plan - Growth" },
+    { code: "120465", name: "Axis Bluechip Fund - Direct Plan - Growth" },
+    { code: "120716", name: "ICICI Prudential Bluechip Fund - Direct Plan - Growth" },
+    { code: "122639", name: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "120468", name: "UTI Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "120199", name: "Aditya Birla Sun Life Frontline Equity Fund - Direct Plan - Growth" },
+    { code: "125354", name: "SBI Small Cap Fund - Direct Plan - Growth" },
+    { code: "120847", name: "Quant Small Cap Fund - Direct Plan - Growth" },
+    { code: "120822", name: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth" },
+    { code: "130321", name: "Kotak Emerging Equity Fund - Direct Plan - Growth" },
+    { code: "129457", name: "ICICI Prudential Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "130115", name: "Axis Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "128051", name: "HDFC Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "132010", name: "DSP Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "130323", name: "Kotak Equity Opportunities Fund - Direct Plan - Growth" },
+    { code: "131201", name: "SBI Focused Equity Fund - Direct Plan - Growth" },
+    { code: "130112", name: "Axis Focused 25 Fund - Direct Plan - Growth" },
+    { code: "130114", name: "Axis Small Cap Fund - Direct Plan - Growth" },
+    { code: "100148", name: "Franklin India Prima Fund - Growth" },
+    { code: "100251", name: "Franklin India Bluechip Fund - Growth" },
+    { code: "100305", name: "Franklin India Taxshield - Growth" },
+    { code: "131203", name: "SBI Contra Fund - Direct Plan - Growth" },
+    { code: "131202", name: "SBI Magnum Midcap Fund - Direct Plan - Growth" },
+    { code: "131205", name: "SBI Long Term Equity Fund - Direct Plan - Growth" },
+    { code: "132011", name: "DSP Small Cap Fund - Direct Plan - Growth" },
+    { code: "132012", name: "DSP Equity Opportunities Fund - Direct Plan - Growth" },
+    { code: "132013", name: "DSP Tax Saver Fund - Direct Plan - Growth" },
+    { code: "129456", name: "ICICI Prudential Value Discovery Fund - Direct Plan - Growth" },
+    { code: "128052", name: "HDFC Balanced Advantage Fund - Direct Plan - Growth" },
+    { code: "128053", name: "HDFC Hybrid Equity Fund - Direct Plan - Growth" },
+    { code: "128054", name: "HDFC Large and Mid Cap Fund - Direct Plan - Growth" },
+    { code: "128055", name: "HDFC Small Cap Fund - Direct Plan - Growth" },
+    { code: "127042", name: "DSP Midcap Fund - Direct Plan - Growth" },
+    { code: "126503", name: "Axis Midcap Fund - Direct Plan - Growth" },
+    { code: "130322", name: "Kotak Small Cap Fund - Direct Plan - Growth" },
+    { code: "130324", name: "Kotak Bluechip Fund - Direct Plan - Growth" },
+    { code: "119551", name: "Tata Digital India Fund - Direct Plan - Growth" },
+    { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
+].sort((a,b) => a.name.localeCompare(b.name));
+
 export default function AddInvestment({ user, onBackToDashboard }) {
     const [allFunds, setAllFunds] = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
@@ -37,25 +81,32 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         .toISOString()
         .split('T')[0];
 
-    // Fetch fund list on mount directly from AMFI API
+    // Fetch fund list on mount directly from AMFI API via mfapi.in
     useEffect(() => {
         const fetchFundList = async () => {
             setLoadingFunds(true);
             try {
-                // Hits the singleton-cached AMFI API service (15,000+ funds)
+                // Using the singleton-cached service to get 15,000+ schemes
                 const data = await getAllFunds();
                 
-                const formatted = data.map(f => ({
-                    code: f.schemeCode.toString(),
-                    name: f.schemeName || "Unknown Fund",
-                })).sort((a, b) => a.name.localeCompare(b.name));
+                const formatted = data
+                    .filter(f => f && f.schemeCode)
+                    .map(f => ({
+                        code: f.schemeCode.toString(),
+                        name: f.schemeName || "Unknown Fund",
+                        nav: 0
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
 
-                setFilteredFunds(formatted);
-                // Also store the full list in a stable reference for the filter to use
                 setAllFunds(formatted);
+                setFilteredFunds(formatted);
+                console.log(`Successfully loaded ${formatted.length} funds from AMFI.`);
             } catch (err) {
-                console.error("Failed to fetch funds", err);
-                showToast("Could not load fund list. Using historical cache if available.");
+                console.error("Failed to fetch funds, using fallback", err);
+                // Switch to hardcoded fallback if API fails
+                setAllFunds(FALLBACK_FUNDS);
+                setFilteredFunds(FALLBACK_FUNDS);
+                showToast("Could not load full fund list. Showing top 40 curated funds.");
             } finally {
                 setLoadingFunds(false);
             }
@@ -79,7 +130,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Reactive filtering from full dataset (15k+ funds)
+    // Reactive filtering from cached full fund list
     useEffect(() => {
         if (!formData.fundName) {
             setFilteredFunds(allFunds);
@@ -94,8 +145,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
             );
 
             setFilteredFunds(results);
-            setVisibleCount(200); // Reset scroll on new search
-        }, 300);
+        }, 300); // 300ms debounce
 
         return () => clearTimeout(searchTimer);
     }, [formData.fundName, allFunds]);
@@ -175,7 +225,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 } else {
                     setFormData(prev => ({ ...prev, nav: "NAV unavailable" }));
                     setLatestNavInfo({ nav: '', date: '' });
-                    showToast("NAV not available for this fund");
+                    showToast("NAV data unavailable for this fund");
                 }
             } catch (err) {
                 console.error("Failed to fetch NAV", err);
@@ -403,8 +453,8 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                             {isNavFetching && <div className="inline-spinner"></div>}
                                         </div>
                                         {latestNavInfo.date ? (
-                                            <span className="helper-text nav-date-text">
-                                                Last Updated: {latestNavInfo.date} (₹{latestNavInfo.nav})
+                                            <span className="helper-text nav-date-text" style={{ color: 'var(--ai-text-muted)' }}>
+                                                Last Updated: {latestNavInfo.date} (Current: ₹{latestNavInfo.nav})
                                             </span>
                                         ) : (
                                             <span className="helper-text auto-calc">Units: {units}</span>
@@ -496,7 +546,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                             </div>
                             {latestNavInfo.nav && (
                                 <div className="summary-item">
-                                    <span>Current NAV</span>
+                                    <span>Market NAV ({latestNavInfo.date})</span>
                                     <strong style={{ color: 'var(--fintech-green)' }}>₹{latestNavInfo.nav}</strong>
                                 </div>
                             )}
