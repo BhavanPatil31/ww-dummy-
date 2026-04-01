@@ -50,8 +50,18 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                 dob: profile.dob || "",
                 bio: profile.bio || ""
             });
+        } else if (user) {
+            const nameParts = (user.name || "").split(" ");
+            const fName = nameParts[0] || "";
+            const lName = nameParts.slice(1).join(" ") || "";
+            setEditForm((prev) => ({
+                ...prev,
+                firstName: fName,
+                lastName: lName,
+                email: user.email || ""
+            }));
         }
-    }, [profile]);
+    }, [profile, user]);
 
     const showMessage = (text, type) => {
         setMessage({ text, type });
@@ -93,15 +103,32 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
 
         try {
             if (!profile) {
+                const payload = {
+                    userId: uid, 
+                    name: finalName, 
+                    email: editForm.email,
+                    phone: editForm.mobileNumber, 
+                    password: "dummy_pass_123",
+                    gender: editForm.gender, 
+                    taxId: editForm.taxId,
+                    taxCountry: editForm.taxCountry, 
+                    residentialAddress: editForm.residentialAddress,
+                    occupation: editForm.occupation, 
+                    dob: editForm.dob, 
+                    bio: editForm.bio
+                };
+                
                 const res = await fetch(API_BASE, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        userId: uid, name: finalName, email: editForm.email,
-                        phone: editForm.mobileNumber, password: "dummy_pass_123"
-                    }),
+                    body: JSON.stringify(payload),
                 });
-                if (!res.ok) throw new Error("Failed to create profile");
+                
+                if (!res.ok) {
+                    const errText = await res.text();
+                    console.error("Profile creation failed:", errText);
+                    throw new Error(errText || "Failed to create profile");
+                }
                 const newProfile = await res.json();
                 setProfile(newProfile);
             } else {
