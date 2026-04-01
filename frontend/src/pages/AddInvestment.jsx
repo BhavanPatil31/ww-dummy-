@@ -30,7 +30,6 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     const [loadingNav, setLoadingNav] = useState(false);
     const [navDate, setNavDate] = useState('');
     const navCache = useRef({});
-
     const suggestionRef = useRef(null);
     const todayDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
         .toISOString()
@@ -39,9 +38,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     // Fetch fund list on mount (from DB backend now)
     useEffect(() => {
         const fetchFundList = async () => {
-            setLoadingFunds(true);
-            try {
-                const response = await axios.get('http://localhost:8088/api/mf/list');
+                setLoadingFunds(true);
+                try {
+                    const response = await axios.get('http://localhost:8088/api/mf/list');
 
                 let dataToMap = response.data;
 

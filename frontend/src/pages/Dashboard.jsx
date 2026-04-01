@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import {
     AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -14,6 +14,7 @@ import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
+import GoalPlanning from './GoalPlanning';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
@@ -41,6 +42,18 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         () => localStorage.getItem('activeView') || 'dashboard'
     );
     const [showNotifications, setShowNotifications] = useState(false);
+    const notifRef = useRef(null);
+
+    // Close notifications on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
@@ -118,7 +131,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     }, [user, timeFrame, getCurrentValue, generateHistory]);
 
     useEffect(() => {
-        if (user && (activeView === 'dashboard' || activeView === 'tax')) {
+        if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
             fetchAllData();
         }
     }, [user, activeView, timeFrame]);
@@ -151,6 +164,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             await axios.put(`http://localhost:8088/api/notifications/${notifId}/read`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setShowNotifications(false);
             fetchNotifications();
         } catch (err) { console.error("Failed to mark read", err); }
     };
@@ -165,6 +179,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
             setNotifications([]);
             setUnreadCount(0);
+            setShowNotifications(false);
         } catch (err) { console.error("Failed to clear", err); }
     };
 
@@ -262,13 +277,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
                         { view: 'addInvestment', icon: <FiPlus />, label: 'Add Investment' },
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
-                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' }
+                        { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
+                        { view: 'goals', icon: <FiTarget />, label: 'Goals' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
                             {icon} {label}
                         </button>
                     ))}
-                    <button className="nav-item"><FiTarget /> Goals</button>
                 </nav>
                 <div className="sidebar-bottom">
                     <button className="logout-btn" onClick={onLogout}><FiLogOut /> Logout</button>
@@ -301,7 +316,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         </p>
                     </div>
                     <div className="header-actions">
-                        <div className="notification-wrapper">
+                        <div className="notification-wrapper" ref={notifRef}>
                             <button className={`icon-btn ${showNotifications ? 'active' : ''}`} 
                                 onClick={() => setShowNotifications(!showNotifications)}>
                                 <FiBell />
@@ -583,6 +598,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <TaxSummary user={user} investments={investments} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
+                    ) : activeView === 'goals' ? (
+                        <GoalPlanning user={user} investments={investments} getCurrentValue={getCurrentValue} />
                     ) : null}
                 </div>
             </main>
