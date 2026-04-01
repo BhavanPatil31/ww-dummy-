@@ -123,7 +123,6 @@ export default function Settings({ user, theme, setTheme }) {
     const tabs = [
         { id: 'security', label: 'Security & Login', icon: <FiShield /> },
         { id: 'notifications', label: 'Notifications', icon: <FiBell /> },
-        { id: 'appearance', label: 'Appearance', icon: <FiMonitor /> },
         { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> }
     ];
 
@@ -257,71 +256,6 @@ export default function Settings({ user, theme, setTheme }) {
                     </motion.div>
                 );
 
-            case 'appearance':
-                return (
-                    <motion.div {...pageTransition}>
-                        <div className="settings-section-header">
-                            <h2>Appearance</h2>
-                            <p>Customize the look and feel of WealthWise to suit your workflow.</p>
-                        </div>
-
-                        <div className="setting-item" style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
-                            <div className="setting-info" style={{ marginBottom: '1rem' }}>
-                                <h4>Interface Theme</h4>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Select or customize your UI theme.</p>
-                            </div>
-                            <div className="theme-selector" style={{ display: 'flex', gap: '1rem', background: 'var(--bg-secondary)', padding: '0.5rem', borderRadius: '12px', width: 'fit-content' }}>
-                                {['light', 'dark', 'system'].map(t => (
-                                    <button
-                                        key={t}
-                                        className={`theme-btn ${theme === t ? 'active' : ''}`}
-                                        onClick={() => setTheme(t)}
-                                        style={{
-                                            padding: '0.5rem 1.5rem',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            background: theme === t ? 'var(--primary-color)' : 'transparent',
-                                            color: theme === t ? '#fff' : 'var(--text-primary)',
-                                            fontWeight: theme === t ? '600' : '400',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="setting-item">
-                            <div className="setting-info" style={{ marginBottom: '1rem' }}>
-                                <h4>Default Currency</h4>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Choose the currency for displaying your portfolio value.</p>
-                            </div>
-                            <select
-                                className="settings-select"
-                                value={currency}
-                                onChange={(e) => setCurrency(e.target.value)}
-                                style={{
-                                    padding: '0.8rem 1rem',
-                                    borderRadius: '8px',
-                                    background: 'var(--bg-secondary)',
-                                    color: 'var(--text-primary)',
-                                    border: '1px solid var(--border-color)',
-                                    outline: 'none',
-                                    cursor: 'pointer',
-                                    minWidth: '200px',
-                                    fontSize: '1rem'
-                                }}
-                            >
-                                <option value="INR">₹ INR (Indian Rupee)</option>
-                                <option value="USD">$ USD (US Dollar)</option>
-                                <option value="EUR">€ EUR (Euro)</option>
-                                <option value="GBP">£ GBP (British Pound)</option>
-                            </select>
-                        </div>
-                    </motion.div>
-                );
 
             case 'privacy':
                 return (
@@ -347,10 +281,38 @@ export default function Settings({ user, theme, setTheme }) {
 
                         <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
                             <div className="setting-info">
+                                <h4>Default Currency</h4>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0' }}>Choose the currency for displaying your portfolio value.</p>
+                            </div>
+                            <select
+                                className="settings-select"
+                                value={currency}
+                                onChange={(e) => setCurrency(e.target.value)}
+                                style={{
+                                    padding: '0.6rem 1rem',
+                                    borderRadius: '8px',
+                                    background: 'var(--bg-secondary)',
+                                    color: 'var(--text-primary)',
+                                    border: '1px solid var(--border-color)',
+                                    outline: 'none',
+                                    cursor: 'pointer',
+                                    minWidth: '180px',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                <option value="INR">₹ INR (Indian Rupee)</option>
+                                <option value="USD">$ USD (US Dollar)</option>
+                                <option value="EUR">€ EUR (Euro)</option>
+                                <option value="GBP">£ GBP (British Pound)</option>
+                            </select>
+                        </div>
+
+                        <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
+                            <div className="setting-info">
                                 <h4>Download My Data</h4>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0' }}>Export a secure CSV of your complete investment history.</p>
                             </div>
-                            <button onClick={handleExport} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
+                            <button onClick={handleExport} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '0.6rem 1rem' }}>
                                 <FiDownload /> Export CSV
                             </button>
                         </div>
