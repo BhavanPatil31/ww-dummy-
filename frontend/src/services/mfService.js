@@ -64,54 +64,47 @@ export const getNavHistory = async (schemeCode) => {
  * Logic:
  * 1. Convert selected date -> DD-MM-YYYY
  * 2. Find NAV for selected date -> IF found, use it
- * 3. IF NOT found: Find nearest previous date NAV
+ * 3. IF NOT found: Find nearest PREVIOUS available date NAV
  * 4. IF selected date > latest available NAV: Use latest NAV
- * 
- * @param {Array} navData History array [ { date, nav } ]
- * @param {string} selectedDate "YYYY-MM-DD"
  */
 export const getNavByDate = (navData, selectedDate) => {
     if (!navData || navData.length === 0) return null;
 
-    // Helper to parse "DD-MM-YYYY" into a generic numeric value for comparison
+    // Helper to parse "DD-MM-YYYY" into a numeric value for comparison
     const parseDateValue = (str) => {
         const [d, m, y] = str.split('-').map(Number);
         const date = new Date(y, m - 1, d);
-        date.setHours(0, 0, 0, 0); // Normalize time
+        date.setHours(0, 0, 0, 0);
         return date.getTime();
     };
 
-    // Sort descending by date (latest first) to guarantee data order
+    // 1. Sort descending by date (latest first) to guarantee data order
+    // Note: AMFI API usually returns data sorted descending, but we sort again for safety.
     const sortedData = [...navData].sort((a, b) => parseDateValue(b.date) - parseDateValue(a.date));
 
+    // Normalize selected date to midnight
     const [y, m, d] = selectedDate.split('-').map(Number);
     const selectedDateObj = new Date(y, m - 1, d);
     selectedDateObj.setHours(0, 0, 0, 0);
     const selectedTime = selectedDateObj.getTime();
 
+    // Latest available NAV date in dataset
     const latestDateValue = parseDateValue(sortedData[0].date);
 
-    // FIX: If selected date is in the future OR exactly matches/exceeds latest available:
-    // ALWAYS treat data[0] as the latest NAV
+    // RULE 4: If selected date is in the future relative to the latest NAV
+    // OR matches exactly: Return the latest NAV
     if (selectedTime >= latestDateValue) {
-        return sortedData[0];
+        return {
+            ...sortedData[0],
+            isLatest: true
+        };
     }
 
-    // Iterate from latest to oldest, pick first NAV where: navDate <= selectedDate
-    // find() on a descending array automatically does this.
+    // RULE 2 & 3: Iterate through sorted (latest-to-oldest) data.
+    // The first item where item.date <= selectedTime is either the EXACT date
+    // or the NEAREST PREVIOUS date.
     const result = sortedData.find(item => parseDateValue(item.date) <= selectedTime);
 
-    // If no match found (selected date is before fund existed), return null to show "NAV unavailable"
+    // If result exists, we return it. If the find fails (selected date is before the fund existed), return null.
     return result || null;
-};
-
-/**
- * Standard debounce function to limit API calls during search
- */
-export const debounce = (func, delay) => {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => func(...args), delay);
-    };
 };
