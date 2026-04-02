@@ -273,7 +273,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                             <h3 className="section_title"><FiShield /> Legal & Tax</h3>
                             <div className="form_grid_2">
                                 <div className="premium_input_group">
-                                    <label>Tax ID</label>
+                                    <label>Tax ID (optional)</label>
                                     <input type="text" value={editForm.taxId} onChange={e => setEditForm({ ...editForm, taxId: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group">
@@ -345,7 +345,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                             <h3 className="section_title"><FiShield /> Legal & Tax</h3>
                             <div className="read_only_grid">
                                 <div className="read_only_item">
-                                    <label>Tax ID</label>
+                                    <label>Tax ID (optional)</label>
                                     <span>{editForm.taxId || "--"}</span>
                                 </div>
                                 <div className="read_only_item">
