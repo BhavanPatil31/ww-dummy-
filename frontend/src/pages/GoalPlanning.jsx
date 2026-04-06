@@ -377,6 +377,75 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
                             </tbody>
                         </table>
                     )}
+                    
+                    {/* Fixed-Term Investments */}
+                    {investments && investments.filter(inv => inv.end_date && inv.status !== 'SOLD').length > 0 && (
+                        <div style={{ marginTop: '40px' }}>
+                            <h3 style={{ marginBottom: '16px', fontSize: '18px', color: '#f8fafc' }}>Term Investments (Active)</h3>
+                            <table className="goal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sl No</th>
+                                        <th>Fund Name</th>
+                                        <th>Target Amount (Est.)</th>
+                                        <th>End Year</th>
+                                        <th>Linked Investments</th>
+                                        <th>Progress</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {investments.filter(inv => inv.end_date && inv.status !== 'SOLD').map((inv, idx) => {
+                                        const start = new Date(inv.start_date || inv.buy_date);
+                                        const end = new Date(inv.end_date);
+                                        let targetAmt = parseFloat(inv.amount || 0);
+
+                                        if (inv.frequency === 'Monthly') {
+                                            let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+                                            targetAmt = targetAmt * (m > 0 ? m : 1);
+                                        } else if (inv.frequency === 'Yearly') {
+                                            let y = end.getFullYear() - start.getFullYear();
+                                            targetAmt = targetAmt * (y > 0 ? y : 1);
+                                        } else if (inv.frequency === 'Weekly') {
+                                            let w = Math.floor((end - start) / (1000 * 60 * 60 * 24 * 7));
+                                            targetAmt = targetAmt * (w > 0 ? w : 1);
+                                        } else if (inv.frequency === 'Quarterly') {
+                                            let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+                                            let q = Math.floor(m / 3);
+                                            targetAmt = targetAmt * (q > 0 ? q : 1);
+                                        }
+
+                                        const progressVal = getCurrentValue ? getCurrentValue(inv) : parseFloat(inv.amount || 0);
+                                        let percentage = targetAmt > 0 ? (progressVal / targetAmt) * 100 : 0;
+                                        if (percentage > 100) percentage = 100;
+                                        if (isNaN(percentage)) percentage = 0;
+
+                                        return (
+                                            <tr key={`term-${inv.investment_id || idx}`}>
+                                                <td>{idx + 1}</td>
+                                                <td style={{fontWeight: 500}}>{inv.scheme_name || `Fund #${inv.fund_id}`}</td>
+                                                <td style={{color: '#f8fafc'}}>₹{fmt(targetAmt)}</td>
+                                                <td>{end.getFullYear()}</td>
+                                                <td style={{color: '#94a3b8'}}>-</td>
+                                                <td style={{width: '200px'}}>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                                                        <span className="goal-progress-text">₹{fmt(progressVal)}</span>
+                                                        <span style={{fontSize: '12px', color: '#94a3b8'}}>{percentage.toFixed(1)}%</span>
+                                                    </div>
+                                                    <div className="goal-progress-container">
+                                                        <div className="goal-progress-bar" style={{width: `${percentage}%`}}></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Auto-tracked</span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
 
