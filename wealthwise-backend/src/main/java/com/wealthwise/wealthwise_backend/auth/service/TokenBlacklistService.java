@@ -13,13 +13,13 @@ public class TokenBlacklistService {
     private RedisTemplate<String, Object> redisTemplate;
 
     public void blacklistToken(String token, long expirationMillis) {
-        if (token != null && !token.isBlank() && expirationMillis > 0) {
+        if (token != null && !token.trim().isEmpty() && expirationMillis > 0) {
             redisTemplate.opsForValue().set(token, "blacklisted", expirationMillis, TimeUnit.MILLISECONDS);
         }
     }
 
     public boolean isTokenBlacklisted(String token) {
-        if (token == null || token.isBlank()) return false;
+        if (token == null || token.trim().isEmpty()) return false;
         return Boolean.TRUE.equals(redisTemplate.hasKey(token));
     }
 }
