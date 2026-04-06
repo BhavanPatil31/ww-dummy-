@@ -79,24 +79,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return parseFloat(inv.amount || 0) * (1 + pct);
     }, []);
 
-    // ── Generate chart history ────────────────────────────────────
-    const generateHistory = useCallback((baseVal, tf) => {
-        const points = tf === '1W' ? 7 : tf === '1M' ? 30 : tf === '6M' ? 180 : tf === '1Y' ? 365 : 730;
-        const data = [];
-        let base = baseVal * 0.78;
-        const now = new Date();
-        for (let i = points; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(now.getDate() - i);
-            base = Math.max(base + (Math.random() - 0.44) * (baseVal * 0.014), baseVal * 0.5);
-            data.push({
-                date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-                value: parseFloat(base.toFixed(2))
-            });
-        }
-        if (data.length > 0) data[data.length - 1].value = baseVal;
-        return data;
-    }, []);
 
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
@@ -120,16 +102,20 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
             } catch { }
 
+            let histData = [];
+            try {
+                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 730;
+                const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
+                histData = r.data || [];
+            } catch { }
+
             setInvestments(invData);
             setDashboardData(dbData);
-            const baseVal = dbData?.portfolioValue
-                || invData.reduce((s, i) => s + getCurrentValue(i), 0)
-                || 10000;
-            setHistoryData(generateHistory(baseVal, timeFrame));
+            setHistoryData(histData);
         } finally {
             setLoading(false);
         }
-    }, [user, timeFrame, getCurrentValue, generateHistory]);
+    }, [user, timeFrame, getCurrentValue]);
 
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
@@ -191,36 +177,23 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             portfolioValue: dashboardData.portfolioValue || 0,
             profitLoss: dashboardData.profitLoss || 0,
             returnPct: dashboardData.returnPercentage || 0,
+            realizedPnL: dashboardData.realizedProfitLoss || 0,
         };
-        const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
-        const portfolioValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
-        const profitLoss = portfolioValue - totalInvested;
-        const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
-        return { totalInvested, portfolioValue, profitLoss, returnPct };
-    }, [dashboardData, investments, getCurrentValue]);
+        return { totalInvested: 0, portfolioValue: 0, profitLoss: 0, returnPct: 0, realizedPnL: 0 };
+    }, [dashboardData]);
 
     const assetAllocation = useMemo(() => {
-        if (dashboardData?.assetAllocation?.length) return dashboardData.assetAllocation;
-        if (!investments.length) return [];
-        const groups = {};
-        investments.forEach(inv => {
-            const t = inv.investment_type || 'Other';
-            groups[t] = (groups[t] || 0) + getCurrentValue(inv);
-        });
-        return Object.entries(groups).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
-    }, [dashboardData, investments, getCurrentValue]);
+        return dashboardData?.assetAllocation || [];
+    }, [dashboardData]);
 
     const topPerformers = useMemo(() => {
-        if (!investments.length) return { best: null, worst: null };
-        const withRet = investments.map(inv => {
-            const invested = parseFloat(inv.amount || 0);
-            const current = getCurrentValue(inv);
-            const returnPct = invested > 0 ? ((current - invested) / invested) * 100 : 0;
-            return { ...inv, returnPct };
-        });
-        const sorted = [...withRet].sort((a, b) => b.returnPct - a.returnPct);
-        return { best: sorted[0], worst: sorted[sorted.length - 1] };
-    }, [investments, getCurrentValue]);
+        if (!dashboardData?.activeHoldings?.length) return { best: null, worst: null };
+        const sorted = [...dashboardData.activeHoldings].sort((a, b) => b.returnPercentage - a.returnPercentage);
+        return {
+            best: { ...sorted[0], scheme_name: sorted[0].fundName, returnPct: sorted[0].returnPercentage },
+            worst: { ...sorted[sorted.length - 1], scheme_name: sorted[sorted.length - 1].fundName, returnPct: sorted[sorted.length - 1].returnPercentage }
+        };
+    }, [dashboardData]);
 
     const recentActivity = useMemo(() =>
         [...investments]
@@ -298,7 +271,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     <div className="welcome-section">
                         <h1>
                             {activeView === 'dashboard'
-                                ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
+                                ? `Welcome back, ${dashboardData?.userName || user?.name || 'Investor'} 👋`
                                 : activeView === 'profile' ? 'Account Overview'
                                     : activeView === 'addInvestment' ? 'Add Investment'
                                         : activeView === 'portfolio' ? 'My Portfolio'
@@ -361,7 +334,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             setActiveView('profile');
                             setShowNotifications(false);
                         }}>
-                            <FiUser /> {user?.name || 'User'}
+                            <FiUser /> {dashboardData?.userName || user?.name || 'User'}
                         </div>
                     </div>
                 </header>
@@ -380,7 +353,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             {profitPill()}
                                         </div>
                                         <div className="timeframe-filters">
-                                            {['1W', '1M', '6M', '1Y', 'ALL'].map(tf => (
+                                            {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
                                                 <button key={tf} className={timeFrame === tf ? 'active' : ''} onClick={() => setTimeFrame(tf)}>{tf}</button>
                                             ))}
                                         </div>
@@ -434,13 +407,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             : `${metrics.profitLoss > 0 ? '+' : ''}₹${fmt(Math.abs(metrics.profitLoss))}`,
                                         icon: metrics.profitLoss >= 0 ? <FiTrendingUp /> : <FiTrendingDown />,
                                         cls: metrics.profitLoss > 0 ? 'i-green' : metrics.profitLoss < 0 ? 'i-red' : 'i-muted',
-                                        sub: metrics.profitLoss === 0 ? 'No change yet' : `${metrics.returnPct.toFixed(2)}% overall`,
+                                        sub: metrics.realizedPnL !== 0 ? `Incl. ₹${fmt(metrics.realizedPnL)} realized` : `${(metrics.returnPct || 0).toFixed(2)}% overall`,
                                         valueColor: metrics.profitLoss > 0 ? 'pos' : metrics.profitLoss < 0 ? 'neg' : ''
                                     },
                                     {
-                                        label: 'Returns %', value: `${metrics.returnPct >= 0 ? '+' : ''}${metrics.returnPct.toFixed(2)}%`,
-                                        icon: <FiActivity />, cls: metrics.returnPct >= 0 ? 'i-green' : 'i-red',
-                                        sub: 'Absolute return', valueColor: metrics.returnPct >= 0 ? 'pos' : 'neg'
+                                        label: 'Returns %', value: `${(metrics.returnPct || 0) >= 0 ? '+' : ''}${(metrics.returnPct || 0).toFixed(2)}%`,
+                                        icon: <FiActivity />, cls: (metrics.returnPct || 0) >= 0 ? 'i-green' : 'i-red',
+                                        sub: 'Absolute return', valueColor: (metrics.returnPct || 0) >= 0 ? 'pos' : 'neg'
                                     },
                                 ].map((kpi, i) => (
                                     <div key={i} className={`kpi-card${kpi.highlight ? ' highlight' : ''}`}>
@@ -523,7 +496,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                     <div className="performer-ret pos"><FiArrowUpRight />+{topPerformers.best.returnPct.toFixed(2)}%</div>
                                                 </div>
                                             )}
-                                            {topPerformers.worst && topPerformers.worst.investment_id !== topPerformers.best?.investment_id && (
+                                            {topPerformers.worst && topPerformers.worst.fundId !== topPerformers.best?.fundId && (
                                                 <div className="performer-item">
                                                     <div className="performer-badge red">Lowest</div>
                                                     <div className="performer-info">
@@ -553,14 +526,14 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         <div className="activity-list">
                                             {recentActivity.map((inv, i) => (
                                                 <div key={i} className="activity-item">
-                                                    <div className={`activity-dot ${inv.investment_type === 'SIP' ? 'blue' : 'green'}`}>
-                                                        {inv.investment_type === 'SIP' ? <FiRefreshCw size={11} /> : <FiArrowUpRight size={11} />}
+                                                    <div className={`activity-dot ${inv.investment_type === 'SIP' ? 'blue' : inv.investment_type === 'SELL' ? 'red' : 'green'}`}>
+                                                        {inv.investment_type === 'SIP' ? <FiRefreshCw size={11} /> : inv.investment_type === 'SELL' ? <FiArrowDownRight size={11} /> : <FiArrowUpRight size={11} />}
                                                     </div>
                                                     <div className="activity-info">
                                                         <strong>{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 24)}{(inv.scheme_name?.length > 24) ? '…' : ''}</strong>
-                                                        <span>{inv.investment_type} · {formatDate(inv.buy_date || inv.start_date)}</span>
+                                                        <span>{inv.investment_type === 'Lumpsum' ? 'BUY' : inv.investment_type} · {formatDate(inv.buy_date || inv.start_date)}</span>
                                                     </div>
-                                                    <div className="activity-amount">+₹{fmt(inv.amount)}</div>
+                                                    <div className="activity-amount">{inv.investment_type === 'SELL' ? '-' : '+'}₹{fmt(inv.amount)}</div>
                                                 </div>
                                             ))}
                                         </div>
