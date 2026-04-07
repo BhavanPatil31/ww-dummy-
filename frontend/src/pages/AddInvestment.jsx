@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
-    FiDollarSign, FiCalendar, FiActivity, FiTag, FiCheckCircle, FiInfo
+    FiCalendar, FiSearch, FiTrendingUp, FiInfo,
+    FiCheckCircle, FiAlertTriangle, FiAlertCircle
 } from 'react-icons/fi';
 
 import '../styles/AddInvestment.css';
@@ -27,33 +28,63 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
 
     const [mockFunds, setMockFunds] = useState([]);
+import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .split('T')[0];
+
+const NAV_OUTDATED_DAYS = 10; // warn (not block) if latest NAV older than this
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const getCategory = (name = '') => {
+    const n = name.toLowerCase();
+    if (n.includes('small cap') || n.includes('smallcap'))      return 'Small Cap';
+    if (n.includes('midcap') || n.includes('mid cap'))          return 'Mid Cap';
+    if (n.includes('large cap') || n.includes('bluechip') ||
+        n.includes('top 100') || n.includes('frontline'))       return 'Large Cap';
+    if (n.includes('flexi cap') || n.includes('flexicap'))      return 'Flexi Cap';
+    if (n.includes('index') || n.includes('nifty') ||
+        n.includes('sensex'))                                    return 'Index Funds';
+    if (n.includes('debt') || n.includes('liquid') ||
+        n.includes('bond') || n.includes('gilt'))               return 'Debt Funds';
+    if (n.includes('elss') || n.includes('tax'))                return 'ELSS / Tax Saving';
+    return 'Other';
+};
+
+const formatINR = (val) =>
+    new Intl.NumberFormat('en-IN', {
+        style: 'currency', currency: 'INR', maximumFractionDigits: 0
+    }).format(val || 0);
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export default function AddInvestment({ user, onBackToDashboard }) {
+
+    // ── Fund list ──────────────────────────────────────────────────────────
+    const [allFunds,     setAllFunds]     = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
+    const [fundsError,   setFundsError]   = useState('');
+
+    // ── Investment type ────────────────────────────────────────────────────
     const [type, setType] = useState('SIP');
+
+    // ── Form ───────────────────────────────────────────────────────────────
     const [formData, setFormData] = useState({
-        fundName: '',
-        fund_id: '',
-        nav: '',
-        amount: '',
+        fundName:  '',
+        fund_id:   '',
+        nav:       '',
+        amount:    '',
         frequency: 'Monthly',
         startDate: '',
-        endDate: ''
+        endDate:   ''
     });
-    const [status, setStatus] = useState({ loading: false, success: false, error: '' });
-    const [toastMsg, setToastMsg] = useState('');
 
-    // Autocomplete Search States
+    // ── Dropdown / search ──────────────────────────────────────────────────
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [filteredFunds, setFilteredFunds] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
-
-    // NAV states
-    const [loadingNav, setLoadingNav] = useState(false);
-    const [navDate, setNavDate] = useState('');
-    const navCache = useRef({});
+    const [filteredFunds,   setFilteredFunds]   = useState([]);
+    const [visibleLimit,    setVisibleLimit]    = useState(100);
     const suggestionRef = useRef(null);
-    const todayDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
-        .toISOString()
-        .split('T')[0];
 
     // Fetch fund list on mount (from DB backend now)
     useEffect(() => {
@@ -112,95 +143,89 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                         { scheme_code: "120318", scheme_name: "Kotak Flexicap Fund - Direct Plan - Growth" }
                     ];
                 }
+    // ── NAV state ──────────────────────────────────────────────────────────
+    const [loadingNav,    setLoadingNav]    = useState(false);
+    const [navDate,       setNavDate]       = useState('');   // actual date of the NAV shown
+    const [latestNavInfo, setLatestNavInfo] = useState({ nav: '', date: '' });
+    const [navError,      setNavError]      = useState('');   // '' | 'NO_FUND_DATA' | 'NO_DATE_MATCH' | 'FETCH_ERROR'
 
-                const formatted = dataToMap.map(f => ({
-                    code: (f.schemeCode || f.scheme_code || f.code || "").toString(),
-                    name: f.schemeName || f.scheme_name || f.name || "Unknown Fund",
-                    nav: 0
-                }));
+    /**
+     * Two-level cache:
+     *   mfService navHistoryCache  — fund-level  (full API response per schemeCode)
+     *   navCache ref               — date-level   (resolved { nav, date } per fund+date)
+     */
+    const navCache = useRef({});
 
-                setMockFunds(formatted);
-                setFilteredFunds(formatted);
+    // ── Submission ─────────────────────────────────────────────────────────
+    const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
+    const [toastMsg, setToastMsg] = useState('');
+
+    // ── Derived ────────────────────────────────────────────────────────────
+    const navValue      = parseFloat(formData.nav);
+    const isNavFetching = loadingNav;
+    const isNavValid    = !isNaN(navValue) && navValue > 0;
+    const isNavOutdated = isNavValid && latestNavInfo.date
+                          && daysSince(latestNavInfo.date) > NAV_OUTDATED_DAYS;
+    const isNavUnavail  = navError !== '';
+
+    // Disable submit if: loading / nav fetching / nav invalid or unavailable / no fund selected
+    const canSubmit =
+        !status.loading &&
+        !isNavFetching  &&
+        isNavValid      &&
+        !isNavUnavail   &&
+        !!formData.fund_id &&
+        !!formData.amount;
+
+    const units = isNavValid && parseFloat(formData.amount) > 0
+        ? (parseFloat(formData.amount) / navValue).toFixed(4)
+        : '0.0000';
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 1. LOAD ALL FUNDS on mount
+    // ─────────────────────────────────────────────────────────────────────
+    useEffect(() => {
+        const load = async () => {
+            setLoadingFunds(true);
+            setFundsError('');
+            try {
+                const raw = await getAllFunds();
+                const formatted = raw
+                    .filter(f => f && (f.schemeCode || f.code))
+                    .map(f => ({
+                        code: String(f.schemeCode || f.code),
+                        name: f.schemeName || f.name || 'Unknown Fund'
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                setAllFunds(formatted);
+                console.log(`[AddInvestment] Dropdown ready: ${formatted.length} funds`);
             } catch (err) {
-                console.error("Failed to fetch funds", err);
-
-                // Ensure UI still works via fallback on complete Network Failure
-                const fallbackData = [
-                    { scheme_code: "125497", scheme_name: "HDFC Top 100 Fund - Direct Plan - Growth" },
-                    { scheme_code: "118834", scheme_name: "SBI Bluechip Fund - Direct Plan - Growth" },
-                    { scheme_code: "118825", scheme_name: "Mirae Asset Large Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "120465", scheme_name: "Axis Bluechip Fund - Direct Plan - Growth" },
-                    { scheme_code: "120716", scheme_name: "ICICI Prudential Bluechip Fund - Direct Plan - Growth" },
-                    { scheme_code: "122639", scheme_name: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "120468", scheme_name: "UTI Flexi Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "120199", scheme_name: "Aditya Birla Sun Life Frontline Equity Fund - Direct Plan - Growth" },
-                    { scheme_code: "125354", scheme_name: "SBI Small Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "120847", scheme_name: "Quant Small Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "120822", scheme_name: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth" },
-                    { scheme_code: "130321", scheme_name: "Kotak Emerging Equity Fund - Direct Plan - Growth" },
-                    { scheme_code: "129457", scheme_name: "ICICI Prudential Flexi Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "130115", scheme_name: "Axis Flexi Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "128051", scheme_name: "HDFC Flexi Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "132010", scheme_name: "DSP Flexi Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "130323", scheme_name: "Kotak Equity Opportunities Fund - Direct Plan - Growth" },
-                    { scheme_code: "131201", scheme_name: "SBI Focused Equity Fund - Direct Plan - Growth" },
-                    { scheme_code: "130112", scheme_name: "Axis Focused 25 Fund - Direct Plan - Growth" },
-                    { scheme_code: "130114", scheme_name: "Axis Small Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "100148", scheme_name: "Franklin India Prima Fund - Growth" },
-                    { scheme_code: "100251", scheme_name: "Franklin India Bluechip Fund - Growth" },
-                    { scheme_code: "100305", scheme_name: "Franklin India Taxshield - Growth" },
-                    { scheme_code: "131203", scheme_name: "SBI Contra Fund - Direct Plan - Growth" },
-                    { scheme_code: "131202", scheme_name: "SBI Magnum Midcap Fund - Direct Plan - Growth" },
-                    { scheme_code: "131205", scheme_name: "SBI Long Term Equity Fund - Direct Plan - Growth" },
-                    { scheme_code: "132011", scheme_name: "DSP Small Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "132012", scheme_name: "DSP Equity Opportunities Fund - Direct Plan - Growth" },
-                    { scheme_code: "132013", scheme_name: "DSP Tax Saver Fund - Direct Plan - Growth" },
-                    { scheme_code: "129456", scheme_name: "ICICI Prudential Value Discovery Fund - Direct Plan - Growth" },
-                    { scheme_code: "128052", scheme_name: "HDFC Balanced Advantage Fund - Direct Plan - Growth" },
-                    { scheme_code: "128053", scheme_name: "HDFC Hybrid Equity Fund - Direct Plan - Growth" },
-                    { scheme_code: "128054", scheme_name: "HDFC Large and Mid Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "128055", scheme_name: "HDFC Small Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "127042", scheme_name: "DSP Midcap Fund - Direct Plan - Growth" },
-                    { scheme_code: "126503", scheme_name: "Axis Midcap Fund - Direct Plan - Growth" },
-                    { scheme_code: "130322", scheme_name: "Kotak Small Cap Fund - Direct Plan - Growth" },
-                    { scheme_code: "130324", scheme_name: "Kotak Bluechip Fund - Direct Plan - Growth" },
-                    { scheme_code: "119551", scheme_name: "Tata Digital India Fund - Direct Plan - Growth" },
-                    { scheme_code: "120318", scheme_name: "Kotak Flexicap Fund - Direct Plan - Growth" }
-                ];
-
-                const formattedFallback = fallbackData.map(f => ({
-                    code: f.scheme_code,
-                    name: f.scheme_name,
-                    nav: 0
-                }));
-
-                setMockFunds(formattedFallback);
-                setFilteredFunds(formattedFallback);
-                showToast("Server syncing issue. Default funds loaded anyway.");
+                console.error('[AddInvestment] Fund list fetch failed:', err);
+                setFundsError('Could not load fund list. Please check your connection and refresh.');
             } finally {
                 setLoadingFunds(false);
             }
         };
-        fetchFundList();
+        load();
     }, []);
 
-    const showToast = (msg) => {
-        setToastMsg(msg);
-        setTimeout(() => setToastMsg(''), 4000);
-    };
-
-    // Close dropdown on outside click
+    // ─────────────────────────────────────────────────────────────────────
+    // 2. CLOSE DROPDOWN on outside click
+    // ─────────────────────────────────────────────────────────────────────
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (suggestionRef.current && !suggestionRef.current.contains(event.target)) {
+        const handleOutside = (e) => {
+            if (suggestionRef.current && !suggestionRef.current.contains(e.target)) {
                 setShowSuggestions(false);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
     }, []);
 
-    // Reactive filtering
+    // ─────────────────────────────────────────────────────────────────────
+    // 3. FILTER FUNDS as user types (debounced 150 ms)
+    // ─────────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!formData.fundName) {
             setFilteredFunds(mockFunds);
@@ -242,133 +267,133 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                 setFilteredFunds(results);
             } finally {
                 setIsSearching(false);
+        const q = formData.fundName.trim().toLowerCase();
+
+        const t = setTimeout(() => {
+            let results;
+            if (q.length === 0) {
+                // Return full list as demanded explicitly
+                results = allFunds;
+            } else {
+                results = allFunds.filter(f =>
+                    f.name.toLowerCase().includes(q) || f.code.includes(q)
+                );
             }
-        }, 500); // 500ms debounce
-        return () => clearTimeout(searchTimer);
-    }, [formData.fundName, mockFunds]);
+            setFilteredFunds(results);
+            setVisibleLimit(100); // Reset visible count on new search
+        }, 150);
+        return () => clearTimeout(t);
+    }, [formData.fundName, allFunds]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        // If user manually edits fundName, clear the selected fund_id to force correct selection
-        if (name === 'fundName') {
-            setFormData(prev => ({ ...prev, fundName: value, fund_id: '', nav: '' }));
-            setNavDate('');
-        } else {
-            setFormData({ ...formData, [name]: value });
-        }
-    };
-
-    const handleFocus = () => {
-        setShowSuggestions(true);
-    };
-
-    const handleSelectFund = (fund) => {
-        setFormData(prev => ({
-            ...prev,
-            fundName: fund.name,
-            fund_id: fund.code,
-            nav: ""
-        }));
-        setShowSuggestions(false);
-    };
-
-    // Live NAV Fetch directly from mfapi.in API
+    // ─────────────────────────────────────────────────────────────────────
+    // 4. FETCH NAV whenever fund_id or startDate changes
+    // ─────────────────────────────────────────────────────────────────────
     useEffect(() => {
-        const fetchLiveNav = async () => {
-            // ONLY fetch if all 3 crucial fields are populated
-            if (!formData.fund_id || !formData.amount || !formData.startDate) {
-                setLoadingNav(false);
-                setFormData(prev => (prev.nav === "" || prev.nav === "Fetching..." ? prev : { ...prev, nav: "" }));
-                setNavDate('');
-                return;
-            }
-
-            // Cache key based on fund + date to ensure accuracy
-            const cacheKey = `${formData.fund_id}_${formData.startDate}`;
-
-            if (navCache.current[cacheKey]) {
-                const cached = navCache.current[cacheKey];
-                if (Date.now() - cached.timestamp < 300000) {
-                    setFormData(prev => ({ ...prev, nav: cached.nav }));
-                    setNavDate(cached.date);
-                    return;
-                }
-            }
-
-            setLoadingNav(true);
-            setFormData(prev => ({ ...prev, nav: "Fetching..." }));
+        if (!formData.fund_id || !formData.startDate) {
+            setFormData(p => ({ ...p, nav: '' }));
             setNavDate('');
+            setLatestNavInfo({ nav: '', date: '' });
+            setNavError('');
+            setLoadingNav(false);
+            return;
+        }
+
+        const cacheKey = `${formData.fund_id}__${formData.startDate}`;
+
+        // ── Check date-level cache first ──────────────────────────────────
+        if (navCache.current[cacheKey]) {
+            const c = navCache.current[cacheKey];
+            setFormData(p => ({ ...p, nav: c.nav }));
+            setNavDate(c.navDate);
+            setLatestNavInfo(c.latestNavInfo);
+            setNavError(c.navError);
+            setLoadingNav(false);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchNav = async () => {
+            setLoadingNav(true);
+            setFormData(p => ({ ...p, nav: '' }));
+            setNavDate('');
+            setLatestNavInfo({ nav: '', date: '' });
+            setNavError('');
 
             try {
-                // Custom retry wrapper to combat mfapi.in 504/CORS drop timeouts
-                const fetchWithRetry = async (url, retries = 2) => {
-                    try {
-                        return await axios.get(url, { timeout: 10000 });
-                    } catch (err) {
-                        if (retries > 0) {
-                            console.warn(`mfapi.in timeout/drop. Retrying... ${retries} left`);
-                            await new Promise(r => setTimeout(r, 1500));
-                            return fetchWithRetry(url, retries - 1);
-                        }
-                        throw err;
-                    }
-                };
+                // getNavHistory uses its own fund-level cache in mfService.js
+                const history = await getNavHistory(formData.fund_id);
+                if (cancelled) return;
 
-                const response = await fetchWithRetry(`https://api.mfapi.in/mf/${formData.fund_id}`);
-                const data = response.data;
-
-                if (data && data.data && data.data.length > 0) {
-                    // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
-                    const parts = formData.startDate.split('-');
-                    const targetFormat = `${parts[2]}-${parts[1]}-${parts[0]}`;
-
-                    // Search for exact date or fallback to the latest [0]
-                    const historicalNav = data.data.find(d => d.date === targetFormat);
-
-                    const finalNav = historicalNav ? historicalNav.nav : data.data[0].nav;
-                    const finalDate = historicalNav ? historicalNav.date : data.data[0].date;
-
-                    // Save to cache
-                    navCache.current[cacheKey] = {
-                        nav: finalNav,
-                        date: finalDate,
-                        timestamp: Date.now()
+                // ── CASE A: Fund has no NAV data whatsoever ───────────────
+                if (!history || !history.data || history.data.length === 0) {
+                    const result = {
+                        nav: '',
+                        navDate: '',
+                        latestNavInfo: { nav: '', date: '' },
+                        navError: 'NO_FUND_DATA'
                     };
-
-                    setFormData(prev => ({ ...prev, nav: finalNav.toString() }));
-                    setNavDate(finalDate);
-                } else {
-                    throw new Error("Invalid NAV data structure");
+                    navCache.current[cacheKey] = result;
+                    setNavError(result.navError);
+                    setLoadingNav(false);
+                    return;
                 }
-            } catch (err) {
-                console.error("Failed to fetch LIVE NAV after retries", err);
 
-                // --- ULTIMATE FALLBACK ---
-                // To prevent the user from being completely blocked by a dead mfapi server,
-                // generate a simulated NAV based loosely on their fund ID so form validation passes.
-                const simulatedNav = ((parseInt(formData.fund_id) % 100) + 50 + Math.random() * 10).toFixed(4);
+                // Latest entry is data[0] after sorting inside getNavByDate
+                // But we also need it here — sort manually once
+                const sorted = [...history.data].sort((a, b) => {
+                    const parse = (s) => {
+                        const [d, m, y] = s.split('-').map(Number);
+                        return new Date(y, m - 1, d).getTime();
+                    };
+                    return parse(b.date) - parse(a.date);
+                });
+                const latest = sorted[0];
+                const latestInfo = { nav: latest.nav, date: latest.date };
+                setLatestNavInfo(latestInfo);
 
-                navCache.current[cacheKey] = {
-                    nav: simulatedNav,
-                    date: formData.startDate,
-                    timestamp: Date.now()
+                // ── Resolve NAV for selected date ─────────────────────────
+                const entry = getNavByDate(history.data, formData.startDate);
+
+                if (!entry) {
+                    // ── CASE B: No NAV on or before selected date ─────────
+                    const result = {
+                        nav: '',
+                        navDate: '',
+                        latestNavInfo: latestInfo,
+                        navError: 'NO_DATE_MATCH'
+                    };
+                    navCache.current[cacheKey] = result;
+                    setNavError(result.navError);
+                    setLoadingNav(false);
+                    return;
+                }
+
+                // ── CASE C: NAV resolved successfully ─────────────────────
+                const result = {
+                    nav: entry.nav,
+                    navDate: entry.date,
+                    latestNavInfo: latestInfo,
+                    navError: ''
                 };
+                navCache.current[cacheKey] = result;
+                setFormData(p => ({ ...p, nav: entry.nav }));
+                setNavDate(entry.date);
+                setNavError('');
 
-                setFormData(prev => ({ ...prev, nav: simulatedNav }));
-                setNavDate(formData.startDate + " (Simulated fallback due to API outage)");
-
-                showToast("mfapi.in is currently down. Loaded simulated NAV to allow test submission.");
+            } catch (err) {
+                if (cancelled) return;
+                console.error('[AddInvestment] NAV fetch error:', err);
+                setNavError('FETCH_ERROR');
             } finally {
-                setLoadingNav(false);
+                if (!cancelled) setLoadingNav(false);
             }
         };
 
-        // We run a small timeout to debounce the fetch naturally
-        const timeoutId = setTimeout(() => {
-            fetchLiveNav();
-        }, 500);
+        const timer = setTimeout(fetchNav, 350); // small debounce for date picker
+        return () => { cancelled = true; clearTimeout(timer); };
 
-        return () => clearTimeout(timeoutId);
+    }, [formData.fund_id, formData.startDate]);
 
     }, [formData.fund_id, formData.amount, formData.startDate]);
 
@@ -378,159 +403,244 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             currency: currency,
             maximumFractionDigits: 0
         }).format(val || 0);
+    // ─────────────────────────────────────────────────────────────────────
+    // 5. HANDLERS
+    // ─────────────────────────────────────────────────────────────────────
+    const showToast = (msg) => {
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(''), 4500);
     };
 
-    const isNavFetching = formData.nav === "Fetching..." || loadingNav;
-    const currentNavValue = parseFloat(formData.nav);
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        if (name === 'fundName') {
+            // Typing in the search box — clear fund selection
+            setFormData(p => ({ ...p, fundName: value, fund_id: '', nav: '' }));
+            setNavDate('');
+            setNavError('');
+            setLatestNavInfo({ nav: '', date: '' });
+            setShowSuggestions(true);
+        } else {
+            setFormData(p => ({ ...p, [name]: value }));
+        }
+    };
 
-    const units = (formData.amount > 0 && !isNaN(currentNavValue) && currentNavValue > 0)
-        ? (parseFloat(formData.amount) / currentNavValue).toFixed(4)
-        : "0.0000";
-
-    const isSubmitDisabled = status.loading || isNavFetching || !formData.fund_id || isNaN(currentNavValue) || currentNavValue <= 0;
+    const handleSelectFund = (fund) => {
+        setFormData(p => ({ ...p, fundName: fund.name, fund_id: fund.code, nav: '' }));
+        setShowSuggestions(false);
+        setNavDate('');
+        setNavError('');
+        setLatestNavInfo({ nav: '', date: '' });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (isSubmitDisabled) return;
+        if (!canSubmit) return;
 
         setStatus({ loading: true, success: false, error: '' });
 
         const payload = {
-            userId: user?.userId || user?.id,
-            user_id: user?.userId || user?.id,
-            fund_id: parseInt(formData.fund_id) || Math.floor(Math.random() * 1000) + 1,
-            investment_type: type,
-            amount: parseFloat(formData.amount),
-            nav_at_buy: parseFloat(formData.nav),
-            units: parseFloat(units),
-            buy_date: formData.startDate,
-            frequency: type === 'SIP' ? formData.frequency : null,
-            asset_category: type,
-            scheme_name: formData.fundName,
+            user_id:         user?.userId || user?.id,
+            fund_id:         parseInt(formData.fund_id),
+            investment_type: type === 'Lumpsum' ? 'BUY' : type,
+            amount:          parseFloat(formData.amount),
             amount_invested: parseFloat(formData.amount),
-            current_nav: parseFloat(formData.nav),
-            start_date: formData.startDate,
-            end_date: formData.endDate || null
+            nav_at_buy:      parseFloat(formData.nav),
+            units:           parseFloat(units),
+            buy_date:        formData.startDate,
+            start_date:      formData.startDate,
+            end_date:        type === 'SIP' ? (formData.endDate || null) : null,
+            frequency:       type === 'SIP' ? formData.frequency : null,
+            scheme_name:     formData.fundName,
+            current_nav:     parseFloat(formData.nav)
         };
 
         try {
-            const token = localStorage.getItem("jwt_token");
+            const token = localStorage.getItem('jwt_token');
             await axios.post('http://localhost:8088/api/investments/add', payload, {
-                headers: { "Authorization": `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setStatus({ loading: false, success: true, error: '' });
-            setTimeout(() => {
-                onBackToDashboard();
-            }, 2000);
-        } catch (error) {
-            console.error(error);
-            setStatus({ loading: false, success: false, error: 'Failed to add investment. Please try again.' });
+            setTimeout(() => onBackToDashboard(), 2000);
+        } catch (err) {
+            console.error('[AddInvestment] Submit error:', err);
+            setStatus({
+                loading: false,
+                success: false,
+                error: err.response?.data?.message || 'Failed to save investment. Please try again.'
+            });
         }
     };
 
-    // Helper to group funds for nice UI
-    const getCategory = (fundName) => {
-        const name = fundName.toLowerCase();
-        if (name.includes('small cap')) return 'Small Cap';
-        if (name.includes('midcap') || name.includes('mid cap') || name.includes('mid-cap')) return 'Mid Cap';
-        if (name.includes('large cap') || name.includes('bluechip') || name.includes('top 100') || name.includes('frontline')) return 'Large Cap';
-        if (name.includes('flexi cap') || name.includes('flexicap')) return 'Flexi Cap';
-        return 'Other Categories';
+    // ─────────────────────────────────────────────────────────────────────
+    // 6. GROUPED DROPDOWN
+    // ─────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // 6. GROUPED DROPDOWN (removed for react-window virtualized flat list)
+    // ─────────────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 7. NAV STATUS MESSAGES
+    // ─────────────────────────────────────────────────────────────────────
+    const NavStatusMessage = () => {
+        if (isNavFetching) return null;
+
+        if (navError === 'NO_FUND_DATA') return (
+            <span className="nav-error-msg">
+                <FiAlertCircle className="msg-icon" />
+                NAV not available for this fund. Please select a different fund.
+            </span>
+        );
+
+        if (navError === 'NO_DATE_MATCH') return (
+            <span className="nav-error-msg">
+                <FiAlertCircle className="msg-icon" />
+                No NAV data found on or before this date. Try an earlier start date.
+            </span>
+        );
+
+        if (navError === 'FETCH_ERROR') return (
+            <span className="nav-error-msg">
+                <FiAlertCircle className="msg-icon" />
+                Failed to fetch NAV. Check your connection and try again.
+            </span>
+        );
+
+        if (isNavOutdated) return (
+            <span className="nav-warning-msg">
+                <FiAlertTriangle className="msg-icon" />
+                Fund may be inactive — latest NAV is from {latestNavInfo.date}.
+            </span>
+        );
+
+        if (isNavValid && latestNavInfo.date) return (
+            <span className="nav-metadata">
+                NAV on {navDate || formData.startDate}: ₹{formData.nav}
+                &nbsp;·&nbsp;Last updated: {latestNavInfo.date}
+            </span>
+        );
+
+        return null;
     };
 
-    const groupedFunds = filteredFunds.reduce((acc, fund) => {
-        const cat = getCategory(fund.name);
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(fund);
-        return acc;
-    }, {});
-
+    // ─────────────────────────────────────────────────────────────────────
+    // 8. RENDER
+    // ─────────────────────────────────────────────────────────────────────
     return (
         <div className="add-investment-container">
-            {toastMsg && (
-                <div className="toast-notification">
-                    {toastMsg}
-                </div>
-            )}
+
+            {/* Toast */}
+            {toastMsg && <div className="toast-notification">{toastMsg}</div>}
+
+            <header className="page-header">
+                <h1>Add Investment</h1>
+                <p>Track a new mutual fund SIP or lump-sum investment</p>
+            </header>
 
             <div className="add-investment-layout">
+
+                {/* ── FORM ────────────────────────────────────────────── */}
                 <div className="form-section">
-                    <div className="add-investment-card">
+                    <div className="premium-card">
+
                         {status.success ? (
                             <div className="success-state">
                                 <FiCheckCircle className="success-icon slide-up-anim" />
                                 <h3>Investment Added Successfully!</h3>
-                                <p>Your portfolio has been synchronized to the backend. Redirecting...</p>
+                                <p>Your portfolio has been updated. Redirecting…</p>
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="investment-form fade-in-anim">
-                                {status.error && <div className="error-message">{status.error}</div>}
 
-                                <div className="toggle-group">
-                                    <button
-                                        type="button"
-                                        className={`toggle-btn ${type === 'SIP' ? 'active' : ''}`}
-                                        onClick={() => setType('SIP')}
-                                    > SIP </button>
-                                    <button
-                                        type="button"
-                                        className={`toggle-btn ${type === 'Lumpsum' ? 'active' : ''}`}
-                                        onClick={() => setType('Lumpsum')}
-                                    > Lumpsum </button>
+                                {status.error && (
+                                    <div className="error-message">{status.error}</div>
+                                )}
+
+                                {fundsError && (
+                                    <div className="error-message">{fundsError}</div>
+                                )}
+
+                                {/* ── Type Tabs ── */}
+                                <div className="tab-group">
+                                    {['SIP', 'Lumpsum'].map(t => (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            className={`tab-btn ${type === t ? 'active' : ''}`}
+                                            onClick={() => setType(t)}
+                                        >{t}</button>
+                                    ))}
                                 </div>
 
+                                {/* ── Fund Search ── */}
                                 <div className="form-group dropdown-container" ref={suggestionRef}>
-                                    <label className="tooltip-label">
-                                        Asset/Fund Name
-                                        <span className="tooltip" title="Search funds from our curated list"><FiInfo /></span>
+                                    <label>
+                                        Fund Name
+                                        <FiInfo className="info-icon" title="Search from full AMFI fund list" />
                                     </label>
                                     <div className="input-wrapper">
-                                        <FiTag className="input-icon" />
+                                        <FiSearch className="input-icon" />
                                         <input
+                                            id="fundName"
                                             type="text"
                                             name="fundName"
-                                            placeholder={loadingFunds ? "Loading funds..." : "Search funds e.g. 'Bluechip'"}
+                                            placeholder={
+                                                loadingFunds
+                                                    ? 'Loading fund list…'
+                                                    : fundsError
+                                                        ? 'Fund list unavailable'
+                                                        : `Search from ${allFunds.length.toLocaleString()} funds…`
+                                            }
                                             value={formData.fundName}
                                             onChange={handleChange}
-                                            onFocus={handleFocus}
-                                            onClick={handleFocus}
-                                            required
+                                            onFocus={() => setShowSuggestions(true)}
                                             autoComplete="off"
-                                            disabled={loadingFunds}
-                                            className={!formData.fund_id && formData.fundName ? "input-warning" : ""}
+                                            required
+                                            disabled={loadingFunds || !!fundsError}
                                         />
-                                        {showSuggestions && (
-                                            <div className="suggestions-dropdown nice-scroll">
-                                                {isSearching ? (
-                                                    <div className="searching-indicator spinner-container"><div className="spinner"></div>Searching...</div>
-                                                ) : Object.keys(groupedFunds).length > 0 ? (
-                                                    Object.keys(groupedFunds).map(cat => (
-                                                        <div key={cat}>
-                                                            <div className="dropdown-category-header">{cat}</div>
-                                                            <ul className="dropdown-list">
-                                                                {groupedFunds[cat].map((fund) => (
-                                                                    <li key={fund.code} onClick={() => handleSelectFund(fund)} title={fund.name}>
-                                                                        <div className="fund-item-details">
-                                                                            <strong className="fund-name-truncate">{fund.name}</strong>
-                                                                            <span className="fund-code-badge">#{fund.code}</span>
-                                                                        </div>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    ))
+                                        {loadingFunds && <div className="inline-spinner" />}
+
+                                        {/* Dropdown */}
+                                        {showSuggestions && !loadingFunds && (
+                                            <div 
+                                                className="suggestions-dropdown nice-scroll"
+                                                onScroll={(e) => {
+                                                    const { scrollTop, scrollHeight, clientHeight } = e.target;
+                                                    if (scrollHeight - scrollTop <= clientHeight + 100) {
+                                                        // Load 100 more automatically when reaching bottom
+                                                        setVisibleLimit(prev => Math.min(prev + 100, filteredFunds.length));
+                                                    }
+                                                }}
+                                            >
+                                                {filteredFunds.length > 0 ? (
+                                                    <ul className="dropdown-list">
+                                                        {filteredFunds.slice(0, visibleLimit).map(fund => (
+                                                            <li
+                                                                key={fund.code}
+                                                                onMouseDown={() => handleSelectFund(fund)}
+                                                            >
+                                                                <div className="fund-item-details">
+                                                                    <strong className="fund-name-text">
+                                                                        {fund.name}
+                                                                    </strong>
+                                                                    <span className="fund-code-badge">
+                                                                        #{fund.code}
+                                                                    </span>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 ) : (
                                                     <div className="no-suggestions">
-                                                        {formData.fundName.length > 0 ? "No matching funds found" : "Type to search all curated funds"}
+                                                        No funds matched "{formData.fundName}"
                                                     </div>
                                                 )}
                                             </div>
                                         )}
                                     </div>
-                                    {!formData.fund_id && formData.fundName && !showSuggestions && (
-                                        <span className="helper-text error-text">Please select a fund from the dropdown</span>
-                                    )}
                                 </div>
+
+                                {/* ── Amount + NAV Row ── */}
                                 <div className="form-row">
                                     <div className="form-group">
                                         <label>
@@ -540,7 +650,9 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                         <div className="input-wrapper">
                                             <CurrencyIcon className="input-icon" />
 
+                                            <span className="currency-prefix">₹</span>
                                             <input
+                                                id="amount"
                                                 type="number"
                                                 name="amount"
                                                 placeholder="5000"
@@ -552,29 +664,37 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                             />
                                         </div>
                                     </div>
-                                    <div className="form-group nav-group">
-                                        <label>Live NAV Price</label>
+
+                                    <div className="form-group">
+                                        <label>NAV at Purchase Date</label>
                                         <div className="input-wrapper">
-                                            <FiActivity className="input-icon" />
+                                            <FiTrendingUp className="input-icon" />
                                             <input
+                                                id="nav"
                                                 type="text"
                                                 name="nav"
-                                                className={`readonly-input ${isNavFetching ? "nav-fetching" : ""}`}
-                                                value={formData.nav}
+                                                className={[
+                                                    'readonly-input',
+                                                    isNavFetching      ? 'nav-fetching' : '',
+                                                    isNavUnavail       ? 'nav-error'    : '',
+                                                    isNavOutdated && !isNavUnavail ? 'nav-outdated' : ''
+                                                ].join(' ')}
+                                                value={
+                                                    isNavFetching ? 'Fetching…'
+                                                    : isNavUnavail ? ''
+                                                    : formData.nav
+                                                }
                                                 readOnly
                                                 required
-                                                placeholder={isNavFetching ? "Fetching Live Data..." : "0.00"}
+                                                placeholder={isNavFetching ? 'Fetching…' : '—'}
                                             />
-                                            {isNavFetching && <div className="inline-spinner"></div>}
+                                            {isNavFetching && <div className="inline-spinner" />}
                                         </div>
-                                        {navDate ? (
-                                            <span className="helper-text nav-date-text">Last Updated: {navDate}</span>
-                                        ) : (
-                                            <span className="helper-text auto-calc">Units: {units}</span>
-                                        )}
+                                        <NavStatusMessage />
                                     </div>
                                 </div>
 
+                                {/* ── SIP Frequency ── */}
                                 {type === 'SIP' && (
                                 <div className="form-group">
                                     <label>SIP Frequency</label>
@@ -605,9 +725,34 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 {type === 'SIP' && (
                                     <div className="form-group">
                                         <label>End Date (Optional)</label>
+                                    <div className="form-group">
+                                        <label>SIP Frequency</label>
+                                        <div className="input-wrapper">
+                                            <select
+                                                id="frequency"
+                                                name="frequency"
+                                                value={formData.frequency}
+                                                onChange={handleChange}
+                                                className="styled-select"
+                                            >
+                                                {['Weekly', 'Monthly', 'Quarterly', 'Yearly'].map(f => (
+                                                    <option key={f} value={f}>{f}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── Start + End Date Row ── */}
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>
+                                            {type === 'SIP' ? 'SIP Start Date' : 'Purchase Date'}
+                                        </label>
                                         <div className="input-wrapper">
                                             <FiCalendar className="input-icon" />
                                             <input
+                                                id="startDate"
                                                 type="date"
                                                 name="endDate"
                                                 value={formData.endDate}
@@ -626,6 +771,53 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                             </div>
                         </form>
                     )}
+                                                max={TODAY}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {type === 'SIP' && (
+                                        <div className="form-group">
+                                            <label>End Date <span className="optional-tag">(optional)</span></label>
+                                            <div className="input-wrapper">
+                                                <FiCalendar className="input-icon" />
+                                                <input
+                                                    id="endDate"
+                                                    type="date"
+                                                    name="endDate"
+                                                    value={formData.endDate}
+                                                    onChange={handleChange}
+                                                    min={formData.startDate}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Actions ── */}
+                                <div className="form-actions">
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={onBackToDashboard}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        id="submit-investment"
+                                        type="submit"
+                                        className={`btn-submit ${!canSubmit ? 'disabled' : ''}`}
+                                        disabled={!canSubmit}
+                                        title={!canSubmit && isNavUnavail ? 'NAV unavailable — cannot save' : ''}
+                                    >
+                                        {status.loading ? 'Saving…' : 'Save Investment'}
+                                    </button>
+                                </div>
+
+                            </form>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -664,9 +856,84 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                         <div className="summary-item highlight-box-secondary">
                             <span>{type === 'SIP' ? 'Installment' : 'Total Value'}</span>
                             <strong>{formatCurrency(formData.amount)}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
+                {/* ── SUMMARY PANEL ────────────────────────────────────── */}
+                <div className="summary-section">
+                    <div className="summary-card">
+                        <h3>Investment Summary</h3>
+                        <div className="summary-list">
+
+                            <div className="summary-row">
+                                <span>Type</span>
+                                <strong>{type}</strong>
+                            </div>
+
+                            <div className="summary-row">
+                                <span>Fund</span>
+                                <strong className="fund-name-clamp" title={formData.fundName}>
+                                    {formData.fundName || '—'}
+                                </strong>
+                            </div>
+
+                            {formData.fund_id && (
+                                <div className="summary-row">
+                                    <span>Scheme Code</span>
+                                    <strong className="code-mono">#{formData.fund_id}</strong>
+                                </div>
+                            )}
+
+                            {type === 'SIP' && (
+                                <div className="summary-row">
+                                    <span>Frequency</span>
+                                    <strong>{formData.frequency}</strong>
+                                </div>
+                            )}
+
+                            <div className="summary-row">
+                                <span>Amount</span>
+                                <strong>{formData.amount ? formatINR(formData.amount) : '—'}</strong>
+                            </div>
+
+                            <div className="summary-row">
+                                <span>NAV (at Purchase)</span>
+                                <strong>
+                                    {isNavFetching ? (
+                                        <span className="fetching-text">Fetching…</span>
+                                    ) : isNavValid ? (
+                                        `₹${parseFloat(formData.nav).toFixed(4)}`
+                                    ) : '—'}
+                                </strong>
+                            </div>
+
+                            {latestNavInfo.nav && !isNavUnavail && (
+                                <div className="summary-row">
+                                    <span>Latest Market NAV</span>
+                                    <strong className="green">
+                                        ₹{parseFloat(latestNavInfo.nav).toFixed(4)}
+                                        <span className="nav-date-sub"> ({latestNavInfo.date})</span>
+                                    </strong>
+                                </div>
+                            )}
+
+                            {/* Highlight Panels */}
+                            <div className="highlight-panel units">
+                                <span className="label">Expected Units</span>
+                                <span className="value">{units}</span>
+                            </div>
+
+                            <div className="highlight-panel value">
+                                <span className="label">
+                                    {type === 'SIP' ? 'Per Instalment' : 'Total Value'}
+                                </span>
+                                <span className="value">
+                                    {formData.amount ? formatINR(formData.amount) : '—'}
+                                    {type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}
+                                </span>
+                            </div>
+
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
         </div>

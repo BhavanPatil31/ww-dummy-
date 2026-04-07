@@ -26,6 +26,7 @@ public class InvestmentService {
     @Autowired
     private NotificationService notificationService;
 
+    @Transactional
     public Investment addInvestment(Investment investment) {
         Objects.requireNonNull(investment, "Investment cannot be null");
         Investment saved = Objects.requireNonNull(investmentRepository.save(investment), "Saved investment cannot be null");

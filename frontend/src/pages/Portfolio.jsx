@@ -95,26 +95,13 @@ export default function Portfolio({ user, currency = 'INR' }) {
         }).format(val || 0);
 
     const getCurrentNav = (inv) => {
-        const navAtBuy = inv.nav_at_buy || 0;
-        let currentNav = inv.current_nav || 0;
-
-        // If currentNav is still 0 or specifically the same as navAtBuy and we want to show growth in mock data
-        // But with real API, we should trust the currentNav if it's set and non-zero
-        if (!currentNav || currentNav === 0) {
-            // Fallback for very old data or non-integrated funds
-            const seed = (inv.id || 1) * 7919;
-            const pct = 0.05 + (seed % 100) / 1000;
-            currentNav = navAtBuy * (1 + pct);
-        }
-        return currentNav;
+        return inv.current_nav || inv.nav_at_buy || 0;
     };
 
     const getCurrentValue = (inv) => {
         const units = inv.units || 0;
-        const currentNav = getCurrentNav(inv);
-        if (units > 0 && currentNav > 0) return units * currentNav;
-        const pct = 0.05 + ((inv.id || 1) % 10) / 100;
-        return parseFloat(inv.amount || 0) * (1 + pct);
+        const nav = getCurrentNav(inv);
+        return units * nav;
     };
 
     const getReturnPct = (inv) => {
