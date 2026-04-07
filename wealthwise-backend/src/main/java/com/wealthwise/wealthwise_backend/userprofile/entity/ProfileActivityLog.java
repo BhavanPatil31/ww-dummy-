@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.userprofile.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 

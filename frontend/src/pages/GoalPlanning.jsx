@@ -3,7 +3,7 @@ import { FiEdit2, FiTrash2, FiTarget, FiPlus, FiX } from 'react-icons/fi';
 import axios from 'axios';
 import '../styles/GoalPlanning.css';
 
-export default function GoalPlanning({ user, investments, getCurrentValue }) {
+export default function GoalPlanning({ user, investments, getCurrentValue, currency = 'INR' }) {
     const API_BASE = 'http://localhost:8088/api/goals';
     const [goals, setGoals] = useState([]);
     const [form, setForm] = useState({
@@ -40,12 +40,14 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
 
 
 
-    // Load from backend
     const fetchGoals = async () => {
         if (!user) return;
         const userId = user.userId || user.id;
+        const token = localStorage.getItem('jwt_token');
         try {
-            const response = await axios.get(`${API_BASE}/user/${userId}`);
+            const response = await axios.get(`${API_BASE}/user/${userId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             setGoals(response.data || []);
         } catch (error) {
             console.error("Failed to fetch goals", error);
@@ -57,7 +59,19 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
     }, [user]);
 
     // Format currency
-    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
+    // Format currency
+    const formatCurrency = (val) =>
+        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+            style: 'currency',
+            currency: currency,
+            maximumFractionDigits: 0
+        }).format(val || 0);
+
+    const fmt = (v) => {
+        const formatted = formatCurrency(v);
+        // If it's INR, we might want to keep just the numbers for some parts or full string
+        return formatted;
+    };
 
     const formatIndian = (num) => {
         if (num === null || num === undefined || num === '') return '';
@@ -105,11 +119,14 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
             }))
         };
 
+        const token = localStorage.getItem('jwt_token');
+        const headers = { Authorization: `Bearer ${token}` };
+
         try {
             if (form.id) {
-                await axios.put(`${API_BASE}/${form.id}`, goalData);
+                await axios.put(`${API_BASE}/${form.id}`, goalData, { headers });
             } else {
-                await axios.post(`${API_BASE}/add`, goalData);
+                await axios.post(`${API_BASE}/add`, goalData, { headers });
             }
             fetchGoals();
             // Reset
@@ -182,8 +199,11 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
             }))
         };
 
+        const token = localStorage.getItem('jwt_token');
+        const headers = { Authorization: `Bearer ${token}` };
+
         try {
-            await axios.put(`${API_BASE}/${editModalData.id}`, updatedGoal);
+            await axios.put(`${API_BASE}/${editModalData.id}`, updatedGoal, { headers });
             fetchGoals();
             setEditModalData(null);
             setModalDropdownOpen(false);
@@ -198,8 +218,10 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
 
     const handleConfirmDelete = async () => {
         if (deleteConfirmId) {
+            const token = localStorage.getItem('jwt_token');
+            const headers = { Authorization: `Bearer ${token}` };
             try {
-                await axios.delete(`${API_BASE}/${deleteConfirmId}`);
+                await axios.delete(`${API_BASE}/${deleteConfirmId}`, { headers });
                 fetchGoals();
                 setDeleteConfirmId(null);
             } catch (error) {
@@ -246,7 +268,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
                     </div>
                     
                     <div className="goal-input-group">
-                        <label>Target Amount (₹)</label>
+                        <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
                         <input type="text" className="goal-input" name="amount" 
                             placeholder="e.g. 5,00,000" 
                             value={formatIndian(form.amount)} onChange={handleInput} />
@@ -340,7 +362,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
                                         <tr key={goal.goal_id}>
                                             <td>{idx + 1}</td>
                                             <td style={{fontWeight: 500}}>{goal.goal_name}</td>
-                                            <td style={{color: '#f8fafc'}}>₹{fmt(goal.target_amount)}</td>
+                                            <td style={{color: '#f8fafc'}}>{fmt(goal.target_amount)}</td>
                                             <td>{goal.target_year}</td>
                                             <td style={{maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={
                                                 goal.linkedInvestments?.map(li => {
@@ -358,7 +380,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
                                             </td>
                                             <td style={{width: '200px'}}>
                                                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                                                    <span className="goal-progress-text">₹{fmt(progressVal)}</span>
+                                                    <span className="goal-progress-text">{fmt(progressVal)}</span>
                                                     <span style={{fontSize: '12px', color: '#94a3b8'}}>{percentage.toFixed(1)}%</span>
                                                 </div>
                                                 <div className="goal-progress-container">
@@ -466,7 +488,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue }) {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                             <div className="goal-input-group">
-                                <label>Target Amount (₹)</label>
+                                <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
                                 <input type="text" className="goal-input" name="amount" 
                                     value={formatIndian(editModalData.amount)} onChange={handleModalInput} />
                             </div>

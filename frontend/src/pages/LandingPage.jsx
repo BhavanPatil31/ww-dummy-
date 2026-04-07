@@ -32,6 +32,19 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
       <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-container">
           <div className="logo-container">
+            <div className="logo-icon-small">
+              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#navGrad)"/>
+                <path d="M7 11L11.5 21L16 11L20.5 21L25 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 25L16 19L20 25" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <defs>
+                  <linearGradient id="navGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#3b82f6"/>
+                    <stop offset="1" stopColor="#1e3681"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
             <h2 className="brand-title">WealthWise</h2>
           </div>
 
@@ -232,7 +245,7 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
           <div className="social-icons">
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Twitter"><FiTwitter /></a>
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Instagram"><FiInstagram /></a>
-            <a href="mailto:shankarrao0420@gmail.com" className="social-circle" title="Email Us"><FiMail /></a>
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=shankarrao0420@gmail.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Email Us"><FiMail /></a>
           </div>
         </div>
       </footer>

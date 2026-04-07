@@ -47,6 +47,19 @@ html {
   padding: 0 20px;
 }
 
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .brand-title {
   margin: 0;
   font-size: 1.5rem;

@@ -123,12 +123,15 @@ public class InvestmentService {
     }
 
     @Transactional
-    public Investment sellInvestment(Long id, LocalDate sellDate) {
+    public Investment sellInvestment(Long id, LocalDate sellDate, Double sellNav) {
         Objects.requireNonNull(id, "Investment ID cannot be null");
         Investment inv = investmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         inv.setEndDate(sellDate != null ? sellDate : LocalDate.now());
+        if (sellNav != null) {
+            inv.setCurrentNav(sellNav);
+        }
         Investment saved = investmentRepository.save(inv);
 
         Long userId = saved.getUserId();
