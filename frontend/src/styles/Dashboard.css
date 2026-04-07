@@ -61,11 +61,30 @@
     overflow: hidden;
 }
 
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 24px;
+    margin-bottom: 40px;
+}
+
+.logo-wrapper {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.1);
+    flex-shrink: 0;
+}
+
 .brand h2 {
     font-size: 1.55rem;
     font-weight: 900;
-    padding: 0 24px;
-    margin-bottom: 40px;
+    margin: 0;
+    padding: 0;
     background: linear-gradient(135deg, #3b82f6, #a855f7);
     -webkit-background-clip: text;
     background-clip: text;

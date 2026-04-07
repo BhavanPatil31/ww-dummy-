@@ -30,7 +30,7 @@ const MOCK_FUNDS = [
     { code: "500002", name: "SBI Small Cap Fund - Regular Growth", nav: 142.10 }
 ];
 
-export default function Portfolio({ user }) {
+export default function Portfolio({ user, currency = 'INR' }) {
     const [investments, setInvestments] = useState([]);
     const [portfolioSummary, setPortfolioSummary] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -42,6 +42,7 @@ export default function Portfolio({ user }) {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [sellForm, setSellForm] = useState({ sell_date: '', sellNav: '' });
+    const [loadingSellNav, setLoadingSellNav] = useState(false);
     const [actionStatus, setActionStatus] = useState({ type: '', message: '' });
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
 
@@ -87,7 +88,11 @@ export default function Portfolio({ user }) {
 
     // ── Helpers ────────────────────────────────────────────────
     const formatCurrency = (val) =>
-        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+            style: 'currency',
+            currency: currency,
+            maximumFractionDigits: 0
+        }).format(val || 0);
 
     const getCurrentNav = (inv) => {
         const navAtBuy = inv.nav_at_buy || 0;
@@ -240,7 +245,49 @@ export default function Portfolio({ user }) {
         setSellForm({ sell_date: today, sellNav: getCurrentNav(inv).toFixed(2) });
         setSellModalOpen(true);
     };
-    const closeSell = () => { setSellModalOpen(false); setSelectedInvestment(null); setSellForm({ sell_date: '', sellNav: '' }); };
+    const closeSell = () => { 
+        setSellModalOpen(false); 
+        setSelectedInvestment(null); 
+        setSellForm({ sell_date: '', sellNav: '' });
+        setLoadingSellNav(false);
+    };
+
+    // Auto-fetch historical NAV when sell date changes
+    useEffect(() => {
+        const fetchHistoricalSellNav = async () => {
+            if (!sellModalOpen || !selectedInvestment || !sellForm.sell_date) return;
+            
+            const fundId = selectedInvestment.fund_id;
+            if (!fundId) return;
+
+            setLoadingSellNav(true);
+            try {
+                const response = await axios.get(`https://api.mfapi.in/mf/${fundId}`);
+                const data = response.data;
+                if (data && data.data && data.data.length > 0) {
+                    // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
+                    const parts = sellForm.sell_date.split('-');
+                    const targetFormat = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    
+                    const historicalNav = data.data.find(d => d.date === targetFormat);
+                    if (historicalNav) {
+                        setSellForm(prev => ({ ...prev, sellNav: historicalNav.nav }));
+                    } else {
+                        // If exact date not found, use latest
+                        setSellForm(prev => ({ ...prev, sellNav: data.data[0].nav }));
+                        console.warn("Historical NAV not found for this exact date, using latest.");
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch historical sell NAV", err);
+            } finally {
+                setLoadingSellNav(false);
+            }
+        };
+
+        const timer = setTimeout(fetchHistoricalSellNav, 500);
+        return () => clearTimeout(timer);
+    }, [sellForm.sell_date, sellModalOpen, selectedInvestment]);
 
     const handleSellSubmit = async (e) => {
         e.preventDefault();
@@ -391,7 +438,10 @@ export default function Portfolio({ user }) {
                                             tick={{ fill: '#64748b', fontSize: 10 }}
                                             axisLine={false}
                                             tickLine={false}
-                                            tickFormatter={(val) => `${val >= 0 ? '+' : ''}₹${Math.abs(val / 1000).toFixed(0)}k`}
+                                            tickFormatter={(val) => {
+                                                const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
+                                                return `${val >= 0 ? '+' : ''}${symbol}${Math.abs(val / 1000).toFixed(0)}k`;
+                                            }}
                                             dx={-6}
                                         />
                                         <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
@@ -1025,9 +1075,12 @@ export default function Portfolio({ user }) {
                                                 type="number"
                                                 step="0.01"
                                                 value={sellForm.sellNav || ''}
-                                                onChange={(e) => setSellForm({ ...sellForm, sellNav: e.target.value })}
+                                                onChange={(e) => setSellForm({ ...prev, sellNav: e.target.value })}
                                                 required
+                                                placeholder={loadingSellNav ? "Fetching..." : "0.00"}
+                                                className={loadingSellNav ? "nav-loading-input" : ""}
                                             />
+                                            {loadingSellNav && <div className="inline-spinner-small"></div>}
                                         </div>
                                     </div>
                                 </div>

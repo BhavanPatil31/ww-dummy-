@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.investment.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "mutual_funds")

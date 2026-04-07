@@ -7,7 +7,7 @@ import {
 import axios from 'axios';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme }) {
+export default function Settings({ user, theme, setTheme, currency, setCurrency }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
@@ -28,10 +28,7 @@ export default function Settings({ user, theme, setTheme }) {
         promo: false
     });
 
-    // 3. Appearance State
-    const [currency, setCurrency] = useState('USD');
-
-    // 4. Privacy State
+    // 3. Privacy State
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });

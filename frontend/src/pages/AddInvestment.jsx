@@ -3,9 +3,29 @@ import axios from 'axios';
 import {
     FiDollarSign, FiCalendar, FiActivity, FiTag, FiCheckCircle, FiInfo
 } from 'react-icons/fi';
+
 import '../styles/AddInvestment.css';
 
-export default function AddInvestment({ user, onBackToDashboard }) {
+import { FaRupeeSign, FaEuroSign, FaPoundSign } from "react-icons/fa";
+
+const currencyIcons = {
+    INR: FaRupeeSign,
+    USD: FiDollarSign,
+    EUR: FaEuroSign,
+    GBP: FaPoundSign,
+};
+
+const currencySymbols = {
+    INR: "₹",
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+};
+
+export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
+    // pick icon dynamically
+    const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
+
     const [mockFunds, setMockFunds] = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
     const [type, setType] = useState('SIP');
@@ -38,9 +58,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     // Fetch fund list on mount (from DB backend now)
     useEffect(() => {
         const fetchFundList = async () => {
-                setLoadingFunds(true);
-                try {
-                    const response = await axios.get('http://localhost:8088/api/mf/list');
+            setLoadingFunds(true);
+            try {
+                const response = await axios.get('http://localhost:8088/api/mf/list');
 
                 let dataToMap = response.data;
 
@@ -201,7 +221,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                 const response = await axios.get(`http://localhost:8088/api/mf/search`, {
                     params: { query: formData.fundName }
                 });
-                
+
                 if (response.data) {
                     const formatted = response.data.map(f => ({
                         code: (f.schemeCode || f.scheme_code || "").toString(),
@@ -353,9 +373,9 @@ export default function AddInvestment({ user, onBackToDashboard }) {
     }, [formData.fund_id, formData.amount, formData.startDate]);
 
     const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-IN', {
+        return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
-            currency: 'INR',
+            currency: currency,
             maximumFractionDigits: 0
         }).format(val || 0);
     };
@@ -511,12 +531,15 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                         <span className="helper-text error-text">Please select a fund from the dropdown</span>
                                     )}
                                 </div>
-
                                 <div className="form-row">
                                     <div className="form-group">
-                                        <label>Amount (₹)</label>
+                                        <label>
+                                            Amount ({currencySymbols[currency] || "$"})
+                                        </label>
+
                                         <div className="input-wrapper">
-                                            <FiDollarSign className="input-icon" />
+                                            <CurrencyIcon className="input-icon" />
+
                                             <input
                                                 type="number"
                                                 name="amount"
@@ -553,99 +576,99 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                                 </div>
 
                                 {type === 'SIP' && (
-                                    <div className="form-group">
-                                        <label>SIP Frequency</label>
-                                        <select name="frequency" value={formData.frequency} onChange={handleChange} className="styled-select padding-left">
-                                            <option value="Weekly">Weekly</option>
-                                            <option value="Monthly">Monthly</option>
-                                            <option value="Quarterly">Quarterly</option>
-                                            <option value="Yearly">Yearly</option>
-                                        </select>
-                                    </div>
-                                )}
+                                <div className="form-group">
+                                    <label>SIP Frequency</label>
+                                    <select name="frequency" value={formData.frequency} onChange={handleChange} className="styled-select padding-left">
+                                        <option value="Weekly">Weekly</option>
+                                        <option value="Monthly">Monthly</option>
+                                        <option value="Quarterly">Quarterly</option>
+                                        <option value="Yearly">Yearly</option>
+                                    </select>
+                                </div>
+                            )}
 
-                                <div className="form-row">
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Start/Buy Date</label>
+                                    <div className="input-wrapper">
+                                        <FiCalendar className="input-icon" />
+                                        <input
+                                            type="date"
+                                            name="startDate"
+                                            value={formData.startDate}
+                                            onChange={handleChange}
+                                            max={todayDate}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                {type === 'SIP' && (
                                     <div className="form-group">
-                                        <label>Start/Buy Date</label>
+                                        <label>End Date (Optional)</label>
                                         <div className="input-wrapper">
                                             <FiCalendar className="input-icon" />
                                             <input
                                                 type="date"
-                                                name="startDate"
-                                                value={formData.startDate}
+                                                name="endDate"
+                                                value={formData.endDate}
                                                 onChange={handleChange}
-                                                max={todayDate}
-                                                required
                                             />
                                         </div>
                                     </div>
-                                    {type === 'SIP' && (
-                                        <div className="form-group">
-                                            <label>End Date (Optional)</label>
-                                            <div className="input-wrapper">
-                                                <FiCalendar className="input-icon" />
-                                                <input
-                                                    type="date"
-                                                    name="endDate"
-                                                    value={formData.endDate}
-                                                    onChange={handleChange}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                )}
+                            </div>
 
-                                <div className="form-actions">
-                                    <button type="button" className="btn-cancel" onClick={onBackToDashboard}>Cancel</button>
-                                    <button type="submit" className={`btn-submit ${isSubmitDisabled ? 'disabled-btn' : ''}`} disabled={isSubmitDisabled}>
-                                        {status.loading ? 'Saving...' : 'Save Investment'}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
+                            <div className="form-actions">
+                                <button type="button" className="btn-cancel" onClick={onBackToDashboard}>Cancel</button>
+                                <button type="submit" className={`btn-submit ${isSubmitDisabled ? 'disabled-btn' : ''}`} disabled={isSubmitDisabled}>
+                                    {status.loading ? 'Saving...' : 'Save Investment'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
+            </div>
 
-                <div className="summary-section">
-                    <div className="live-summary-card fade-in-anim">
-                        <h3>Investment Summary</h3>
-                        <div className="summary-metrics">
+            <div className="summary-section">
+                <div className="live-summary-card fade-in-anim">
+                    <h3>Investment Summary</h3>
+                    <div className="summary-metrics">
+                        <div className="summary-item">
+                            <span>Type</span>
+                            <strong>{type}</strong>
+                        </div>
+                        <div className="summary-item">
+                            <span>Asset/Fund</span>
+                            <strong title={formData.fundName}>
+                                {formData.fundName ? (formData.fundName.length > 25 ? formData.fundName.substring(0, 25) + '...' : formData.fundName) : '-'}
+                            </strong>
+                        </div>
+                        {type === 'SIP' && (
                             <div className="summary-item">
-                                <span>Type</span>
-                                <strong>{type}</strong>
+                                <span>Frequency</span>
+                                <strong>{formData.frequency}</strong>
                             </div>
-                            <div className="summary-item">
-                                <span>Asset/Fund</span>
-                                <strong title={formData.fundName}>
-                                    {formData.fundName ? (formData.fundName.length > 25 ? formData.fundName.substring(0, 25) + '...' : formData.fundName) : '-'}
-                                </strong>
-                            </div>
-                            {type === 'SIP' && (
-                                <div className="summary-item">
-                                    <span>Frequency</span>
-                                    <strong>{formData.frequency}</strong>
-                                </div>
-                            )}
-                            <div className="summary-item">
-                                <span>Amount</span>
-                                <strong>{formatCurrency(formData.amount)}</strong>
-                            </div>
-                            <div className="summary-item">
-                                <span>NAV (Live)</span>
-                                <strong>{formData.nav && !isNaN(parseFloat(formData.nav)) ? `₹${formData.nav}` : '-'}</strong>
-                            </div>
-                            <div className="summary-item highlight-box">
-                                <span>Expected Units</span>
-                                <strong>{units}</strong>
-                            </div>
-                            <div className="summary-item highlight-box-secondary">
-                                <span>{type === 'SIP' ? 'Installment' : 'Total Value'}</span>
-                                <strong>{formatCurrency(formData.amount)}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
-                            </div>
+                        )}
+                        <div className="summary-item">
+                            <span>Amount</span>
+                            <strong>{formatCurrency(formData.amount)}</strong>
+                        </div>
+                        <div className="summary-item">
+                            <span>NAV (Live)</span>
+                            <strong>{formData.nav && !isNaN(parseFloat(formData.nav)) ? `${currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'}${formData.nav}` : '-'}</strong>
+                        </div>
+                        <div className="summary-item highlight-box">
+                            <span>Expected Units</span>
+                            <strong>{units}</strong>
+                        </div>
+                        <div className="summary-item highlight-box-secondary">
+                            <span>{type === 'SIP' ? 'Installment' : 'Total Value'}</span>
+                            <strong>{formatCurrency(formData.amount)}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     );
 }
