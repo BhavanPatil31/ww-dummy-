@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf';
+import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import {
     AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     XAxis, YAxis, CartesianGrid
@@ -49,6 +51,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     );
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef(null);
+    const casFileInputRef = useRef(null);
 
     // Close notifications on click outside
     useEffect(() => {
@@ -95,12 +98,17 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Value helpers ────────────────────────────────────────────
     const getCurrentValue = useCallback((inv) => {
-        const nav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
-            : inv.nav_at_buy > 0 ? inv.nav_at_buy * (1 + 0.05 + ((inv.investment_id || 1) % 10) / 100)
-                : 0;
-        if (inv.units > 0 && nav > 0) return inv.units * nav;
-        const pct = 0.05 + ((inv.investment_id || 1) % 10) / 100;
-        return parseFloat(inv.amount || 0) * (1 + pct);
+        const units = Number(inv.units || 0);
+        const currentNav = Number(inv.current_nav || 0);
+        const navAtBuy = Number(inv.nav_at_buy || 0);
+
+        if (units > 0 && currentNav > 0) {
+            return units * currentNav;
+        }
+        if (units > 0 && navAtBuy > 0) {
+            return units * navAtBuy;
+        }
+        return Number(inv.amount_invested || inv.amount || 0);
     }, []);
 
 
@@ -114,7 +122,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         try {
             let invData = [];
             try {
-                const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}`, { headers });
+                const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
                 invData = r.data || [];
             } catch { }
 
@@ -194,6 +202,210 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         } catch (err) { console.error("Failed to clear", err); }
     };
 
+    const handleCASFileSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (file && file.type === 'application/pdf') {
+            console.log('Selected PDF file:', file.name);
+            parseCASPDF(file);
+        } else if (file) {
+            alert('Please select a valid PDF file');
+        }
+        // Reset the input value so the same file can be selected again
+        if (casFileInputRef.current) {
+            casFileInputRef.current.value = '';
+        }
+    };
+
+    const parseCASPDF = async (file) => {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            GlobalWorkerOptions.workerSrc = workerSrc;
+            const pdf = await getDocument({ data: arrayBuffer }).promise;
+            let allText = '';
+
+            for (let i = 0; i < pdf.numPages; i++) {
+                const page = await pdf.getPage(i + 1);
+                const textContent = await page.getTextContent();
+                allText += textContent.items.map(item => item.str).join(' ') + '\n';
+            }
+
+            const casData = extractCASData(allText);
+            if (casData && casData.transactions.length > 0) {
+                await sendCASDataToBackend(casData);
+            } else {
+                alert('No transaction data found in PDF');
+            }
+        } catch (err) {
+            console.error('Error parsing PDF:', err);
+            alert('Error parsing PDF file. Please ensure it\'s a valid CAS PDF.');
+        }
+    };
+
+    const extractCASData = (text) => {
+        const lines = text.split('\n');
+        
+        // Extract Financial Year
+        let financialYear = '2026-2027';
+        for (let line of lines) {
+            if (line.includes('Financial Year:')) {
+                const match = line.match(/(\d{4}-\d{4})/);
+                if (match) financialYear = match[1];
+                break;
+            }
+        }
+
+        // Extract Account Name and ID
+        let accountName = 'Unknown';
+        let accountId = 'Unknown';
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('Account Name:')) {
+                accountName = lines[i].replace(/Account Name:/, '').trim();
+            }
+            if (lines[i].includes('Account ID:')) {
+                accountId = lines[i].replace(/Account ID:/, '').trim();
+            }
+        }
+
+        // Extract LTCG and STCG
+        let ltcg = 0, stcg = 0;
+        for (let line of lines) {
+            if (line.includes('Long Term Capital Gains') || line.includes('LTCG')) {
+                const match = line.match(/Rs\.\s*([-+]?\d+[,\d]*)/);
+                if (match) ltcg = parseFloat(match[1].replace(/,/g, ''));
+            }
+            if (line.includes('Short Term Capital Gains') || line.includes('STCG')) {
+                const match = line.match(/Rs\.\s*([-+]?\d+[,\d]*)/);
+                if (match) stcg = parseFloat(match[1].replace(/,/g, ''));
+            }
+        }
+
+        // Extract transactions - look for table data
+        const transactions = [];
+        const textJoined = text.replace(/\n/g, ' ');
+        const textLines = text.split('\n').map(line => line.trim()).filter(Boolean);
+
+        const addTransaction = (candidate) => {
+            const key = `${candidate.fundName}|${candidate.buyDate}|${candidate.sellDate}|${candidate.units}|${candidate.gain}|${candidate.type}`;
+            if (!transactions.some(tx => `${tx.fundName}|${tx.buyDate}|${tx.sellDate}|${tx.units}|${tx.gain}|${tx.type}` === key)) {
+                transactions.push(candidate);
+            }
+        };
+
+        const normalizeGain = (gainText) => {
+            return parseFloat(gainText.replace(/Rs\.?|₹|\s|,/gi, ''));
+        };
+
+        const isValidFundName = (fundName) => {
+            const trimmed = fundName.trim();
+            return trimmed.length >= 5 && !/(Fund Name|Buy Date|Simulated Sell|Gain\/Loss|Type)/i.test(trimmed);
+        };
+
+        const fundPattern = /([A-Za-z0-9\s&\-\(\)\.,'\/]+?)\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?\s*(?:Rs\.?|₹)\s*[\d,]+)\s+(LTCG|STCG)/gi;
+
+        const cleanText = (source) => source.replace(/\s+/g, ' ').trim();
+
+        const tryExtract = (source) => {
+            let match;
+            while ((match = fundPattern.exec(source)) !== null) {
+                const fundName = match[1].trim();
+                if (!isValidFundName(fundName)) continue;
+                const gainValue = normalizeGain(match[5]);
+                if (Number.isNaN(gainValue)) continue;
+                addTransaction({
+                    fundName,
+                    buyDate: parseDate(match[2]),
+                    sellDate: parseDate(match[3]),
+                    units: parseFloat(match[4].replace(/,/g, '')),
+                    gain: gainValue,
+                    type: match[6]
+                });
+            }
+        };
+
+        tryExtract(cleanText(textJoined.replace(/Fund Name|Buy Date|Simulated Sell|Units|Gain\/Loss|Type/gi, ' ')));
+
+        if (transactions.length === 0) {
+            for (let i = 0; i < textLines.length; i++) {
+                let combined = textLines[i];
+                tryExtract(cleanText(combined));
+                for (let j = i + 1; j < Math.min(i + 3, textLines.length); j++) {
+                    combined = `${combined} ${textLines[j]}`;
+                    tryExtract(cleanText(combined));
+                }
+            }
+        }
+
+        if (transactions.length === 0) {
+            tryExtract(cleanText(textJoined));
+        }
+
+        console.log('CAS extraction result:', { financialYear, accountName, accountId, ltcg, stcg, transactions });
+        console.log('Transactions details:', transactions);
+
+        return {
+            financialYear,
+            accountName,
+            accountId,
+            ltcg,
+            stcg,
+            transactions
+        };
+    };
+
+    const parseDate = (dateStr) => {
+        // Convert "17 Mar 2026" to "2026-03-17"
+        const months = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+            'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        };
+        const parts = dateStr.trim().split(/\s+/);
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = months[parts[1]] || '01';
+            const year = parts[2];
+            return `${year}-${month}-${day}`;
+        }
+        return dateStr;
+    };
+
+    const sendCASDataToBackend = async (casData) => {
+        if (!user) return;
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const userId = user?.userId || user?.id;
+
+            const payload = {
+                user_id: userId,
+                financial_year: casData.financialYear,
+                account_name: casData.accountName,
+                account_id: casData.accountId,
+                ltcg: casData.ltcg,
+                stcg: casData.stcg,
+                transactions: casData.transactions
+            };
+
+            console.log('CAS upload payload:', payload);
+
+            const response = await axios.post(
+                `http://localhost:8088/api/cas/upload`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            console.log('CAS data saved:', response.data);
+            alert('CAS data uploaded successfully!');
+            fetchAllData(); // Refresh dashboard
+        } catch (err) {
+            const serverMessage = err?.response?.data?.message || err?.response?.data || err?.message;
+            console.error('Error sending CAS data to backend:', err?.response?.status, serverMessage, err);
+            alert(`Error uploading CAS data. ${serverMessage || 'Please check the PDF format.'}`);
+        }
+    };
+
+    const openCASFilePicker = () => {
+        casFileInputRef.current?.click();
+    };
+
     // ── Derived metrics ──────────────────────────────────────────
     const metrics = useMemo(() => {
         if (dashboardData) return {
@@ -203,21 +415,28 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             returnPct: dashboardData.returnPercentage || 0,
             realizedPnL: dashboardData.realizedProfitLoss || 0,
         };
-        return { totalInvested: 0, portfolioValue: 0, profitLoss: 0, returnPct: 0, realizedPnL: 0 };
-    }, [dashboardData]);
+        const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount_invested || i.amount || 0), 0);
+        const portfolioValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
+        const profitLoss = portfolioValue - totalInvested;
+        const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
+        return { totalInvested, portfolioValue, profitLoss, returnPct };
+    }, [dashboardData, investments, getCurrentValue]);
 
     const assetAllocation = useMemo(() => {
         return dashboardData?.assetAllocation || [];
     }, [dashboardData]);
 
     const topPerformers = useMemo(() => {
-        if (!dashboardData?.activeHoldings?.length) return { best: null, worst: null };
-        const sorted = [...dashboardData.activeHoldings].sort((a, b) => b.returnPercentage - a.returnPercentage);
-        return {
-            best: { ...sorted[0], scheme_name: sorted[0].fundName, returnPct: sorted[0].returnPercentage },
-            worst: { ...sorted[sorted.length - 1], scheme_name: sorted[sorted.length - 1].fundName, returnPct: sorted[sorted.length - 1].returnPercentage }
-        };
-    }, [dashboardData]);
+        if (!investments.length) return { best: null, worst: null };
+        const withRet = investments.map(inv => {
+            const invested = parseFloat(inv.amount_invested || inv.amount || 0);
+            const current = getCurrentValue(inv);
+            const returnPct = invested > 0 ? ((current - invested) / invested) * 100 : 0;
+            return { ...inv, returnPct };
+        });
+        const sorted = [...withRet].sort((a, b) => b.returnPct - a.returnPct);
+        return { best: sorted[0], worst: sorted[sorted.length - 1] };
+    }, [investments, getCurrentValue]);
 
     const recentActivity = useMemo(() =>
         [...investments]
@@ -636,12 +855,27 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 </div>
                             </div>
 
+                            {/* ── 6. CAS UPLOAD SECTION ── */}
+                            <div className="cas-section">
+                                <button className="cas-button" onClick={openCASFilePicker}>
+                                    📄 Upload CAS (.pdf)
+                                </button>
+                                <input
+                                    ref={casFileInputRef}
+                                    type="file"
+                                    accept=".pdf"
+                                    onChange={handleCASFileSelect}
+                                    hidden
+                                />
+                            </div>
+
                         </div>
                     ) : activeView === 'addInvestment' ? (
                         <AddInvestment user={user} currency={currency} onBackToDashboard={() => { fetchAllData(); setActiveView('dashboard'); }} />
                     ) : activeView === 'portfolio' ? (
                         <Portfolio user={user} currency={currency} />
                     ) : activeView === 'tax' ? (
+                        <TaxSummary user={user} />
                         <TaxSummary user={user} investments={investments} currency={currency} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />

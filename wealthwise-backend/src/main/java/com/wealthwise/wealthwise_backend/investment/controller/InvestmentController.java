@@ -28,6 +28,11 @@ public class InvestmentController {
         return investmentService.getUserInvestments(userId);
     }
 
+    @GetMapping("/user/{userId}/active")
+    public List<Investment> getUserActiveInvestments(@PathVariable Long userId){
+        return investmentService.getUserActiveInvestments(userId);
+    }
+
     @PutMapping("/{id}")
     public Investment updateInvestment(@PathVariable("id") Long id, @RequestBody Investment investment) {
         return investmentService.updateInvestment(id, investment);

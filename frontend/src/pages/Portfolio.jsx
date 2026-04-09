@@ -54,11 +54,25 @@ export default function Portfolio({ user, currency = 'INR' }) {
             let investmentsData = [];
             let portfolioData = null;
 
+            // First refresh portfolio to update NAVs in database
             try {
-                const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}`, {
+                await axios.post(`http://localhost:8088/api/portfolio/refresh/${userId}`, {}, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                investmentsData = (invRes.data || []).filter(inv => !inv.end_date && inv.status !== 'SOLD');
+            } catch (e) {
+                console.error("Error refreshing portfolio", e);
+            }
+
+            try {
+                const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const today = new Date().setHours(0, 0, 0, 0);
+                investmentsData = (invRes.data || []).filter(inv => {
+                    if (!inv.end_date) return true;
+                    const endDate = new Date(inv.end_date).setHours(0, 0, 0, 0);
+                    return endDate >= today;
+                });
             } catch (e) {
                 console.error("Error fetching investments", e);
             }
@@ -95,6 +109,18 @@ export default function Portfolio({ user, currency = 'INR' }) {
         }).format(val || 0);
 
     const getCurrentNav = (inv) => {
+        const currentNav = Number(inv.current_nav || inv.currentNav || 0);
+        const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
+        if (currentNav > 0) return currentNav;
+        if (navAtBuy > 0) return navAtBuy;
+        return 0;
+    };
+
+    const getCurrentValue = (inv) => {
+        const units = Number(inv.units || 0);
+        const currentNav = getCurrentNav(inv);
+        if (units > 0 && currentNav > 0) return units * currentNav;
+        return Number(inv.amount_invested || inv.amount || 0);
         return inv.current_nav || inv.nav_at_buy || 0;
     };
 
@@ -104,14 +130,16 @@ export default function Portfolio({ user, currency = 'INR' }) {
         return units * nav;
     };
 
+    const getInvestedAmount = (inv) => Number(inv.amount_invested || inv.amount || 0);
+
     const getReturnPct = (inv) => {
-        const invested = parseFloat(inv.amount || 0);
+        const invested = getInvestedAmount(inv);
         if (!invested) return 0;
         return ((getCurrentValue(inv) - invested) / invested) * 100;
     };
 
     // ── Aggregates ─────────────────────────────────────────────
-    const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const totalInvested = investments.reduce((s, i) => s + getInvestedAmount(i), 0);
     const totalCurrentValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
     const totalPnL = totalCurrentValue - totalInvested;
     const totalReturn = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
@@ -125,7 +153,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
             return (isNaN(d1) ? 0 : d1.getTime()) - (isNaN(d2) ? 0 : d2.getTime());
         });
         return sorted.map(inv => {
-            const invested = parseFloat(inv.amount || 0);
+            const invested = getInvestedAmount(inv);
             const current = getCurrentValue(inv);
             const pnl = parseFloat((current - invested).toFixed(0));
             const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
@@ -761,7 +789,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             </div>
                                         </td>
                                         <td className="td-date">{formatDate(inv.buy_date || inv.start_date)}</td>
-                                        <td className="td-amount">{formatCurrency(inv.amount)}</td>
+                                        <td className="td-amount">{formatCurrency(getInvestedAmount(inv))}</td>
                                         <td className={`td-return ${isPositive ? 'positive' : 'negative'}`}>
                                             <span className="return-badge">
                                                 {isPositive ? <FiTrendingUp /> : <FiTrendingDown />}
@@ -830,7 +858,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 )}
                                 <div className="detail-item">
                                     <span className="detail-label"><FiDollarSign /> Amount Invested</span>
-                                    <span className="detail-value">{formatCurrency(selectedInvestment.amount)}</span>
+                                    <span className="detail-value">{formatCurrency(getInvestedAmount(selectedInvestment))}</span>
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> NAV at Buy</span>
@@ -857,7 +885,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                     <span>Profit / Loss</span>
                                     <strong>
                                         {getReturnPct(selectedInvestment) >= 0 ? '+' : ''}
-                                        {formatCurrency(getCurrentValue(selectedInvestment) - parseFloat(selectedInvestment.amount || 0))}
+                                        {formatCurrency(getCurrentValue(selectedInvestment) - getInvestedAmount(selectedInvestment))}
                                     </strong>
                                 </div>
                             </div>
@@ -1031,7 +1059,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                             <div className="detail-grid" style={{ marginTop: '15px' }}>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiDollarSign /> Invested</span>
-                                    <span className="detail-value">{formatCurrency(selectedInvestment.amount)}</span>
+                                    <span className="detail-value">{formatCurrency(getInvestedAmount(selectedInvestment))}</span>
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Current Value</span>
