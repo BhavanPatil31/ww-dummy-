@@ -7,5 +7,5 @@ import java.util.List;
 
 @Repository
 public interface GoalRepository extends JpaRepository<Goal, Integer> {
-    List<Goal> findByUserId(Integer userId);
+    List<Goal> findByUserId(Long userId);
 }

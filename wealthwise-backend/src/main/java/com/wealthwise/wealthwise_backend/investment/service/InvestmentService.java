@@ -116,6 +116,10 @@ public class InvestmentService {
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         Long userId = inv.getUserId();
+        
+        // Remove foreign key references from goal_investments
+        investmentRepository.deleteGoalInvestmentsByInvestmentId(id);
+        
         investmentRepository.delete(inv);
         if (userId != null) {
             portfolioService.updatePortfolio(userId);

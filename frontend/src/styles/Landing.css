@@ -39,7 +39,7 @@ html {
 }
 
 .nav-container {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -207,8 +207,8 @@ html {
 
 /* Sections Base */
 section {
-  padding: 100px 20px;
-  max-width: 1200px;
+  padding: 100px 40px;
+  max-width: 1440px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -640,7 +640,7 @@ section {
   gap: 50px;
   margin-bottom: 50px;
   flex-wrap: wrap;
-  max-width: 1200px;
+  max-width: 1440px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -694,7 +694,7 @@ section {
   border-top: 1px solid var(--border-color);
   padding-top: 20px;
   color: var(--text-gray);
-  max-width: 1200px;
+  max-width: 1440px;
   margin-left: auto;
   margin-right: auto;
 }
