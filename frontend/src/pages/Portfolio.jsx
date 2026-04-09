@@ -125,12 +125,12 @@ export default function Portfolio({ user, currency = 'INR' }) {
             return (isNaN(d1) ? 0 : d1.getTime()) - (isNaN(d2) ? 0 : d2.getTime());
         });
         return sorted.map(inv => {
-            const invested = parseFloat(inv.amount || 0);
-            const current = getCurrentValue(inv);
-            const pnl = parseFloat((current - invested).toFixed(0));
+            const invested = parseFloat(inv.amount || 0) || 0;
+            const current = getCurrentValue(inv) || 0;
+            const pnl = parseFloat((current - invested).toFixed(0)) || 0;
             const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
             const label = (inv.scheme_name || `Fund #${inv.fund_id}` || '?').slice(0, 10);
-            return { name: label, pnl, pct: parseFloat(pct), invested, current, fullName: inv.scheme_name || `Fund #${inv.fund_id}` };
+            return { name: label, pnl, pct: parseFloat(pct) || 0, invested, current, fullName: inv.scheme_name || `Fund #${inv.fund_id}` };
         });
     };
 
@@ -401,49 +401,34 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 </span>
                             </div>
                             <div className="chart-container">
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
-                                        <defs>
-                                            <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.95} />
-                                                <stop offset="100%" stopColor="#16a34a" stopOpacity={0.7} />
-                                            </linearGradient>
-                                            <linearGradient id="barRed" x1="0" y1="1" x2="0" y2="0">
-                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.95} />
-                                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.7} />
-                                            </linearGradient>
-                                        </defs>
+                                <ResponsiveContainer width="100%" height={320}>
+                                    <BarChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barGap={2} barCategoryGap="20%">
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                                         <XAxis
                                             dataKey="name"
-                                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
                                             axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
                                             tickLine={false}
-                                            dy={8}
+                                            dy={10}
                                         />
                                         <YAxis
-                                            tick={{ fill: '#64748b', fontSize: 10 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 11 }}
                                             axisLine={false}
                                             tickLine={false}
                                             tickFormatter={(val) => {
                                                 const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
-                                                return `${val >= 0 ? '+' : ''}${symbol}${Math.abs(val / 1000).toFixed(0)}k`;
+                                                if (val >= 1000) {
+                                                    return `${symbol}${(val / 1000).toFixed(1)}k`;
+                                                }
+                                                return `${symbol}${val}`;
                                             }}
-                                            dx={-6}
+                                            dx={-10}
                                         />
-                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
                                         <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                                        <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                                            {chartData.map((entry, i) => (
-                                                <Cell
-                                                    key={i}
-                                                    fill={entry.pnl >= 0 ? 'url(#barGreen)' : 'url(#barRed)'}
-                                                    stroke={entry.pnl >= 0 ? '#22c55e' : '#ef4444'}
-                                                    strokeWidth={1}
-                                                />
-                                            ))}
-                                        </Bar>
-                                    </ComposedChart>
+                                        <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
+                                        <Bar dataKey="invested" name="Total Invested" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                        <Bar dataKey="current" name="Current Value" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                    </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>

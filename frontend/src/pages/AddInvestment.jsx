@@ -400,7 +400,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             end_date:        type === 'SIP' ? (formData.endDate || null) : null,
             frequency:       type === 'SIP' ? formData.frequency : null,
             scheme_name:     formData.fundName,
-            current_nav:     parseFloat(formData.nav)
+            current_nav:     parseFloat(latestNavInfo.nav) || parseFloat(formData.nav)
         };
 
         try {

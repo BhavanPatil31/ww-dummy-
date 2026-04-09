@@ -152,6 +152,23 @@ public class PortfolioService {
             return m;
         }).collect(Collectors.toList()));
 
+        // SYNC LATEST NAV TO INDIVIDUAL INVESTMENTS
+        boolean needsUpdate = false;
+        for (Investment inv : investments) {
+            if (inv.getFundId() != null) {
+                HoldingDTO h = holdingsMap.get(inv.getFundId());
+                if (h != null && h.getLatestNav() != null && Double.compare(h.getLatestNav(), 0.0) > 0) {
+                    if (inv.getCurrentNav() == null || Math.abs(inv.getCurrentNav() - h.getLatestNav()) > 0.0001) {
+                        inv.setCurrentNav(h.getLatestNav());
+                        needsUpdate = true;
+                    }
+                }
+            }
+        }
+        if (needsUpdate) {
+            investmentRepository.saveAll(investments);
+        }
+
         return dto;
     }
 
