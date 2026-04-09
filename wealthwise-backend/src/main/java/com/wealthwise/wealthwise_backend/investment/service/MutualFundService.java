@@ -109,7 +109,7 @@ public class MutualFundService {
             logger.info("Fetching details for scheme: {}", schemeCode);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
-                    HttpMethod.GET,
+                    Objects.requireNonNull(HttpMethod.GET),
                     null,
                     new ParameterizedTypeReference<Map<String, Object>>() {}
             );
@@ -130,7 +130,7 @@ public class MutualFundService {
             logger.info("Searching funds with query: {}", query);
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     url,
-                    HttpMethod.GET,
+                    Objects.requireNonNull(HttpMethod.GET),
                     null,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );

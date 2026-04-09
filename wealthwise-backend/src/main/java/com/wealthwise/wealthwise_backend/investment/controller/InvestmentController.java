@@ -46,9 +46,19 @@ public class InvestmentController {
     @PostMapping("/{id}/sell")
     public Investment sellInvestment(@PathVariable("id") Long id, @RequestBody(required = false) java.util.Map<String, String> payload) {
         java.time.LocalDate sellDate = java.time.LocalDate.now();
-        if (payload != null && payload.containsKey("sellDate") && payload.get("sellDate") != null) {
-            sellDate = java.time.LocalDate.parse(payload.get("sellDate"));
+        Double sellNav = null;
+        if (payload != null) {
+            if (payload.containsKey("sellDate") && payload.get("sellDate") != null) {
+                sellDate = java.time.LocalDate.parse(payload.get("sellDate"));
+            }
+            if (payload.containsKey("sellNav") && payload.get("sellNav") != null) {
+                try {
+                    sellNav = Double.parseDouble(payload.get("sellNav"));
+                } catch (NumberFormatException e) {
+                    sellNav = null;
+                }
+            }
         }
-        return investmentService.sellInvestment(id, sellDate);
+        return investmentService.sellInvestment(id, sellDate, sellNav);
     }
 }

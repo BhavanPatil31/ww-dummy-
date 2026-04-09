@@ -34,7 +34,7 @@ public class NavService {
         try {
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     url,
-                    HttpMethod.GET,
+                    java.util.Objects.requireNonNull(HttpMethod.GET),
                     null,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
@@ -46,111 +46,87 @@ public class NavService {
     }
 
     public Double getLatestNav(String fundId) {
-        if (fundId == null || fundId.trim().isEmpty()) return 1.0;
+        if (fundId == null || fundId.trim().isEmpty()) return 0.0;
 
         try {
             MfApiResponse response = getFundData(fundId);
             if (response != null && response.getData() != null && !response.getData().isEmpty()) {
+                // mfapi.in data[0] is the latest
                 MfNavData latest = response.getData().get(0);
                 if (latest.getNav() != null) {
                     return Double.parseDouble(latest.getNav());
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error fetching latest NAV for " + fundId + ": " + e.getMessage());
+            System.err.println("Error fetching latest NAV for fund " + fundId + ": " + e.getMessage());
         }
-        return 1.0;
+        return 0.0;
     }
 
     private MfApiResponse getFundData(String fundId) {
-        // Return from cache if available to prevent rate limits/Bad Gateway
         if (fundCache.containsKey(fundId)) {
-            System.out.println("NavService: Serving data for fund " + fundId + " from cache.");
             return fundCache.get(fundId);
         }
 
         try {
-            System.out.println("NavService: Fetching live data for fund " + fundId + " from external API.");
             MfApiResponse response = restTemplate.getForObject(API_URL + fundId, MfApiResponse.class);
-            if (response != null && response.getData() != null) {
+            if (response != null && response.getData() != null && !response.getData().isEmpty()) {
                 fundCache.put(fundId, response);
                 return response;
             }
         } catch (Exception e) {
-            System.err.println("NavService: External API error for fund " + fundId + ": " + e.getMessage());
+            System.err.println("External API error for " + fundId + ": " + e.getMessage());
         }
         return null;
     }
 
+    /**
+     * Finds the NAV for a specific date:
+     * 1. Exact match if available.
+     * 2. Nearest previous available date (<= target).
+     * 3. If target is in future -> return latest available (data[0]).
+     */
     public Double getNavForDate(String fundId, String selectedDate) {
-        if (fundId == null || fundId.isEmpty()) {
-            return 1.0;
-        }
-
-        if (selectedDate == null || selectedDate.trim().isEmpty()) {
-            return getLatestNav(fundId);
-        }
-
-        LocalDate targetDate;
-        try {
-            // Frontend sends ISO date: yyyy-MM-dd
-            targetDate = LocalDate.parse(selectedDate);
-            System.out.println("NavService: Targeted Date: " + targetDate);
-        } catch (Exception e) {
-            System.err.println("Invalid selected date format: " + selectedDate + ". Falling back to latest NAV.");
-            return getLatestNav(fundId);
-        }
-
+        if (fundId == null || fundId.isEmpty()) return 0.0;
+        
         try {
             MfApiResponse response = getFundData(fundId);
             if (response == null || response.getData() == null || response.getData().isEmpty()) {
-                System.out.println("NavService: No data available for fund " + fundId);
-                return 1.0;
+                return 0.0;
             }
 
-            LocalDate nearestDate = null;
-            Double nearestNav = null;
-            
-            // The API returns dates in DD-MM-YYYY format
+            LocalDate targetDate;
+            try {
+                targetDate = LocalDate.parse(selectedDate);
+            } catch (Exception e) {
+                // If date is invalid, return latest
+                return Double.parseDouble(response.getData().get(0).getNav());
+            }
 
+            LocalDate today = LocalDate.now();
+
+            // REQUIREMENT: Future date -> ALWAYS use data[0] (latest available)
+            if (targetDate.isAfter(today)) {
+                return Double.parseDouble(response.getData().get(0).getNav());
+            }
+
+            // Since mfapi.in returns data sorted latest first (data[0] is newest):
+            // The FIRST entry where navDate <= targetDate is the correct nearest previous NAV.
             for (MfNavData navData : response.getData()) {
-                String dateStr = navData.getDate();
-                String navStr = navData.getNav();
-                
-                if (dateStr == null || navStr == null) continue;
-
                 try {
-                    LocalDate navDate = LocalDate.parse(dateStr, MF_DATE_FORMAT);
-                    Double navValue = Double.parseDouble(navStr);
-
-                    // We want the newest date that is NOT AFTER the target date
+                    LocalDate navDate = LocalDate.parse(navData.getDate(), MF_DATE_FORMAT);
                     if (!navDate.isAfter(targetDate)) {
-                        if (nearestDate == null || navDate.isAfter(nearestDate)) {
-                            nearestDate = navDate;
-                            nearestNav = navValue;
-                        }
+                        return Double.parseDouble(navData.getNav());
                     }
                 } catch (Exception parseEx) {
-                    // skip invalid entries
+                    // Skip malformed individual entries
                 }
             }
 
-            if (nearestNav != null) {
-                System.out.println("NavService: Found NAV " + nearestNav + " for date " + nearestDate + " (targeted " + targetDate + ")");
-                return nearestNav;
-            }
-
-            // If we found nothing before the date, maybe its the oldest record?
-            // (The loop above already finds nearest previous, so if nearestNav is null, target is likely too old)
-            System.out.println("NavService: No history found before " + targetDate + ". Using oldest available.");
-            MfNavData oldest = response.getData().get(response.getData().size() - 1);
-            return Double.parseDouble(oldest.getNav());
-
         } catch (Exception e) {
-            System.err.println("Error fetching date-based NAV for fundId " + fundId + ": " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("NavService: Error fetching NavForDate for " + fundId + ": " + e.getMessage());
         }
 
-        return getLatestNav(fundId);
+        return 0.0;
     }
 }

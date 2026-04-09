@@ -9,6 +9,7 @@ import autoTable from 'jspdf-autotable';
 import '../styles/TaxSummary.css';
 
 export default function TaxSummary({ user }) {
+export default function TaxSummary({ user, investments = [], currency = 'INR' }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
             const today = new Date();
@@ -49,7 +50,11 @@ export default function TaxSummary({ user }) {
 
     // Format currency Helper
     const formatCurrency = (val) =>
-        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+            style: 'currency',
+            currency: currency,
+            maximumFractionDigits: 0
+        }).format(val || 0);
 
     // Format Date Helper
     const formatDate = (dateStr) => {
@@ -69,6 +74,48 @@ export default function TaxSummary({ user }) {
             source: 'Tax'
         }));
     }, [taxTransactions]);
+        if (!investments || investments.length === 0) return [];
+        
+        return investments.map((inv, index) => {
+            const hasBeenSold = !!inv.end_date || inv.status === 'SOLD';
+            
+            const buyDateStr = inv.buy_date || inv.start_date || new Date().toISOString().split('T')[0];
+            // If actual end_date exists (sold), use it. Otherwise uses current date but marks as unsold.
+            const sellDateStr = inv.end_date || new Date().toISOString().split('T')[0];
+            
+            const buyDate = new Date(buyDateStr);
+            const sellDate = new Date(sellDateStr);
+            
+            const daysDiff = (sellDate - buyDate) / (1000 * 60 * 60 * 24);
+            const type = daysDiff > 365 ? 'LTCG' : 'STCG';
+            
+            const invested = parseFloat(inv.amount || 0);
+            const units = parseFloat(inv.units || 0);
+            
+            // PRIORITY: If sold, we use the recorded current_nav (which is set to sellNav in backend)
+            // If not sold, we use live current_nav or fallback
+            const currentNav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
+                           : inv.nav_at_buy > 0 ? inv.nav_at_buy : 0;
+
+            let finalValue = invested;
+            if (units > 0 && currentNav > 0) {
+                finalValue = units * currentNav;
+            } else {
+                finalValue = invested; // No gain/loss if no units or NAV
+            }
+            const gain = finalValue - invested;
+
+            return {
+                id: inv.investment_id || `txn-${index}`,
+                fundName: inv.scheme_name || `Fund #${inv.fund_id || 'Unknown'}`,
+                buyDate: buyDateStr,
+                sellDate: sellDateStr,
+                units: parseFloat(inv.units || 0),
+                gain: parseFloat(gain.toFixed(2)),
+                tax_type: type
+            };
+        });
+    }, [investments]);
 
     const { filteredTransactions, totals } = useMemo(() => {
         const startYear = parseInt(selectedYear.substring(0, 4));
@@ -102,7 +149,11 @@ export default function TaxSummary({ user }) {
             const defaultColor = [41, 128, 185]; // Blue Theme
             
             // Helper to strip Rupee symbol because default jsPDF fonts don't support it well
-            const pdfCurrency = (val) => formatCurrency(val).replace('₹', 'Rs. ');
+            const pdfCurrency = (val) => {
+                const formatted = formatCurrency(val);
+                if (currency === 'INR') return formatted.replace('₹', 'Rs. ');
+                return formatted;
+            };
 
             // Document Header
             doc.setFontSize(22);

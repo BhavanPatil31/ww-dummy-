@@ -17,7 +17,7 @@ public class GoalService {
         return Objects.requireNonNull(goalRepository.save(goal));
     }
 
-    public List<Goal> getUserGoals(Integer userId) {
+    public List<Goal> getUserGoals(Long userId) {
         if (userId == null) throw new IllegalArgumentException("User ID cannot be null");
         return goalRepository.findByUserId(userId);
     }

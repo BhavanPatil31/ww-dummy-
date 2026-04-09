@@ -3,13 +3,13 @@ package com.wealthwise.wealthwise_backend.investment.controller;
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
 import com.wealthwise.wealthwise_backend.investment.service.InvestmentService;
 import com.wealthwise.wealthwise_backend.portfolio.service.InvestmentValuationService;
+import com.wealthwise.wealthwise_backend.investment.dto.PortfolioDTO;
+import com.wealthwise.wealthwise_backend.portfolio.service.PortfolioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class DashboardController {
 
     @Autowired
-    private InvestmentService investmentService;
+    private PortfolioService portfolioService;
 
     @Autowired
     private InvestmentValuationService investmentValuationService;
@@ -64,7 +64,12 @@ public class DashboardController {
         response.put("profitLoss", profitLoss);
         response.put("returnPercentage", returnPercentage);
         response.put("assetAllocation", assetAllocation);
+    public PortfolioDTO getDashboardData(@PathVariable Long userId) {
+        return portfolioService.computeDetailedPortfolio(userId);
+    }
 
-        return response;
+    @GetMapping("/{userId}/history")
+    public List<Map<String, Object>> getPortfolioHistory(@PathVariable Long userId, @RequestParam(defaultValue = "30") int days) {
+        return portfolioService.computePortfolioHistory(userId, days);
     }
 }

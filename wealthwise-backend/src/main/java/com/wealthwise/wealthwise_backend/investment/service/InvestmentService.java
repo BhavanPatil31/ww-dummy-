@@ -30,6 +30,7 @@ public class InvestmentService {
     @Autowired
     private TaxService taxService;
 
+    @Transactional
     public Investment addInvestment(Investment investment) {
         Objects.requireNonNull(investment, "Investment cannot be null");
         Investment saved = Objects.requireNonNull(investmentRepository.save(investment), "Saved investment cannot be null");
@@ -143,6 +144,10 @@ public class InvestmentService {
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         Long userId = inv.getUserId();
+        
+        // Remove foreign key references from goal_investments
+        investmentRepository.deleteGoalInvestmentsByInvestmentId(id);
+        
         investmentRepository.delete(inv);
         if (userId != null) {
             portfolioService.updatePortfolio(userId);
@@ -150,12 +155,15 @@ public class InvestmentService {
     }
 
     @Transactional
-    public Investment sellInvestment(Long id, LocalDate sellDate) {
+    public Investment sellInvestment(Long id, LocalDate sellDate, Double sellNav) {
         Objects.requireNonNull(id, "Investment ID cannot be null");
         Investment inv = investmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         inv.setEndDate(sellDate != null ? sellDate : LocalDate.now());
+        if (sellNav != null) {
+            inv.setCurrentNav(sellNav);
+        }
         Investment saved = investmentRepository.save(inv);
 
         // Move investment to tax_transactions

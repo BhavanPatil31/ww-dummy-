@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.goal.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
@@ -19,7 +19,7 @@ public class GoalInvestment {
 
     @Column(name = "investment_id")
     @JsonProperty("investment_id")
-    private Integer investmentId;
+    private Long investmentId;
 
     @Column(name = "linked_amount")
     @JsonProperty("linked_amount")
@@ -27,7 +27,7 @@ public class GoalInvestment {
 
     public GoalInvestment() {}
 
-    public GoalInvestment(Integer investmentId, Double linkedAmount) {
+    public GoalInvestment(Long investmentId, Double linkedAmount) {
         this.investmentId = investmentId;
         this.linkedAmount = linkedAmount;
     }
@@ -38,8 +38,8 @@ public class GoalInvestment {
     public Integer getGoalId() { return goalId; }
     public void setGoalId(Integer goalId) { this.goalId = goalId; }
 
-    public Integer getInvestmentId() { return investmentId; }
-    public void setInvestmentId(Integer investmentId) { this.investmentId = investmentId; }
+    public Long getInvestmentId() { return investmentId; }
+    public void setInvestmentId(Long investmentId) { this.investmentId = investmentId; }
 
     public Double getLinkedAmount() { return linkedAmount; }
     public void setLinkedAmount(Double linkedAmount) { this.linkedAmount = linkedAmount; }

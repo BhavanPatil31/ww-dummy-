@@ -2,16 +2,21 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiShield, FiBell, FiMonitor, FiLock,
-    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle
+    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle, FiAlertTriangle
 } from 'react-icons/fi';
 import axios from 'axios';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme }) {
+export default function Settings({ user, theme, setTheme, currency, setCurrency }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    
+    // Delete Account Modal State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteInput, setDeleteInput] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // 1. Security State
     const [passwords, setPasswords] = useState({
@@ -28,10 +33,7 @@ export default function Settings({ user, theme, setTheme }) {
         promo: false
     });
 
-    // 3. Appearance State
-    const [currency, setCurrency] = useState('USD');
-
-    // 4. Privacy State
+    // 3. Privacy State
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });
@@ -104,18 +106,19 @@ export default function Settings({ user, theme, setTheme }) {
     };
 
     const handleDeleteAccount = async () => {
-        if (!window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) return;
-        
+        setIsDeleting(true);
         try {
             const token = localStorage.getItem('jwt_token');
             const headers = { Authorization: `Bearer ${token}` };
             const uid = user?.userId || user?.id;
             await axios.delete(`http://localhost:8088/api/auth/delete/${uid}`, { headers });
-            alert("Account deleted securely.");
             localStorage.clear();
             window.location.reload();
         } catch (error) {
             alert(error.response?.data?.error || "Failed to delete account.");
+            setIsDeleting(false);
+            setShowDeleteModal(false);
+            setDeleteInput("");
         }
     };
 
@@ -324,7 +327,7 @@ export default function Settings({ user, theme, setTheme }) {
                                     Permanently delete your account and all associated data. This action is immediate and irreversible.
                                 </p>
                             </div>
-                            <button onClick={handleDeleteAccount} className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                            <button onClick={() => setShowDeleteModal(true)} className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
                                 Delete Account
                             </button>
                         </div>
@@ -371,6 +374,111 @@ export default function Settings({ user, theme, setTheme }) {
                     {renderContent()}
                 </AnimatePresence>
             </div>
+
+            {/* DELETE ACCOUNT MODAL */}
+            <AnimatePresence>
+                {showDeleteModal && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.75)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 9999
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                            style={{
+                                background: '#0f172a',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '16px',
+                                padding: '32px',
+                                width: '90%',
+                                maxWidth: '420px',
+                                boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+                            }}
+                        >
+                            <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444', fontSize: '1.25rem' }}>
+                                <FiAlertTriangle size={22} /> Delete Account
+                            </h3>
+                            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                                <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>
+                                    This action <strong>cannot</strong> be undone. This will permanently delete your account, 
+                                    portfolio data, and remove all associations.
+                                </p>
+                            </div>
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', color: '#cbd5e1' }}>
+                                Please type <strong style={{ userSelect: 'none', color: '#f8fafc' }}>{user?.email}</strong> to confirm.
+                            </label>
+                            <input 
+                                type="text"
+                                value={deleteInput}
+                                onChange={(e) => setDeleteInput(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    background: 'rgba(0, 0, 0, 0.2)',
+                                    color: '#f8fafc',
+                                    marginBottom: '28px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                    fontSize: '1rem'
+                                }}
+                                autoFocus
+                            />
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button 
+                                    disabled={deleteInput !== user?.email || isDeleting}
+                                    onClick={handleDeleteAccount}
+                                    style={{
+                                        flex: 2, 
+                                        padding: '12px',
+                                        background: deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.15)',
+                                        color: deleteInput === user?.email ? '#fff' : 'rgba(255,255,255,0.4)',
+                                        border: '1px solid ' + (deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.2)'), 
+                                        borderRadius: '8px', 
+                                        cursor: deleteInput === user?.email ? 'pointer' : 'not-allowed',
+                                        fontWeight: '600',
+                                        transition: 'all 0.2s ease',
+                                        fontSize: '0.95rem'
+                                    }}
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Delete this account'}
+                                </button>
+                                <button 
+                                    onClick={() => { setShowDeleteModal(false); setDeleteInput(""); }}
+                                    style={{
+                                        flex: 1, 
+                                        padding: '12px',
+                                        background: 'transparent',
+                                        color: '#cbd5e1',
+                                        border: '1px solid rgba(255,255,255,0.1)', 
+                                        borderRadius: '8px', 
+                                        cursor: 'pointer',
+                                        fontWeight: '500',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
+                                    onMouseOut={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
