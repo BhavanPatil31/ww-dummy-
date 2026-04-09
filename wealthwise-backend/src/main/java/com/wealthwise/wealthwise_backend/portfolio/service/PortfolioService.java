@@ -7,9 +7,9 @@ import com.wealthwise.wealthwise_backend.portfolio.repository.PortfolioRepositor
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.wealthwise.wealthwise_backend.investment.service.NavService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,7 +23,7 @@ public class PortfolioService {
     private InvestmentRepository investmentRepository;
 
     @Autowired
-    private NavService navService;
+    private InvestmentValuationService investmentValuationService;
 
     public Portfolio getPortfolioByUserId(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
@@ -34,7 +34,7 @@ public class PortfolioService {
     @Transactional
     public Portfolio updatePortfolio(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
-        List<Investment> investments = Objects.requireNonNull(investmentRepository.findByUserId(userId), "Investment list cannot be null");
+        List<Investment> investments = Objects.requireNonNull(investmentRepository.findActiveByUserId(userId, java.time.LocalDate.now()), "Active investment list cannot be null");
         
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalUnits = BigDecimal.ZERO;
@@ -42,31 +42,20 @@ public class PortfolioService {
 
         if (investments != null) {
             for (Investment inv : investments) {
-                BigDecimal amount = BigDecimal.valueOf(inv.getAmount() != null ? inv.getAmount() : 0.0);
-                BigDecimal units = BigDecimal.valueOf(inv.getUnits() != null ? inv.getUnits() : 0.0);
-                
-                totalInvested = totalInvested.add(amount);
-                totalUnits = totalUnits.add(units);
+                InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, LocalDate.now());
 
-                // Fetch real-time NAV
-                Double liveNav = null;
-                if (inv.getFundId() != null) {
-                    liveNav = navService.getLatestNav(String.valueOf(inv.getFundId()));
-                }
+                totalInvested = totalInvested.add(valuation.getInvestedAmount());
+                totalUnits = totalUnits.add(valuation.getUnits());
+                currentValue = currentValue.add(valuation.getCurrentValue());
 
-                double currentNav;
-                if (liveNav != null) {
-                    currentNav = liveNav;
-                    // Update current_nav in database for this investment
-                    inv.setCurrentNav(currentNav);
-                    investmentRepository.save(inv);
-                } else {
-                    // Fallback to existing or simulated
-                    double navAtBuy = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 1.0;
-                    currentNav = inv.getCurrentNav() != null ? inv.getCurrentNav() : navAtBuy * 1.07;
+                // Persist refreshed current NAV so other screens can reuse it.
+                if (valuation.getCurrentNav() != null) {
+                    inv.setCurrentNav(valuation.getCurrentNav().doubleValue());
                 }
-                
-                currentValue = currentValue.add(units.multiply(BigDecimal.valueOf(currentNav)));
+                // Persist normalized invested amount and units so list endpoints remain consistent.
+                inv.setAmountInvested(valuation.getInvestedAmount().doubleValue());
+                inv.setUnits(valuation.getUnits().doubleValue());
+                investmentRepository.save(inv);
             }
         }
 
