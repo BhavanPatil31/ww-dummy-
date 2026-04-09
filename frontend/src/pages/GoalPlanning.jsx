@@ -403,20 +403,21 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                     {/* Fixed-Term Investments */}
                     {investments && investments.filter(inv => inv.end_date && inv.status !== 'SOLD').length > 0 && (
                         <div style={{ marginTop: '40px' }}>
-                            <h3 style={{ marginBottom: '16px', fontSize: '18px', color: '#f8fafc' }}>Term Investments (Active)</h3>
-                            <table className="goal-table">
-                                <thead>
-                                    <tr>
-                                        <th>Sl No</th>
-                                        <th>Fund Name</th>
-                                        <th>Target Amount (Est.)</th>
-                                        <th>End Year</th>
-                                        <th>Linked Investments</th>
-                                        <th>Progress</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <h3 style={{ paddingLeft: '16px', marginBottom: '20px' }}>Term Investments (Active)</h3>
+                            <div className="goal-table-wrapper">
+                                <table className="goal-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sl No</th>
+                                            <th>Fund Name</th>
+                                            <th>Target Amount (Est.)</th>
+                                            <th>End Year</th>
+                                            <th>Linked Investments</th>
+                                            <th>Progress</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                     {investments.filter(inv => inv.end_date && inv.status !== 'SOLD').map((inv, idx) => {
                                         const start = new Date(inv.start_date || inv.buy_date);
                                         const end = new Date(inv.end_date);
@@ -446,12 +447,12 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                             <tr key={`term-${inv.investment_id || idx}`}>
                                                 <td>{idx + 1}</td>
                                                 <td style={{fontWeight: 500}}>{inv.scheme_name || `Fund #${inv.fund_id}`}</td>
-                                                <td style={{color: '#f8fafc'}}>₹{fmt(targetAmt)}</td>
+                                                <td style={{color: '#f8fafc'}}>{fmt(targetAmt)}</td>
                                                 <td>{end.getFullYear()}</td>
                                                 <td style={{color: '#94a3b8'}}>-</td>
                                                 <td style={{width: '200px'}}>
                                                     <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                                                        <span className="goal-progress-text">₹{fmt(progressVal)}</span>
+                                                        <span className="goal-progress-text">{fmt(progressVal)}</span>
                                                         <span style={{fontSize: '12px', color: '#94a3b8'}}>{percentage.toFixed(1)}%</span>
                                                     </div>
                                                     <div className="goal-progress-container">
@@ -466,6 +467,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                     })}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </div>

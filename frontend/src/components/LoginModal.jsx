@@ -8,6 +8,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const [requiresOtp, setRequiresOtp] = useState(false);
   const [otp, setOtp] = useState("");
@@ -38,8 +39,6 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         throw new Error(data.error || "Login failed");
       }
 
-      alert(data.message + " Welcome, " + data.name);
-
       if (data.token) {
         localStorage.setItem("jwt_token", data.token);
       }
@@ -53,6 +52,8 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
 
       localStorage.setItem("wealthwise_user", JSON.stringify(userData));
 
+      localStorage.setItem("showLoginToast", data.message + " Welcome, " + data.name + "!");
+      
       if (onLoginSuccess) {
         onLoginSuccess(userData);
       } else {
@@ -125,13 +126,19 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         <h2 className="modal-title">Welcome Back</h2>
         <p className="modal-subtitle">Sign in to your WealthWise account</p>
 
-        {errorMsg && (
+        {successMsg && (
+          <div style={{ color: "#10b981", marginBottom: "15px", fontSize: "0.95rem", fontWeight: "600", padding: "12px", backgroundColor: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            <span style={{ fontSize: "1.2rem" }}>✓</span> {successMsg}
+          </div>
+        )}
+
+        {errorMsg && !successMsg && (
           <div style={{ color: "#ef4444", marginBottom: "10px", fontSize: "0.9rem" }}>
             {errorMsg}
           </div>
         )}
 
-        {requiresOtp && (
+        {requiresOtp && !successMsg && (
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ marginBottom: "0.4rem", fontWeight: 600 }}>Enter OTP sent to your email</div>
             <div className="input-group">
@@ -216,8 +223,8 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
             </div>
           </div>
 
-          <button type="submit" className="auth-btn" disabled={isLoading}>
-            {isLoading ? "Signing In..." : "Sign In"}
+          <button type="submit" className="auth-btn" disabled={isLoading || successMsg}>
+            {successMsg ? "Success!" : isLoading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

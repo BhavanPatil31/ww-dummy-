@@ -61,6 +61,16 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const [loginSuccessMsg, setLoginSuccessMsg] = useState("");
+    useEffect(() => {
+        const msg = localStorage.getItem("showLoginToast");
+        if (msg) {
+            setLoginSuccessMsg(msg);
+            localStorage.removeItem("showLoginToast");
+            setTimeout(() => setLoginSuccessMsg(""), 3500);
+        }
+    }, []);
+
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
     const formatCurrency = (val) =>
@@ -257,21 +267,17 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     return (
         <div className="dashboard-container">
+            {loginSuccessMsg && (
+                <div className="login-success-toast">
+                    <span className="toast-icon">✓</span> {loginSuccessMsg}
+                </div>
+            )}
+            
             {/* ── SIDEBAR ── */}
             <aside className="dashboard-sidebar">
                 <div className="brand">
                     <div className="logo-wrapper">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="32" height="32" rx="8" fill="url(#brandGrad)"/>
-                            <path d="M7 11L11.5 21L16 11L20.5 21L25 11" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M12 25L16 19L20 25" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <defs>
-                                <linearGradient id="brandGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor="#3b82f6"/>
-                                    <stop offset="1" stopColor="#1e3a8a"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
+                        <img src="/logo.png" alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
                     </div>
                     <h2>WealthWise</h2>
                 </div>
@@ -405,21 +411,56 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                     </div>
                                 </div>
                                 <div className="main-chart-container">
-                                    <ResponsiveContainer width="100%" height={240}>
-                                        <AreaChart data={historyData} margin={{ top: 10, right: 4, left: 0, bottom: 0 }}>
+                                    <ResponsiveContainer width="100%" height={260}>
+                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                                                    <stop offset="90%" stopColor="#3b82f6" stopOpacity={0} />
                                                 </linearGradient>
+                                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                                    <feGaussianBlur stdDeviation="4" result="blur" />
+                                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                                </filter>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
-                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} interval="preserveStartEnd" dy={8} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                                            <XAxis 
+                                                dataKey="date" 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} 
+                                                interval="preserveStartEnd" 
+                                                dy={12} 
+                                                padding={{ left: 10, right: 10 }}
+                                            />
                                             <YAxis hide domain={['auto', 'auto']} />
-                                            <Tooltip content={<ChartTooltip currency={currency} />} />
-                                            <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5}
-                                                fill="url(#areaGrad)" dot={false}
-                                                activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
+                                            <Tooltip 
+                                                content={<ChartTooltip currency={currency} />} 
+                                                cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1 }}
+                                            />
+                                            {/* Glow Layer */}
+                                            <Area 
+                                                type="natural" 
+                                                dataKey="value" 
+                                                stroke="#3b82f6" 
+                                                strokeWidth={4}
+                                                fill="transparent"
+                                                strokeOpacity={0.4}
+                                                style={{ filter: 'url(#glow)' }}
+                                                activeDot={false}
+                                                animationDuration={2000}
+                                            />
+                                            {/* Main Line & Gradient */}
+                                            <Area 
+                                                type="natural" 
+                                                dataKey="value" 
+                                                stroke="#3b82f6" 
+                                                strokeWidth={2.5}
+                                                fill="url(#areaGrad)" 
+                                                dot={false}
+                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                                                animationDuration={1500}
+                                            />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -436,7 +477,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             : `${metrics.profitLoss > 0 ? '+' : ''}${formatCurrency(Math.abs(metrics.profitLoss))}`,
                                         icon: metrics.profitLoss >= 0 ? <FiTrendingUp /> : <FiTrendingDown />,
                                         cls: metrics.profitLoss > 0 ? 'i-green' : metrics.profitLoss < 0 ? 'i-red' : 'i-muted',
-                                        sub: metrics.realizedPnL !== 0 ? `Incl. ₹${fmt(metrics.realizedPnL)} realized` : `${(metrics.returnPct || 0).toFixed(2)}% overall`,
+                                        sub: metrics.realizedPnL !== 0 ? `Incl. ${fmtShort(metrics.realizedPnL)} realized` : `${(metrics.returnPct || 0).toFixed(2)}% overall`,
                                         valueColor: metrics.profitLoss > 0 ? 'pos' : metrics.profitLoss < 0 ? 'neg' : ''
                                     },
                                     {
@@ -562,8 +603,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <strong>{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 24)}{(inv.scheme_name?.length > 24) ? '…' : ''}</strong>
                                                         <span>{inv.investment_type === 'Lumpsum' ? 'BUY' : inv.investment_type} · {formatDate(inv.buy_date || inv.start_date)}</span>
                                                     </div>
-                                                    <div className="activity-amount">+{formatCurrency(inv.amount)}</div>
-                                                    <div className="activity-amount">{inv.investment_type === 'SELL' ? '-' : '+'}₹{fmt(inv.amount)}</div>
+                                                    <div className="activity-amount">{inv.investment_type === 'SELL' ? '-' : '+'}{formatCurrency(inv.amount)}</div>
                                                 </div>
                                             ))}
                                         </div>
