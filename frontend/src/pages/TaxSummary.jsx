@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import {
     FiFileText, FiDownload, FiCalendar,
     FiTrendingUp, FiTrendingDown, FiFilter, FiInfo
@@ -7,6 +8,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import '../styles/TaxSummary.css';
 
+export default function TaxSummary({ user }) {
 export default function TaxSummary({ user, investments = [], currency = 'INR' }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
@@ -18,6 +20,33 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
             return `${year - 1}-${year}`; // Jan - March
         }
     );
+    const [taxTransactions, setTaxTransactions] = useState([]);
+
+    useEffect(() => {
+        if (user) {
+            fetchTaxSummary();
+        }
+    }, [user, selectedYear]);
+
+    const fetchTaxSummary = async () => {
+        if (!user) return;
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const userId = user?.userId || user?.id;
+            const fyToFetch = selectedYear.includes('-') ? selectedYear : `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+            const response = await axios.get(
+                `http://localhost:8088/api/taxes/user/${userId}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { financialYear: fyToFetch }
+                }
+            );
+            setTaxTransactions(response.data || []);
+        } catch (err) {
+            console.log('No tax data found for this year', err);
+            setTaxTransactions([]);
+        }
+    };
 
     // Format currency Helper
     const formatCurrency = (val) =>
@@ -33,8 +62,18 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
         return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
-    // Calculate simulated tax transactions entirely on the frontend
     const transactions = useMemo(() => {
+        return (taxTransactions || []).map((txn, index) => ({
+            id: txn.id || `tax-${index}`,
+            fundName: txn.fundName || 'Unknown',
+            buyDate: txn.buyDate,
+            sellDate: txn.sellDate,
+            units: parseFloat(txn.units || 0),
+            gain: parseFloat(txn.gain || 0),
+            tax_type: txn.type || 'STCG',
+            source: 'Tax'
+        }));
+    }, [taxTransactions]);
         if (!investments || investments.length === 0) return [];
         
         return investments.map((inv, index) => {
@@ -310,7 +349,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                 </div>
 
                 {filteredTransactions.length === 0 ? (
-                    <div className="ww-empty-state">No investments found matching the selected financial year. Switch years to view your estimated gains!</div>
+                    <div className="ww-empty-state">No tax transactions found for the selected financial year.</div>
                 ) : (
                     <div className="ww-table-responsive">
                         <table className="ww-data-table">
@@ -318,7 +357,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                                 <tr>
                                     <th>Fund Name</th>
                                     <th>Buy Date</th>
-                                    <th>Simulated Sell Date</th>
+                                    <th>Sell Date</th>
                                     <th>Units Sold</th>
                                     <th>Est. Realized Gain</th>
                                     <th>Tax Type</th>

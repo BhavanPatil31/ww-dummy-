@@ -11,6 +11,11 @@ import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Objects;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,11 +33,36 @@ public class PortfolioService {
     private InvestmentRepository investmentRepository;
 
     @Autowired
-    private NavService navService;
+    private InvestmentValuationService investmentValuationService;
 
     @Autowired
     private UserRepository userRepository;
 
+    @Transactional
+    public Portfolio updatePortfolio(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> investments = Objects.requireNonNull(investmentRepository.findActiveByUserId(userId, java.time.LocalDate.now()), "Active investment list cannot be null");
+        
+        BigDecimal totalInvested = BigDecimal.ZERO;
+        BigDecimal totalUnits = BigDecimal.ZERO;
+        BigDecimal currentValue = BigDecimal.ZERO;
+
+        if (investments != null) {
+            for (Investment inv : investments) {
+                InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, LocalDate.now());
+
+                totalInvested = totalInvested.add(valuation.getInvestedAmount());
+                totalUnits = totalUnits.add(valuation.getUnits());
+                currentValue = currentValue.add(valuation.getCurrentValue());
+
+                // Persist refreshed current NAV so other screens can reuse it.
+                if (valuation.getCurrentNav() != null) {
+                    inv.setCurrentNav(valuation.getCurrentNav().doubleValue());
+                }
+                // Persist normalized invested amount and units so list endpoints remain consistent.
+                inv.setAmountInvested(valuation.getInvestedAmount().doubleValue());
+                inv.setUnits(valuation.getUnits().doubleValue());
+                investmentRepository.save(inv);
     public PortfolioDTO computeDetailedPortfolio(Long userId) {
         List<Investment> investments = investmentRepository.findByUserId(userId);
         
