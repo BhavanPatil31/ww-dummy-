@@ -121,13 +121,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
         const currentNav = getCurrentNav(inv);
         if (units > 0 && currentNav > 0) return units * currentNav;
         return Number(inv.amount_invested || inv.amount || 0);
-        return inv.current_nav || inv.nav_at_buy || 0;
-    };
-
-    const getCurrentValue = (inv) => {
-        const units = inv.units || 0;
-        const nav = getCurrentNav(inv);
-        return units * nav;
     };
 
     const getInvestedAmount = (inv) => Number(inv.amount_invested || inv.amount || 0);
@@ -153,15 +146,9 @@ export default function Portfolio({ user, currency = 'INR' }) {
             return (isNaN(d1) ? 0 : d1.getTime()) - (isNaN(d2) ? 0 : d2.getTime());
         });
         return sorted.map(inv => {
-<<<<<<< HEAD
-            const invested = parseFloat(inv.amount || 0) || 0;
-            const current = getCurrentValue(inv) || 0;
-            const pnl = parseFloat((current - invested).toFixed(0)) || 0;
-=======
             const invested = getInvestedAmount(inv);
             const current = getCurrentValue(inv);
             const pnl = parseFloat((current - invested).toFixed(0));
->>>>>>> 8478cb585c3a2f7fd37e992520cb8ac9096b0187
             const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
             const label = (inv.scheme_name || `Fund #${inv.fund_id}` || '?').slice(0, 10);
             return { name: label, pnl, pct: parseFloat(pct) || 0, invested, current, fullName: inv.scheme_name || `Fund #${inv.fund_id}` };
@@ -266,9 +253,9 @@ export default function Portfolio({ user, currency = 'INR' }) {
         setSellForm({ sell_date: today, sellNav: getCurrentNav(inv).toFixed(2) });
         setSellModalOpen(true);
     };
-    const closeSell = () => { 
-        setSellModalOpen(false); 
-        setSelectedInvestment(null); 
+    const closeSell = () => {
+        setSellModalOpen(false);
+        setSelectedInvestment(null);
         setSellForm({ sell_date: '', sellNav: '' });
         setLoadingSellNav(false);
     };
@@ -277,7 +264,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
     useEffect(() => {
         const fetchHistoricalSellNav = async () => {
             if (!sellModalOpen || !selectedInvestment || !sellForm.sell_date) return;
-            
+
             const fundId = selectedInvestment.fund_id;
             if (!fundId) return;
 
@@ -289,7 +276,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                     // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
                     const parts = sellForm.sell_date.split('-');
                     const targetFormat = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                    
+
                     const historicalNav = data.data.find(d => d.date === targetFormat);
                     if (historicalNav) {
                         setSellForm(prev => ({ ...prev, sellNav: historicalNav.nav }));
@@ -1081,7 +1068,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                                 type="number"
                                                 step="0.01"
                                                 value={sellForm.sellNav || ''}
-                                                onChange={(e) => setSellForm({ ...prev, sellNav: e.target.value })}
+                                                onChange={(e) => setSellForm(prev => ({ ...prev, sellNav: e.target.value }))}
                                                 required
                                                 placeholder={loadingSellNav ? "Fetching..." : "0.00"}
                                                 className={loadingSellNav ? "nav-loading-input" : ""}

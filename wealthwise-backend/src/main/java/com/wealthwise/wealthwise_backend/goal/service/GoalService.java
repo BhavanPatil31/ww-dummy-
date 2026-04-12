@@ -31,8 +31,13 @@ public class GoalService {
         goal.setProgress(goalDetails.getProgress());
         
         // Relationship handle
-        goal.getLinkedInvestments().clear();
+        if (goal.getLinkedInvestments() != null) {
+            goal.getLinkedInvestments().clear();
+        }
         if (goalDetails.getLinkedInvestments() != null) {
+            if (goal.getLinkedInvestments() == null) {
+                goal.setLinkedInvestments(new java.util.ArrayList<>());
+            }
             goal.getLinkedInvestments().addAll(goalDetails.getLinkedInvestments());
         }
         

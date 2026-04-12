@@ -45,7 +45,7 @@ public class InvestmentService {
                 // Move to tax_transactions immediately
                 taxService.moveInvestmentToTaxTransaction(saved);
                 // Delete from investments table
-                investmentRepository.deleteById(saved.getInvestmentId());
+                investmentRepository.deleteById(Objects.requireNonNull(saved.getInvestmentId(), "Investment ID must not be null"));
                 notificationService.createNotification(userId, 
                         "Your investment in " + saved.getSchemeName() + " with an end date has been moved to tax transactions.", 
                         "INVESTMENT_CLOSED");

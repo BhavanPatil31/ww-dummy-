@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf';
-import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import workerSrc from "pdfjs-dist/build/pdf.worker.min.js?url";
 import {
-    AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+    ComposedChart, Area, Line, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import {
@@ -24,19 +24,95 @@ const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'
 
 const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
     if (!active || !payload?.length) return null;
-    const formatCurrency = (val) =>
+    const fmt = (val) =>
         new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
             currency: currency,
             maximumFractionDigits: 0
         }).format(val || 0);
+    const currentVal = payload.find(p => p.dataKey === 'value');
+    const investedVal = payload.find(p => p.dataKey === 'invested');
+    const gain = currentVal && investedVal ? (currentVal.value - investedVal.value) : 0;
+    const gainPct = investedVal?.value > 0 ? ((gain / investedVal.value) * 100) : 0;
+    // Format the date label nicely
+    let dateStr = label;
+    try {
+        const d = new Date(label + 'T00:00:00');
+        dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (err) {
+        console.warn("Date parsing failed in Tooltip", err);
+    }
     return (
-        <div className="chart-tooltip">
-            <div className="ct-date">{label}</div>
-            <div className="ct-val">{formatCurrency(payload[0].value)}</div>
+        <div className="chart-tooltip-pro">
+            <div className="ct-date-pro">{dateStr}</div>
+            <div className="ct-rows">
+                {currentVal && (
+                    <div className="ct-row">
+                        <span className="ct-dot" style={{ background: '#3b82f6' }} />
+                        <span className="ct-label">Current Value</span>
+                        <span className="ct-amount">{fmt(currentVal.value)}</span>
+                    </div>
+                )}
+                {investedVal && (
+                    <div className="ct-row">
+                        <span className="ct-dot" style={{ background: '#a855f7' }} />
+                        <span className="ct-label">Invested</span>
+                        <span className="ct-amount">{fmt(investedVal.value)}</span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
+
+// Format Y-axis tick values as short currency
+const formatYAxis = (val, currency = 'INR') => {
+    const sym = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
+    if (currency === 'INR') {
+        if (val >= 10000000) return `${sym}${(val / 10000000).toFixed(1)}Cr`;
+        if (val >= 100000) return `${sym}${(val / 100000).toFixed(1)}L`;
+        if (val >= 1000) return `${sym}${(val / 1000).toFixed(0)}K`;
+    } else {
+        if (val >= 1000000) return `${sym}${(val / 1000000).toFixed(1)}M`;
+        if (val >= 1000) return `${sym}${(val / 1000).toFixed(0)}K`;
+    }
+    return `${sym}${val}`;
+};
+
+// Format X-axis date ticks
+const formatXDate = (dateStr) => {
+    try {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    } catch { return dateStr; }
+};
+const HISTORY_DAYS = { '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365, 'ALL': 5000 };
+
+/** When API history is missing or all zeros, show a readable trend from invested → current. */
+function buildFallbackHistory(timeFrame, totalInvested, portfolioValue) {
+    const span = HISTORY_DAYS[timeFrame] ?? 30;
+    const n = Math.min(Math.max(span, 7), 120);
+    const out = [];
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - (n - 1));
+    const inv = Number(totalInvested) || 0;
+    const cur = Number(portfolioValue) || 0;
+    for (let i = 0; i < n; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const t = n <= 1 ? 1 : i / (n - 1);
+        const eased = t * t * (3 - 2 * t);
+        const value = inv + (cur - inv) * eased;
+        const iso = d.toISOString().slice(0, 10);
+        out.push({
+            date: iso,
+            value: Math.round(value * 100) / 100,
+            invested: Math.round(inv * 100) / 100,
+        });
+    }
+    return out;
+}
 
 export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency, setCurrency }) {
     const [investments, setInvestments] = useState([]);
@@ -45,6 +121,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [chartLoading, setChartLoading] = useState(false);
     const [timeFrame, setTimeFrame] = useState('1M');
     const [activeView, setActiveView] = useState(
         () => localStorage.getItem('activeView') || 'dashboard'
@@ -52,6 +129,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef(null);
     const casFileInputRef = useRef(null);
+    const [liveClock, setLiveClock] = useState(new Date());
 
     // Close notifications on click outside
     useEffect(() => {
@@ -64,15 +142,25 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const [loginSuccessMsg, setLoginSuccessMsg] = useState("");
+    useEffect(() => {
+        const timer = setInterval(() => setLiveClock(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+    const showToast = useCallback((message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    }, []);
+
     useEffect(() => {
         const msg = localStorage.getItem("showLoginToast");
         if (msg) {
-            setLoginSuccessMsg(msg);
+            showToast(msg, 'success');
             localStorage.removeItem("showLoginToast");
-            setTimeout(() => setLoginSuccessMsg(""), 3500);
         }
-    }, []);
+    }, [showToast]);
 
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
@@ -124,7 +212,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             try {
                 const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
                 invData = r.data || [];
-            } catch { }
+            } catch (err) {
+                console.warn("Failed to fetch investments", err);
+            }
 
             let dbData = null;
             try {
@@ -132,20 +222,26 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 dbData = r.data;
                 if (dbData && dbData.profitLoss === undefined)
                     dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
-            } catch { }
+            } catch (err) {
+                console.warn("Failed to fetch dashboard summary", err);
+            }
 
+            setChartLoading(true);
             let histData = [];
             try {
-                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 730;
+                const points = HISTORY_DAYS[timeFrame] ?? 30;
                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
                 histData = r.data || [];
-            } catch { }
+            } catch (err) {
+                console.warn("Failed to fetch history data", err);
+            }
 
             setInvestments(invData);
             setDashboardData(dbData);
             setHistoryData(histData);
         } finally {
             setLoading(false);
+            setChartLoading(false);
         }
     }, [user, timeFrame, getCurrentValue]);
 
@@ -154,6 +250,16 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             fetchAllData();
         }
     }, [user, activeView, timeFrame]);
+
+    // Auto-refresh dashboard data every 60s for real-time graph
+    useEffect(() => {
+        if (!user || activeView !== 'dashboard') return;
+        const interval = setInterval(() => {
+            fetchAllData();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [user, activeView, timeFrame, fetchAllData]);
+
 
     // Notifications
     const fetchNotifications = useCallback(async () => {
@@ -166,7 +272,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
             setNotifications(res.data || []);
             setUnreadCount((res.data || []).filter(n => !n.read).length);
-        } catch { }
+        } catch (err) {
+            console.warn("Failed to fetch notifications", err);
+        }
     }, [user]);
 
     useEffect(() => {
@@ -208,7 +316,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             console.log('Selected PDF file:', file.name);
             parseCASPDF(file);
         } else if (file) {
-            alert('Please select a valid PDF file');
+            showToast('Please select a valid PDF file', 'error');
         }
         // Reset the input value so the same file can be selected again
         if (casFileInputRef.current) {
@@ -237,13 +345,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             }
         } catch (err) {
             console.error('Error parsing PDF:', err);
-            alert('Error parsing PDF file. Please ensure it\'s a valid CAS PDF.');
+            showToast('Error parsing PDF file. Please ensure it\'s a valid CAS PDF.', 'error');
         }
     };
 
     const extractCASData = (text) => {
         const lines = text.split('\n');
-        
+
         // Extract Financial Year
         let financialYear = '2026-2027';
         for (let line of lines) {
@@ -393,12 +501,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             );
 
             console.log('CAS data saved:', response.data);
-            alert('CAS data uploaded successfully!');
+            showToast('CAS data uploaded successfully!', 'success');
             fetchAllData(); // Refresh dashboard
         } catch (err) {
             const serverMessage = err?.response?.data?.message || err?.response?.data || err?.message;
             console.error('Error sending CAS data to backend:', err?.response?.status, serverMessage, err);
-            alert(`Error uploading CAS data. ${serverMessage || 'Please check the PDF format.'}`);
+            showToast(`Error uploading CAS data. ${serverMessage || 'Check PDF format.'}`, 'error');
         }
     };
 
@@ -470,6 +578,24 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return out.slice(0, 3);
     }, [investments, metrics]);
 
+    const chartDisplayData = useMemo(() => {
+        const raw = Array.isArray(historyData) ? historyData : [];
+        const normalized = raw
+            .map((p) => ({
+                date: p.date,
+                value: Number(p.value ?? 0),
+                invested: Number(p.invested ?? 0),
+            }))
+            .filter((p) => p.date)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        const maxVal = normalized.reduce((m, p) => Math.max(m, p.value), 0);
+        const looksEmpty = normalized.length === 0 || (maxVal <= 0 && (metrics.portfolioValue || 0) > 0);
+        if (looksEmpty && (metrics.portfolioValue || 0) > 0) {
+            return buildFallbackHistory(timeFrame, metrics.totalInvested, metrics.portfolioValue);
+        }
+        return normalized;
+    }, [historyData, timeFrame, metrics.portfolioValue, metrics.totalInvested]);
+
     const profitPill = () => {
         const { profitLoss, returnPct } = metrics;
         if (!dashboardData && investments.length === 0) return null;
@@ -486,12 +612,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     return (
         <div className="dashboard-container">
-            {loginSuccessMsg && (
-                <div className="login-success-toast">
-                    <span className="toast-icon">✓</span> {loginSuccessMsg}
+            {toast && (
+                <div className={`ww-toast ${toast.type === 'error' ? 'error-toast' : 'success-toast'}`}>
+                    <span className="toast-icon">{toast.type === 'error' ? '✕' : '✓'}</span> {toast.message}
                 </div>
             )}
-            
+
             {/* ── SIDEBAR ── */}
             <aside className="dashboard-sidebar">
                 <div className="brand">
@@ -598,90 +724,113 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <div className="premium-dashboard">
 
                             {/* ── 1. PORTFOLIO GROWTH HERO ── */}
-                            <section className="growth-hero-card">
-                                <div className="hero-top">
-                                    <div className="hero-left">
-                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE</span>
-                                        <div className="hero-value-row">
-                                            <span className="big-price">{formatCurrency(metrics.portfolioValue)}</span>
-                                            {profitPill()}
-                                        </div>
-                                        <div className="timeframe-filters">
-                                            {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
-                                                <button key={tf} className={timeFrame === tf ? 'active' : ''} onClick={() => setTimeFrame(tf)}>{tf}</button>
-                                            ))}
+                            <section className="groww-style-hero">
+                                <div className="hero-header-groww">
+                                    <span className="hero-label-small">Total Portfolio Value</span>
+                                    <div className="hero-main-row">
+                                        <div className="hero-value-big">{formatCurrency(metrics.portfolioValue)}</div>
+                                        <div className={`profit-badge-groww ${metrics.profitLoss >= 0 ? 'pos' : 'neg'}`}>
+                                            <span className="profit-badge-tri">{metrics.profitLoss >= 0 ? '▲' : '▼'}</span>
+                                            <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
+                                            <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
                                         </div>
                                     </div>
-                                    <div className="hero-right">
-                                        <div className="hero-mini-stat">
-                                            <span>Invested</span>
-                                            <strong>{formatCurrency(metrics.totalInvested)}</strong>
-                                        </div>
-                                        <div className="hero-mini-stat">
-                                            <span>Holdings</span>
-                                            <strong>{investments.length}</strong>
-                                        </div>
-                                        <div className="hero-mini-stat">
-                                            <span>Return</span>
-                                            <strong className={metrics.returnPct >= 0 ? 'pos' : 'neg'}>
-                                                {metrics.returnPct >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%
-                                            </strong>
-                                        </div>
+
+                                    <div className="timeframe-pill-container">
+                                        {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
+                                            <button
+                                                key={tf}
+                                                className={`tf-pill ${timeFrame === tf ? 'active' : ''}`}
+                                                onClick={() => setTimeFrame(tf)}
+                                            >
+                                                {tf}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="main-chart-container">
-                                    <ResponsiveContainer width="100%" height={260}>
-                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+
+                                <div className="chart-area-container">
+                                    {chartLoading && <div className="chart-skeleton"><div className="skeleton-wave" /></div>}
+                                    {chartDisplayData.length === 0 ? (
+                                        <div className="chart-empty-hint">Add investments to see portfolio value over time.</div>
+                                    ) : (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <ComposedChart
+                                            data={chartDisplayData}
+                                            margin={{ top: 16, right: 8, left: 0, bottom: 8 }}
+                                        >
                                             <defs>
-                                                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                                                    <stop offset="90%" stopColor="#3b82f6" stopOpacity={0} />
+                                                <linearGradient id="gwValGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                                                    <stop offset="55%" stopColor="#3b82f6" stopOpacity={0.08} />
+                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                                                 </linearGradient>
-                                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                                    <feGaussianBlur stdDeviation="4" result="blur" />
-                                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                                </filter>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                                            <XAxis 
-                                                dataKey="date" 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} 
-                                                interval="preserveStartEnd" 
-                                                dy={12} 
-                                                padding={{ left: 10, right: 10 }}
+                                            <CartesianGrid strokeDasharray="0" vertical={false} stroke="rgba(148,163,184,0.12)" />
+                                            <XAxis
+                                                dataKey="date"
+                                                axisLine={{ stroke: 'rgba(148,163,184,0.15)' }}
+                                                stroke="rgba(148,163,184,0.15)"
+                                                tickLine={false}
+                                                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                                                tickFormatter={formatXDate}
+                                                minTickGap={48}
+                                                dy={8}
                                             />
-                                            <YAxis hide domain={['auto', 'auto']} />
-                                            <Tooltip 
-                                                content={<ChartTooltip currency={currency} />} 
-                                                cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1 }}
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                                                tickFormatter={(v) => formatYAxis(v, currency)}
+                                                domain={['auto', 'auto']}
+                                                width={54}
                                             />
-                                            {/* Glow Layer */}
-                                            <Area 
-                                                type="natural" 
-                                                dataKey="value" 
-                                                stroke="#3b82f6" 
-                                                strokeWidth={4}
-                                                fill="transparent"
-                                                strokeOpacity={0.4}
-                                                style={{ filter: 'url(#glow)' }}
-                                                activeDot={false}
-                                                animationDuration={2000}
+                                            <Tooltip
+                                                content={<ChartTooltip currency={currency} />}
+                                                cursor={{ stroke: '#64748b', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.6 }}
                                             />
-                                            {/* Main Line & Gradient */}
-                                            <Area 
-                                                type="natural" 
-                                                dataKey="value" 
-                                                stroke="#3b82f6" 
+                                            <Area
+                                                type="monotone"
+                                                dataKey="value"
+                                                stroke="#3b82f6"
                                                 strokeWidth={2.5}
-                                                fill="url(#areaGrad)" 
+                                                fill="url(#gwValGrad)"
                                                 dot={false}
-                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                                                animationDuration={1500}
+                                                activeDot={{ r: 5, fill: '#3b82f6', stroke: '#0f172a', strokeWidth: 2 }}
+                                                isAnimationActive
+                                                animationDuration={500}
+                                                animationEasing="ease-in-out"
                                             />
-                                        </AreaChart>
+                                            <Line
+                                                type="monotone"
+                                                dataKey="invested"
+                                                stroke="#a855f7"
+                                                strokeWidth={2}
+                                                strokeDasharray="6 5"
+                                                dot={false}
+                                                activeDot={false}
+                                                isAnimationActive
+                                                animationDuration={500}
+                                                animationEasing="ease-in-out"
+                                            />
+                                        </ComposedChart>
                                     </ResponsiveContainer>
+                                    )}
+                                </div>
+
+                                <div className="chart-footer-legend">
+                                    <div className="legend-item-gw">
+                                        <div className="l-line blue" />
+                                        Current Value
+                                    </div>
+                                    <div className="legend-item-gw">
+                                        <div className="l-line purple" />
+                                        Invested
+                                    </div>
+                                    <div className="live-tag">
+                                        <div className="live-dot-pulse" />
+                                        Live · {liveClock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
                                 </div>
                             </section>
 
@@ -875,7 +1024,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     ) : activeView === 'portfolio' ? (
                         <Portfolio user={user} currency={currency} />
                     ) : activeView === 'tax' ? (
-                        <TaxSummary user={user} />
                         <TaxSummary user={user} investments={investments} currency={currency} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />

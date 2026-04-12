@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
     FiCalendar, FiSearch, FiTrendingUp, FiInfo,
@@ -75,26 +75,7 @@ const FALLBACK_FUNDS = [
     { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const getCategory = (name = '') => {
-    const n = name.toLowerCase();
-    if (n.includes('small cap') || n.includes('smallcap'))      return 'Small Cap';
-    if (n.includes('midcap') || n.includes('mid cap'))          return 'Mid Cap';
-    if (n.includes('large cap') || n.includes('bluechip') ||
-        n.includes('top 100') || n.includes('frontline'))       return 'Large Cap';
-    if (n.includes('flexi cap') || n.includes('flexicap'))      return 'Flexi Cap';
-    if (n.includes('index') || n.includes('nifty') ||
-        n.includes('sensex'))                                    return 'Index Funds';
-    if (n.includes('debt') || n.includes('liquid') ||
-        n.includes('bond') || n.includes('gilt'))               return 'Debt Funds';
-    if (n.includes('elss') || n.includes('tax'))                return 'ELSS / Tax Saving';
-    return 'Other';
-};
 
-const formatINR = (val) =>
-    new Intl.NumberFormat('en-IN', {
-        style: 'currency', currency: 'INR', maximumFractionDigits: 0
-    }).format(val || 0);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
@@ -142,7 +123,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
     // ── Submission ─────────────────────────────────────────────────────────
     const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
-    const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
     const navValue      = parseFloat(formData.nav);
@@ -354,10 +334,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     // ─────────────────────────────────────────────────────────────────────
     // 5. HANDLERS
     // ─────────────────────────────────────────────────────────────────────
-    const showToast = (msg) => {
-        setToastMsg(msg);
-        setTimeout(() => setToastMsg(''), 4500);
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -478,7 +454,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         <div className="add-investment-container">
 
             {/* Toast */}
-            {toastMsg && <div className="toast-notification">{toastMsg}</div>}
 
             <header className="page-header">
                 <h1>Add Investment</h1>

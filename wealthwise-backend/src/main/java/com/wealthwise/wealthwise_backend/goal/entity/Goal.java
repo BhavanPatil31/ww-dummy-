@@ -42,7 +42,7 @@ public class Goal {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "goal_id")
     @JsonProperty("linkedInvestments")
-    private List<GoalInvestment> linkedInvestments;
+    private List<GoalInvestment> linkedInvestments = new java.util.ArrayList<>();
 
     public Goal() {}
 

@@ -40,7 +40,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
 
 
-    const fetchGoals = async () => {
+    const fetchGoals = React.useCallback(async () => {
         if (!user) return;
         const userId = user.userId || user.id;
         const token = localStorage.getItem('jwt_token');
@@ -52,11 +52,11 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         } catch (error) {
             console.error("Failed to fetch goals", error);
         }
-    };
+    }, [user, API_BASE]);
 
     useEffect(() => {
         fetchGoals();
-    }, [user]);
+    }, [fetchGoals]);
 
     // Format currency
     // Format currency
@@ -230,7 +230,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         }
     };
 
-    const calculateProgress = (linked) => {
+    const calculateProgress = React.useCallback((linked) => {
         if (!linked || !linked.length || !investments?.length) return 0;
         let sum = 0;
         linked.forEach(item => {
@@ -246,7 +246,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
             }
         });
         return sum;
-    };
+    }, [investments, getCurrentValue]);
 
     const currentYear = new Date().getFullYear();
     const startYear = currentYear;
