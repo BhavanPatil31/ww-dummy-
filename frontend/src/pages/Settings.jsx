@@ -104,6 +104,21 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
             alert("Failed to export data");
         }
     };
+    
+    const handleResetPortfolio = async () => {
+        if (!window.confirm("Are you sure you want to delete ALL your investments? This action cannot be undone.")) return;
+        
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const headers = { Authorization: `Bearer ${token}` };
+            const uid = user?.userId || user?.id;
+            await axios.delete(`http://localhost:8088/api/investments/user/${uid}/all`, { headers });
+            alert("Portfolio reset successfully.");
+            window.location.reload(); 
+        } catch (error) {
+            alert(error.response?.data?.error || "Failed to reset portfolio.");
+        }
+    };
 
     const handleDeleteAccount = async () => {
         setIsDeleting(true);
@@ -317,6 +332,16 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                             </div>
                             <button onClick={handleExport} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '0.6rem 1rem' }}>
                                 <FiDownload /> Export CSV
+                            </button>
+                        </div>
+
+                        <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
+                            <div className="setting-info">
+                                <h4>Reset Portfolio</h4>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0' }}>Permanently remove all investments and transaction history.</p>
+                            </div>
+                            <button onClick={handleResetPortfolio} className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444' }}>
+                                <FiTrash2 /> Reset Portfolio
                             </button>
                         </div>
 

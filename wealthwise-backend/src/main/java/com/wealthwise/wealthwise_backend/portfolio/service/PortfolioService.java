@@ -5,6 +5,7 @@ import com.wealthwise.wealthwise_backend.investment.repository.InvestmentReposit
 import com.wealthwise.wealthwise_backend.investment.service.NavService;
 import com.wealthwise.wealthwise_backend.investment.dto.PortfolioDTO;
 import com.wealthwise.wealthwise_backend.investment.dto.HoldingDTO;
+import com.wealthwise.wealthwise_backend.investment.dto.InvestmentActivityDTO;
 import com.wealthwise.wealthwise_backend.portfolio.entity.Portfolio;
 import com.wealthwise.wealthwise_backend.portfolio.repository.PortfolioRepository;
 import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
@@ -40,59 +41,36 @@ public class PortfolioService {
     @Transactional
     public Portfolio updatePortfolio(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
-        // Spring Data JPA never returns null for collection queries — it returns an
-        // empty list
-        List<Investment> investments = investmentRepository.findActiveByUserId(userId, LocalDate.now());
-
+        List<Investment> investments = Objects.requireNonNull(investmentRepository.findActiveByUserId(userId, java.time.LocalDate.now()), "Active investment list cannot be null");
+        
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalUnits = BigDecimal.ZERO;
         BigDecimal currentValue = BigDecimal.ZERO;
 
-        for (Investment inv : investments) {
-            InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, LocalDate.now());
+        if (investments != null) {
+            for (Investment inv : investments) {
+                InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, LocalDate.now());
 
-            totalInvested = totalInvested.add(valuation.getInvestedAmount());
-            totalUnits = totalUnits.add(valuation.getUnits());
-            currentValue = currentValue.add(valuation.getCurrentValue());
+                totalInvested = totalInvested.add(valuation.getInvestedAmount());
+                totalUnits = totalUnits.add(valuation.getUnits());
+                currentValue = currentValue.add(valuation.getCurrentValue());
 
-            // Persist refreshed current NAV so other screens can reuse it.
-            if (valuation.getCurrentNav() != null) {
-                inv.setCurrentNav(valuation.getCurrentNav().doubleValue());
-            }
-            // Persist normalized invested amount and units so list endpoints remain
-            // consistent.
-            inv.setAmountInvested(valuation.getInvestedAmount().doubleValue());
-            inv.setUnits(valuation.getUnits().doubleValue());
-            investmentRepository.save(inv);
-        }
-
-        Portfolio portfolio = portfolioRepository.findFirstByUserId(userId).orElse(new Portfolio());
-        portfolio.setUserId(userId);
-        portfolio.setTotal_invested(totalInvested);
-        portfolio.setTotal_units(totalUnits);
-        portfolio.setCurrent_value(currentValue);
-        portfolio.setProfit_loss(currentValue.subtract(totalInvested));
-
-        BigDecimal returnPct = BigDecimal.ZERO;
-        if (totalInvested.compareTo(BigDecimal.ZERO) > 0) {
-            returnPct = currentValue.subtract(totalInvested).divide(totalInvested, 4, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"));
-        }
-        portfolio.setReturn_percentage(returnPct);
-
-        return portfolioRepository.save(portfolio);
-    }
-
+                // Persist refreshed current NAV so other screens can reuse it.
+                if (valuation.getCurrentNav() != null) {
+                    inv.setCurrentNav(valuation.getCurrentNav().doubleValue());
+                }
+                // Persist normalized invested amount and units so list endpoints remain consistent.
+                inv.setAmountInvested(valuation.getInvestedAmount().doubleValue());
+                inv.setUnits(valuation.getUnits().doubleValue());
+                investmentRepository.save(inv);
     public PortfolioDTO computeDetailedPortfolio(Long userId) {
         List<Investment> investments = investmentRepository.findByUserId(userId);
-
+        
         Map<Long, HoldingDTO> holdingsMap = new HashMap<>();
-        double totalRealizedProfitLoss = 0.0;
         double totalInvested = 0.0;
-
+        
         // Sort investments by date to ensure SIPs and sells are processed correctly
-        investments.sort(Comparator.comparing(inv -> inv.getBuyDate() != null ? inv.getBuyDate()
-                : (inv.getStartDate() != null ? inv.getStartDate() : LocalDate.MIN)));
+        investments.sort(Comparator.comparing(inv -> inv.getBuyDate() != null ? inv.getBuyDate() : (inv.getStartDate() != null ? inv.getStartDate() : LocalDate.MIN)));
 
         for (Investment inv : investments) {
             String type = inv.getInvestmentType();
@@ -105,6 +83,12 @@ public class PortfolioService {
             holding.setFundName(inv.getSchemeName());
 
             if ("BUY".equalsIgnoreCase(type) || "Lumpsum".equalsIgnoreCase(type)) {
+                if (inv.getUnits() == null || inv.getUnits() <= 0) {
+                   double nav = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 1.0;
+                   double amt = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
+                   inv.setUnits(amt / nav);
+                }
+                
                 double units = inv.getUnits() != null ? inv.getUnits() : 0.0;
                 double amount = inv.getAmountInvested() != null ? inv.getAmountInvested()
                         : (inv.getAmount() != null ? inv.getAmount() : 0.0);
@@ -114,51 +98,43 @@ public class PortfolioService {
                 totalInvested += amount;
 
             } else if ("SIP".equalsIgnoreCase(type)) {
-                // Calculate all installments for this SIP
                 LocalDate start = inv.getStartDate() != null ? inv.getStartDate() : inv.getBuyDate();
                 LocalDate end = inv.getEndDate() != null ? inv.getEndDate() : LocalDate.now();
-                if (end.isAfter(LocalDate.now()))
-                    end = LocalDate.now();
-
+                if (end.isAfter(LocalDate.now())) end = LocalDate.now();
+                
                 String freq = inv.getFrequency() != null ? inv.getFrequency() : "Monthly";
-                double amountPerInst = inv.getAmountInvested() != null ? inv.getAmountInvested()
-                        : (inv.getAmount() != null ? inv.getAmount() : 0.0);
+                double amountPerInst = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
 
                 LocalDate currentInstDate = start;
-                while (!currentInstDate.isAfter(end)) {
+                while (currentInstDate != null && !currentInstDate.isAfter(calcEnd)) {
                     Double navOnDate = navService.getNavForDate(String.valueOf(fundId), currentInstDate.toString());
                     double navOnDateValue = (navOnDate != null) ? navOnDate : 0.0;
                     double unitsOnDate = navOnDateValue > 0 ? amountPerInst / navOnDateValue : 0.0;
-
+                    
                     holding.setTotalUnits(holding.getTotalUnits() + unitsOnDate);
                     holding.setInvestedAmount(holding.getInvestedAmount() + amountPerInst);
                     totalInvested += amountPerInst;
 
                     // Advance to next installment
-                    if ("Weekly".equalsIgnoreCase(freq))
-                        currentInstDate = currentInstDate.plusWeeks(1);
-                    else if ("Monthly".equalsIgnoreCase(freq))
-                        currentInstDate = currentInstDate.plusMonths(1);
-                    else if ("Quarterly".equalsIgnoreCase(freq))
-                        currentInstDate = currentInstDate.plusMonths(3);
-                    else if ("Yearly".equalsIgnoreCase(freq))
-                        currentInstDate = currentInstDate.plusYears(1);
-                    else
-                        break;
+                    if ("Weekly".equalsIgnoreCase(freq)) currentInstDate = currentInstDate.plusWeeks(1);
+                    else if ("Monthly".equalsIgnoreCase(freq)) currentInstDate = currentInstDate.plusMonths(1);
+                    else if ("Quarterly".equalsIgnoreCase(freq)) currentInstDate = currentInstDate.plusMonths(3);
+                    else if ("Yearly".equalsIgnoreCase(freq)) currentInstDate = currentInstDate.plusYears(1);
+                    else break;
                 }
             } else if ("SELL".equalsIgnoreCase(type)) {
                 double unitsSold = inv.getUnits() != null ? inv.getUnits() : 0.0;
                 double sellNav = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 0.0; // navAtBuy is used for tx nav
-
+                
                 // Realized calculation based on average cost
                 if (holding.getTotalUnits() > 0) {
                     double totalUnitsBefore = holding.getTotalUnits();
                     double avgCost = totalUnitsBefore > 0 ? holding.getInvestedAmount() / totalUnitsBefore : 0.0;
                     double costOfSoldUnits = unitsSold * avgCost;
                     double realizedAmount = unitsSold * sellNav;
-
+                    
                     totalRealizedProfitLoss += (realizedAmount - costOfSoldUnits);
-
+                    
                     holding.setTotalUnits(holding.getTotalUnits() - unitsSold);
                     holding.setInvestedAmount(holding.getInvestedAmount() - costOfSoldUnits);
                 }
@@ -170,13 +146,13 @@ public class PortfolioService {
         List<HoldingDTO> activeHoldings = new ArrayList<>();
         double totalCurrentValue = 0.0;
         Map<String, Double> allocationMap = new HashMap<>();
+        Map<Long, Double> fundNavMap = new HashMap<>();
 
         for (HoldingDTO holding : holdingsMap.values()) {
             if (holding.getTotalUnits() > 0.0001) { // Floating point check
-                Double latestNavObj = navService.getLatestNav(String.valueOf(holding.getFundId()));
-                double latestNavValue = (latestNavObj != null) ? latestNavObj : 0.0;
-                holding.setLatestNav(latestNavValue);
-                holding.setCurrentValue(holding.getTotalUnits() * latestNavValue);
+                Double latestNav = navService.getLatestNav(String.valueOf(holding.getFundId()));
+                holding.setLatestNav(latestNav);
+                holding.setCurrentValue(holding.getTotalUnits() * latestNav);
                 holding.setProfitLoss(holding.getCurrentValue() - holding.getInvestedAmount());
                 holding.setReturnPercentage(
                         holding.getInvestedAmount() > 0 ? (holding.getProfitLoss() / holding.getInvestedAmount()) * 100
@@ -184,26 +160,36 @@ public class PortfolioService {
 
                 totalCurrentValue += holding.getCurrentValue();
                 activeHoldings.add(holding);
-
-                // Asset allocation grouping
+                
+                // For allocation, use currentValue
+                // We'll just group everything under "Active Holdings" or try to find category if available
+                // But current data doesn't have asset category easily accessible here
+                // I'll use the fund name for now or just generic if category is missing
                 String cat = "Mutual Funds";
                 allocationMap.put(cat, allocationMap.getOrDefault(cat, 0.0) + holding.getCurrentValue());
             }
         }
 
+        for (Investment inv : investments) {
+            if (inv.getFundId() != null && fundNavMap.containsKey(inv.getFundId())) {
+                inv.setCurrentNav(fundNavMap.get(inv.getFundId()));
+            }
+        }
+        investmentRepository.saveAll(investments);
+
         PortfolioDTO dto = new PortfolioDTO();
         dto.setTotalInvested(totalInvested);
         dto.setPortfolioValue(totalCurrentValue);
-        dto.setRealizedProfitLoss(totalRealizedProfitLoss);
-        dto.setProfitLoss((totalCurrentValue + totalRealizedProfitLoss) - totalInvested);
+        dto.setRealizedProfitLoss(0.0); // Realized P&L from closed inv is excluded from Dashboard
+        dto.setProfitLoss(totalCurrentValue - totalInvested);
         dto.setReturnPercentage(totalInvested > 0 ? (dto.getProfitLoss() / totalInvested) * 100 : 0);
         dto.setActiveHoldings(activeHoldings);
-
+        
         // Fetch user name
         if (userId != null) {
             userRepository.findById(userId).ifPresent(u -> dto.setUserName(u.getName()));
         }
-
+        
         // Asset Allocation
         dto.setAssetAllocation(allocationMap.entrySet().stream().map(e -> {
             Map<String, Object> m = new HashMap<>();
@@ -232,13 +218,29 @@ public class PortfolioService {
         return dto;
     }
 
+    @Transactional
+    public Portfolio updatePortfolio(Long userId) {
+        PortfolioDTO dto = computeDetailedPortfolio(userId);
+        
+        Portfolio portfolio = portfolioRepository.findByUserId(userId).orElse(new Portfolio());
+        portfolio.setUserId(userId);
+        portfolio.setTotal_invested(toSafeBigDecimal(dto.getTotalInvested(), 2));
+        portfolio.setTotal_units(toSafeBigDecimal(dto.getActiveHoldings().stream().mapToDouble(HoldingDTO::getTotalUnits).sum(), 4));
+        portfolio.setCurrent_value(toSafeBigDecimal(dto.getPortfolioValue(), 2));
+        portfolio.setProfit_loss(toSafeBigDecimal(dto.getProfitLoss(), 2));
+        portfolio.setReturn_percentage(toSafeBigDecimal(dto.getReturnPercentage(), 2));
+        portfolio.setXirr(toSafeBigDecimal(dto.getRealizedProfitLoss(), 2)); 
+        portfolio.setCagr(toSafeBigDecimal(0.0, 2));
+        
+        return portfolioRepository.save(portfolio);
+    }
+
     public List<Map<String, Object>> computePortfolioHistory(Long userId, int days) {
         List<Investment> investments = investmentRepository.findByUserId(userId);
-        if (investments.isEmpty())
-            return Collections.emptyList();
+        if (investments.isEmpty()) return Collections.emptyList();
 
         LocalDate today = LocalDate.now();
-
+        
         // Find earliest transaction date to start the graph
         LocalDate earliestTransDate = investments.stream()
                 .map(inv -> {

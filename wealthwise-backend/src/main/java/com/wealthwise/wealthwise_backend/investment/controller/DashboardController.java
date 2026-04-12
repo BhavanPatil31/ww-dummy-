@@ -68,7 +68,8 @@ public class DashboardController {
         response.put("profitLoss", profitLoss);
         response.put("returnPercentage", returnPercentage);
         response.put("assetAllocation", assetAllocation);
-        return response;
+    public PortfolioDTO getDashboardData(@PathVariable Long userId) {
+        return portfolioService.computeDetailedPortfolio(userId);
     }
 
     @GetMapping("/{userId}/history")

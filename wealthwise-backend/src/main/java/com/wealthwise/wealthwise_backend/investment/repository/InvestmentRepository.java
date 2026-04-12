@@ -13,6 +13,8 @@ import java.util.List;
 public interface InvestmentRepository extends JpaRepository<Investment, Long> {
 
     List<Investment> findByUserId(Long userId);
+    
+    void deleteByUserId(Long userId);
 
     @Query("SELECT i FROM Investment i WHERE i.userId = :userId AND (i.endDate IS NULL OR i.endDate >= :today)")
     List<Investment> findActiveByUserId(@Param("userId") Long userId, @Param("today") LocalDate today);

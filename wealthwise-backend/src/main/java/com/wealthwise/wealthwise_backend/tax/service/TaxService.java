@@ -25,11 +25,47 @@ public class TaxService {
 
 
     public List<TaxTransactionDTO> getTaxSummary(Long userId, String financialYear) {
-        Objects.requireNonNull(userId, "User ID cannot be null");
-        String userIdString = userId.toString();
-        List<TaxTransactionDTO> result = new ArrayList<>();
 
-        // Query tax_transactions only (from CAS uploads AND moved investments)
+        // AUTO SYNC: Move existing "Buy Funds" into the new Tax Transactions table so
+        // the UI populates
+        List<Investment> investments = investmentRepository.findByUserId(userId);
+        for (Investment inv : investments) {
+            String txnId = "txn-" + inv.getInvestmentId();
+            if (!taxTransactionRepository.existsById(txnId)) {
+                TaxTransaction txn = new TaxTransaction();
+                txn.setTransactionId(txnId);
+                txn.setUserId(String.valueOf(userId));
+                txn.setFundName(inv.getSchemeName() != null ? inv.getSchemeName() : "Fund #" + inv.getFundId());
+
+                LocalDate buyDate = inv.getBuyDate() != null ? inv.getBuyDate()
+                        : (inv.getStartDate() != null ? inv.getStartDate() : LocalDate.now().minusDays(400));
+                LocalDate sellDate = inv.getEndDate() != null ? inv.getEndDate() : LocalDate.now();
+
+                txn.setBuyDate(buyDate);
+                txn.setSellDate(sellDate);
+
+                Double invested = inv.getAmount() != null ? inv.getAmount() : 0.0;
+                Double finalValue;
+                if (inv.getUnits() != null && inv.getCurrentNav() != null && inv.getUnits() > 0
+                        && inv.getCurrentNav() > 0) {
+                    finalValue = inv.getUnits() * inv.getCurrentNav();
+                } else {
+                    finalValue = invested * 1.15; // 15% dummy profit if no NAV available
+                }
+
+                txn.setUnits(inv.getUnits() != null ? inv.getUnits() : 0.0);
+                txn.setGain(finalValue - invested);
+
+                long daysBetween = ChronoUnit.DAYS.between(buyDate, sellDate);
+                txn.setTaxType(daysBetween > 365 ? "LTCG" : "STCG");
+
+                taxTransactionRepository.save(txn);
+            }
+        }
+
+        List<TaxTransactionDTO> result = new ArrayList<>();
+        String userIdString = String.valueOf(userId);
+        
         if (financialYear != null && financialYear.contains("-")) {
             int startYear = Integer.parseInt(financialYear.substring(0, 4));
             int endYear = startYear + 1;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
     FiBriefcase, FiEye, FiEdit2, FiTrash2,
@@ -8,7 +8,7 @@ import {
 import {
     ComposedChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
-    AreaChart, Area, BarChart
+    AreaChart, Area, BarChart, Line
 } from 'recharts';
 import '../styles/Portfolio.css';
 
@@ -45,6 +45,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
     const [loadingSellNav, setLoadingSellNav] = useState(false);
     const [actionStatus, setActionStatus] = useState({ type: '', message: '' });
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
+    const [chartMode, setChartMode] = useState('absolute'); // 'absolute' or 'percentage'
 
     const fetchInvestments = async () => {
         setLoading(true);
@@ -54,31 +55,17 @@ export default function Portfolio({ user, currency = 'INR' }) {
             let investmentsData = [];
             let portfolioData = null;
 
-            // First refresh portfolio to update NAVs in database
-            try {
-                await axios.post(`http://localhost:8088/api/portfolio/refresh/${userId}`, {}, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-            } catch (e) {
-                console.error("Error refreshing portfolio", e);
-            }
-
             try {
                 const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                const today = new Date().setHours(0, 0, 0, 0);
-                investmentsData = (invRes.data || []).filter(inv => {
-                    if (!inv.end_date) return true;
-                    const endDate = new Date(inv.end_date).setHours(0, 0, 0, 0);
-                    return endDate >= today;
-                });
+                investmentsData = (invRes.data || []).filter(inv => !inv.end_date && inv.status !== 'SOLD');
             } catch (e) {
                 console.error("Error fetching investments", e);
             }
 
             try {
-                const portRes = await axios.get(`http://localhost:8088/api/portfolio/user/${userId}`, {
+                const portRes = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 portfolioData = portRes.data;
@@ -132,7 +119,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
     };
 
     // ── Aggregates ─────────────────────────────────────────────
-    const totalInvested = investments.reduce((s, i) => s + getInvestedAmount(i), 0);
+    const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
     const totalCurrentValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
     const totalPnL = totalCurrentValue - totalInvested;
     const totalReturn = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
@@ -146,7 +133,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
             return (isNaN(d1) ? 0 : d1.getTime()) - (isNaN(d2) ? 0 : d2.getTime());
         });
         return sorted.map(inv => {
-            const invested = getInvestedAmount(inv);
+            const invested = parseFloat(inv.amount || 0);
             const current = getCurrentValue(inv);
             const pnl = parseFloat((current - invested).toFixed(0));
             const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
@@ -157,16 +144,53 @@ export default function Portfolio({ user, currency = 'INR' }) {
 
     const chartData = generateChartData();
 
-    const PnLTooltip = ({ active, payload, label }) => {
+    const PnLTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
             const isProfit = d.pnl >= 0;
+            const pnlColor = isProfit ? '#10b981' : '#f43f5e';
+
             return (
-                <div style={{ background: 'rgba(10,15,30,0.97)', padding: '12px 16px', border: `1px solid ${isProfit ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: '180px' }}>
-                    <p style={{ margin: '0 0 8px', color: '#94a3b8', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{d.fullName}</p>
-                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Invested: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.invested)}</span></p>
-                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Current: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.current)}</span></p>
-                    <p style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800, color: isProfit ? '#22c55e' : '#ef4444' }}>{isProfit ? '+' : ''}{formatCurrency(d.pnl)} ({isProfit ? '+' : ''}{d.pct}%)</p>
+                <div className={`premium-glass-tooltip ${isProfit ? 'profit' : 'loss'}`}>
+                    <div className="tooltip-header">
+                        <span className="tooltip-type">{d.type}</span>
+                        <div className="tooltip-status-pill">
+                            {isProfit ? <FiTrendingUp className="status-icon green" /> : <FiTrendingDown className="status-icon red" />}
+                            <span className={isProfit ? 'green' : 'red'}>
+                                {isProfit ? '+' : ''}{((d.pct || 0)).toFixed(2)}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <h4 className="tooltip-title">{d.fullName}</h4>
+
+                    <div className="tooltip-stats-vertical">
+                        <div className="t-stat-row">
+                            <div className="t-stat-info">
+                                <span className="t-label">Invested Amount</span>
+                                <span className="t-val">{formatCurrency(d.invested)}</span>
+                            </div>
+                            <div className="t-marker-square invested" />
+                        </div>
+
+                        <div className="t-stat-row">
+                            <div className="t-stat-info">
+                                <span className="t-label">Current Value</span>
+                                <span className="t-val current">{formatCurrency(d.current)}</span>
+                            </div>
+                            <div className="t-marker-circle current" />
+                        </div>
+
+                        <div className={`t-stat-row pnl-highlight ${isProfit ? 'profit' : 'loss'}`}>
+                            <div className="t-stat-info">
+                                <span className="t-label">{isProfit ? 'Absolute Gain' : 'Absolute Loss'}</span>
+                                <span className="t-val pnl-val">
+                                    {isProfit ? '+' : ''}{formatCurrency(d.pnl)}
+                                </span>
+                            </div>
+                            <div className="t-stat-trend-bar" style={{ background: pnlColor }} />
+                        </div>
+                    </div>
                 </div>
             );
         }
@@ -412,7 +436,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                 {/* ── Portfolio Growth Chart ── */}
                 <div className="portfolio-chart-side">
                     {investments.length > 0 ? (
-                        <div className="portfolio-chart-wrapper">
+                        <div className="portfolio-chart-wrapper premium-chart-card">
                             <div className="chart-header-row">
                                 <h3 className="chart-title">P&amp;L Per Investment</h3>
                                 <span className={`pnl-live-badge ${totalPnL >= 0 ? 'positive' : 'negative'}`}>
@@ -422,15 +446,25 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 </span>
                             </div>
                             <div className="chart-container">
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <BarChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barGap={2} barCategoryGap="20%">
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
+                                        <defs>
+                                            <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#16a34a" stopOpacity={0.7} />
+                                            </linearGradient>
+                                            <linearGradient id="barRed" x1="0" y1="1" x2="0" y2="0">
+                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.7} />
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                                         <XAxis
                                             dataKey="name"
-                                            tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+                                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
                                             axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
                                             tickLine={false}
-                                            dy={10}
+                                            dy={8}
                                         />
                                         <YAxis
                                             tick={{ fill: '#94a3b8', fontSize: 11 }}
@@ -438,18 +472,23 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             tickLine={false}
                                             tickFormatter={(val) => {
                                                 const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
-                                                if (val >= 1000) {
-                                                    return `${symbol}${(val / 1000).toFixed(1)}k`;
-                                                }
-                                                return `${symbol}${val}`;
+                                                return `${val >= 0 ? '+' : ''}${symbol}${Math.abs(val / 1000).toFixed(0)}k`;
                                             }}
-                                            dx={-10}
+                                            dx={-6}
                                         />
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
                                         <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                                        <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-                                        <Bar dataKey="invested" name="Total Invested" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                        <Bar dataKey="current" name="Current Value" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                    </BarChart>
+                                        <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                                            {chartData.map((entry, i) => (
+                                                <Cell
+                                                    key={i}
+                                                    fill={entry.pnl >= 0 ? 'url(#barGreen)' : 'url(#barRed)'}
+                                                    stroke={entry.pnl >= 0 ? '#22c55e' : '#ef4444'}
+                                                    strokeWidth={1}
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>

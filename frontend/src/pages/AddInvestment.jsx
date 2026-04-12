@@ -373,7 +373,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             units:           parseFloat(units),
             buy_date:        formData.startDate,
             start_date:      formData.startDate,
-            end_date:        type === 'SIP' ? (formData.endDate || null) : null,
+            end_date:        formData.endDate || null,
             frequency:       type === 'SIP' ? formData.frequency : null,
             scheme_name:     formData.fundName,
             current_nav:     parseFloat(latestNavInfo.nav) || parseFloat(formData.nav)
@@ -657,22 +657,23 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                         </div>
                                     </div>
 
-                                    {type === 'SIP' && (
-                                        <div className="form-group">
-                                            <label>End Date <span className="optional-tag">(optional)</span></label>
-                                            <div className="input-wrapper">
-                                                <FiCalendar className="input-icon" />
-                                                <input
-                                                    id="endDate"
-                                                    type="date"
-                                                    name="endDate"
-                                                    value={formData.endDate}
-                                                    onChange={handleChange}
-                                                    min={formData.startDate}
-                                                />
-                                            </div>
+                                    <div className="form-group">
+                                        <label>
+                                            {type === 'SIP' ? 'SIP End Date' : 'Sale/End Date'} 
+                                            <span className="optional-tag">(optional)</span>
+                                        </label>
+                                        <div className="input-wrapper">
+                                            <FiCalendar className="input-icon" />
+                                            <input
+                                                id="endDate"
+                                                type="date"
+                                                name="endDate"
+                                                value={formData.endDate}
+                                                onChange={handleChange}
+                                                min={formData.startDate}
+                                            />
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
 
                                 {/* ── Actions ── */}

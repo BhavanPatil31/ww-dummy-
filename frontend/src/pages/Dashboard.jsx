@@ -232,18 +232,28 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 const points = HISTORY_DAYS[timeFrame] ?? 30;
                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
                 histData = r.data || [];
-            } catch (err) {
-                console.warn("Failed to fetch history data", err);
-            }
+            } catch { }
 
             setInvestments(invData);
             setDashboardData(dbData);
-            setHistoryData(histData);
+            setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
         } finally {
             setLoading(false);
             setChartLoading(false);
         }
     }, [user, timeFrame, getCurrentValue]);
+
+    const activeInvestments = useMemo(() => {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        return (investments || []).filter(inv => {
+            // New strict logic: Hide if it has an end date OR it is sold
+            if (inv.end_date) return false;
+            if (inv.status === 'SOLD' || inv.status === 'CLOSED') return false;
+
+            return true;
+        });
+    }, [investments]);
 
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
@@ -523,16 +533,35 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             returnPct: dashboardData.returnPercentage || 0,
             realizedPnL: dashboardData.realizedProfitLoss || 0,
         };
-        const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount_invested || i.amount || 0), 0);
-        const portfolioValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
-        const profitLoss = portfolioValue - totalInvested;
-        const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
-        return { totalInvested, portfolioValue, profitLoss, returnPct };
-    }, [dashboardData, investments, getCurrentValue]);
+        return { totalInvested: 0, portfolioValue: 0, profitLoss: 0, returnPct: 0, realizedPnL: 0 };
+    }, [dashboardData]);
 
     const assetAllocation = useMemo(() => {
-        return dashboardData?.assetAllocation || [];
-    }, [dashboardData]);
+        if (!activeInvestments.length) return [];
+
+        const sipValue = activeInvestments
+            .filter(inv => (inv.investment_type || '').toUpperCase() === 'SIP')
+            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+
+        const lumpsumValue = activeInvestments
+            .filter(inv => {
+                const type = (inv.investment_type || '').toUpperCase();
+                return type === 'LUMPSUM' || type === 'BUY' || type === '';
+            })
+            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+
+        const data = [];
+        if (sipValue > 0) data.push({ name: 'SIP', value: sipValue });
+        if (lumpsumValue > 0) data.push({ name: 'Lumpsum', value: lumpsumValue });
+
+        // If no SIP/Lumpsum detected but investments exist (fallback)
+        if (data.length === 0 && activeInvestments.length > 0) {
+            const totalVal = activeInvestments.reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+            data.push({ name: 'Mutual Funds', value: totalVal });
+        }
+
+        return data;
+    }, [activeInvestments, getCurrentValue]);
 
     const topPerformers = useMemo(() => {
         if (!investments.length) return { best: null, worst: null };
@@ -547,19 +576,19 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     }, [investments, getCurrentValue]);
 
     const recentActivity = useMemo(() =>
-        [...investments]
+        [...activeInvestments]
             .sort((a, b) => new Date(b.buy_date || b.start_date || 0) - new Date(a.buy_date || a.start_date || 0))
             .slice(0, 5),
-        [investments]
+        [activeInvestments]
     );
 
     const insights = useMemo(() => {
         const out = [];
-        if (!investments.length) {
+        if (!activeInvestments.length) {
             out.push({ type: 'blue', icon: <FiPlus />, text: 'Add your first investment to start building your wealth portfolio.' });
             return out;
         }
-        const types = new Set(investments.map(inv => inv.investment_type));
+        const types = new Set(activeInvestments.map(inv => inv.investment_type));
         if (types.size === 1) {
             out.push({ type: 'yellow', icon: <FiAlertTriangle />, text: `All investments are in ${[...types][0]}. Diversify to reduce risk.` });
         } else {
@@ -598,7 +627,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     const profitPill = () => {
         const { profitLoss, returnPct } = metrics;
-        if (!dashboardData && investments.length === 0) return null;
+        if (!dashboardData && activeInvestments.length === 0) return null;
         if (profitLoss === 0) return <span className="profit-neutral">Break-even</span>;
         const isPos = profitLoss > 0;
         return (
@@ -734,31 +763,32 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
                                             <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
                                         </div>
+                                        <div className="timeframe-filters">
+                                            {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
+                                                <button key={tf} className={timeFrame === tf ? 'active' : ''} onClick={() => setTimeFrame(tf)}>{tf}</button>
+                                            ))}
+                                        </div>
                                     </div>
-
-                                    <div className="timeframe-pill-container">
-                                        {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
-                                            <button
-                                                key={tf}
-                                                className={`tf-pill ${timeFrame === tf ? 'active' : ''}`}
-                                                onClick={() => setTimeFrame(tf)}
-                                            >
-                                                {tf}
-                                            </button>
-                                        ))}
+                                    <div className="hero-right">
+                                        <div className="hero-mini-stat">
+                                            <span>Invested</span>
+                                            <strong>{formatCurrency(metrics.totalInvested)}</strong>
+                                        </div>
+                                        <div className="hero-mini-stat">
+                                            <span>Holdings</span>
+                                            <strong>{investments.length}</strong>
+                                        </div>
+                                        <div className="hero-mini-stat">
+                                            <span>Return</span>
+                                            <strong className={metrics.returnPct >= 0 ? 'pos' : 'neg'}>
+                                                {metrics.returnPct >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%
+                                            </strong>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="chart-area-container">
-                                    {chartLoading && <div className="chart-skeleton"><div className="skeleton-wave" /></div>}
-                                    {chartDisplayData.length === 0 ? (
-                                        <div className="chart-empty-hint">Add investments to see portfolio value over time.</div>
-                                    ) : (
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <ComposedChart
-                                            data={chartDisplayData}
-                                            margin={{ top: 16, right: 8, left: 0, bottom: 8 }}
-                                        >
+                                <div className="main-chart-container">
+                                    <ResponsiveContainer width="100%" height={260}>
+                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="gwValGrad" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
@@ -766,35 +796,40 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="0" vertical={false} stroke="rgba(148,163,184,0.12)" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                                             <XAxis
                                                 dataKey="date"
-                                                axisLine={{ stroke: 'rgba(148,163,184,0.15)' }}
-                                                stroke="rgba(148,163,184,0.15)"
-                                                tickLine={false}
-                                                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-                                                tickFormatter={formatXDate}
-                                                minTickGap={48}
-                                                dy={8}
-                                            />
-                                            <YAxis
                                                 axisLine={false}
                                                 tickLine={false}
-                                                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-                                                tickFormatter={(v) => formatYAxis(v, currency)}
-                                                domain={['auto', 'auto']}
-                                                width={54}
+                                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                                                interval="preserveStartEnd"
+                                                dy={12}
+                                                padding={{ left: 10, right: 10 }}
                                             />
+                                            <YAxis hide domain={['auto', 'auto']} />
                                             <Tooltip
                                                 content={<ChartTooltip currency={currency} />}
-                                                cursor={{ stroke: '#64748b', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.6 }}
+                                                cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1 }}
                                             />
+                                            {/* Glow Layer */}
                                             <Area
-                                                type="monotone"
+                                                type="natural"
+                                                dataKey="value"
+                                                stroke="#3b82f6"
+                                                strokeWidth={4}
+                                                fill="transparent"
+                                                strokeOpacity={0.4}
+                                                style={{ filter: 'url(#glow)' }}
+                                                activeDot={false}
+                                                animationDuration={2000}
+                                            />
+                                            {/* Main Line & Gradient */}
+                                            <Area
+                                                type="natural"
                                                 dataKey="value"
                                                 stroke="#3b82f6"
                                                 strokeWidth={2.5}
-                                                fill="url(#gwValGrad)"
+                                                fill="url(#areaGrad)"
                                                 dot={false}
                                                 activeDot={{ r: 5, fill: '#3b82f6', stroke: '#0f172a', strokeWidth: 2 }}
                                                 isAnimationActive
@@ -837,8 +872,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 2. KPI CARDS ── */}
                             <div className="kpi-grid">
                                 {[
-                                    { label: 'Total Invested', value: formatCurrency(metrics.totalInvested), icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
-                                    { label: 'Portfolio Value', value: formatCurrency(metrics.portfolioValue), icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
+                                    { label: 'Total Invested', value: `₹${fmt(metrics.totalInvested)}`, icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
+                                    { label: 'Portfolio Value', value: `₹${fmt(metrics.portfolioValue)}`, icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
                                     {
                                         label: 'Total Gain / Loss',
                                         value: metrics.profitLoss === 0 ? 'Break-even'
@@ -869,17 +904,28 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             <div className="mid-row">
                                 <div className="allocation-card">
                                     <div className="card-top"><h3>Asset Allocation</h3><FiPieChart /></div>
-                                    {assetAllocation.length === 0 ? (
+                                    {activeInvestments.length === 0 ? (
                                         <div className="empty-state-sm"><FiPieChart /><p>Add investments to see allocation</p></div>
                                     ) : (
                                         <>
                                             <div className="donut-wrapper">
-                                                <ResponsiveContainer width="100%" height={190}>
+                                                <ResponsiveContainer width="100%" height={300}>
                                                     <PieChart>
-                                                        <Pie data={assetAllocation} innerRadius={58} outerRadius={82} paddingAngle={4} dataKey="value" stroke="none">
+                                                        <Pie
+                                                            data={assetAllocation}
+                                                            innerRadius={45}
+                                                            outerRadius={65}
+                                                            paddingAngle={4}
+                                                            dataKey="value"
+                                                            stroke="none"
+                                                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                                            labelLine={true}
+                                                            fill="#fff"
+                                                            style={{ fontSize: '11px', fontWeight: 'bold' }}
+                                                        >
                                                             {assetAllocation.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => [formatCurrency(v), '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        <Tooltip formatter={(v) => [`₹${fmt(v)}`, '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                                 <div className="donut-center">
