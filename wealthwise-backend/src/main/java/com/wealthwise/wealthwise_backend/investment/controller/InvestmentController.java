@@ -61,4 +61,8 @@ public class InvestmentController {
         }
         return investmentService.sellInvestment(id, sellDate, sellNav);
     }
+    @DeleteMapping("/user/{userId}/all")
+    public void deleteAllInvestments(@PathVariable("userId") Long userId) {
+        investmentService.deleteAllInvestments(userId);
+    }
 }

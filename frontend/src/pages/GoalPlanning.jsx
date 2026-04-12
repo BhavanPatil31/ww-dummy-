@@ -15,7 +15,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     });
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
-    
+
     // Edit Modal States
     const [editModalData, setEditModalData] = useState(null);
     const [modalDropdownOpen, setModalDropdownOpen] = useState(false);
@@ -105,7 +105,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     const handleSave = async () => {
         if (!form.name || !form.amount || !user) return;
-        
+
         const currentProgress = calculateProgress(form.linkedInvestments);
         const goalData = {
             user_id: user.userId || user.id,
@@ -144,15 +144,15 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     const toggleScheme = (investmentId) => {
         const isSelected = form.linkedInvestments.includes(investmentId);
         if (isSelected) {
-            setForm({...form, linkedInvestments: form.linkedInvestments.filter(id => id !== investmentId)});
+            setForm({ ...form, linkedInvestments: form.linkedInvestments.filter(id => id !== investmentId) });
         } else {
-            setForm({...form, linkedInvestments: [...form.linkedInvestments, investmentId]});
+            setForm({ ...form, linkedInvestments: [...form.linkedInvestments, investmentId] });
         }
         setDropdownOpen(false);
     };
 
     const handleEdit = (goal) => {
-        setEditModalData({ 
+        setEditModalData({
             id: goal.goal_id,
             name: goal.goal_name,
             amount: goal.target_amount,
@@ -176,16 +176,16 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     const toggleModalScheme = (investmentId) => {
         const isSelected = editModalData.linkedInvestments.includes(investmentId);
         if (isSelected) {
-            setEditModalData({...editModalData, linkedInvestments: editModalData.linkedInvestments.filter(id => id !== investmentId)});
+            setEditModalData({ ...editModalData, linkedInvestments: editModalData.linkedInvestments.filter(id => id !== investmentId) });
         } else {
-            setEditModalData({...editModalData, linkedInvestments: [...editModalData.linkedInvestments, investmentId]});
+            setEditModalData({ ...editModalData, linkedInvestments: [...editModalData.linkedInvestments, investmentId] });
         }
         setModalDropdownOpen(false);
     };
 
     const handleModalSave = async () => {
         if (!editModalData.name || !editModalData.amount || !user) return;
-        
+
         const currentProgress = calculateProgress(editModalData.linkedInvestments);
         const updatedGoal = {
             user_id: user.userId || user.id,
@@ -251,51 +251,51 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     const currentYear = new Date().getFullYear();
     const startYear = currentYear;
     const endYear = currentYear + 30;
-    const yearOptions = Array.from({length: endYear - startYear + 1}, (_, i) => startYear + i);
+    const yearOptions = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
 
     return (
         <div className="goal-planning-container">
             <h1 className="goal-planning-title">Goal Planning Page</h1>
-            
+
             {/* Form Section */}
             <div className="goal-card" style={{ position: 'relative', zIndex: 10 }}>
                 <div className="goal-form">
                     <div className="goal-input-group">
                         <label>Goal Name</label>
-                        <input type="text" className="goal-input" name="name" 
-                            placeholder="e.g. Dream Home, Retirement" 
+                        <input type="text" className="goal-input" name="name"
+                            placeholder="e.g. Dream Home, Retirement"
                             value={form.name} onChange={handleInput} />
                     </div>
-                    
+
                     <div className="goal-input-group">
                         <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
-                        <input type="text" className="goal-input" name="amount" 
-                            placeholder="e.g. 5,00,000" 
+                        <input type="text" className="goal-input" name="amount"
+                            placeholder="e.g. 5,00,000"
                             value={formatIndian(form.amount)} onChange={handleInput} />
                     </div>
-                    
+
                     <div className="goal-input-group">
                         <label>Target Year</label>
-                        <select className="goal-select" name="year" 
+                        <select className="goal-select" name="year"
                             value={form.year} onChange={handleInput}>
                             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    
-                    <div className="goal-input-group wide-input" style={{ position: 'relative' }} ref={dropdownRef}>
+
+                    <div className="goal-input-group" style={{ position: 'relative' }} ref={dropdownRef}>
                         <label>Link Investments</label>
                         <div className="custom-multiselect" onClick={() => setDropdownOpen(!dropdownOpen)}>
                             <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
-                                {form.linkedInvestments.length === 0 
-                                   ? "Select investments..." 
-                                   : form.linkedInvestments.map(id => {
-                                         const s = investments?.find(sc => String(sc.investment_id || sc.id || sc.investmentId) === String(id));
-                                         return s ? (s.scheme_name || s.name || s.schemeName) : 'Unknown';
-                                     }).join(', ')}
+                                {form.linkedInvestments.length === 0
+                                    ? "Select investments..."
+                                    : form.linkedInvestments.map(id => {
+                                        const s = investments?.find(sc => String(sc.investment_id || sc.id || sc.investmentId) === String(id));
+                                        return s ? (s.scheme_name || s.name || s.schemeName) : 'Unknown';
+                                    }).join(', ')}
                             </div>
-                            <span style={{marginLeft: 'auto', fontSize: '10px'}}>▼</span>
+                            <span style={{ marginLeft: 'auto', fontSize: '10px' }}>▼</span>
                         </div>
-                        
+
                         {dropdownOpen && (
                             <div className="custom-multiselect-popup">
                                 {investments?.map(inv => {
@@ -304,16 +304,16 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                     const invType = inv.investment_type || 'Unknown';
                                     const isSelected = form.linkedInvestments.includes(invId);
                                     return (
-                                        <div key={invId} 
-                                             className={`multiselect-option ${isSelected ? 'selected' : ''}`}
-                                             onClick={(e) => { e.stopPropagation(); toggleScheme(invId); }}
-                                             onDoubleClick={(e) => { e.stopPropagation(); setDropdownOpen(false); }}>
+                                        <div key={invId}
+                                            className={`multiselect-option ${isSelected ? 'selected' : ''}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleScheme(invId); }}
+                                            onDoubleClick={(e) => { e.stopPropagation(); setDropdownOpen(false); }}>
                                             <input type="checkbox" checked={isSelected} readOnly />
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
-                                                <strong style={{fontSize: '13.5px', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1}} title={invName}>
+                                                <strong style={{ fontSize: '13.5px', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }} title={invName}>
                                                     {invName}
                                                 </strong>
-                                                <span style={{fontSize: '11.5px', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', border: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0}}>
+                                                <span style={{ fontSize: '11.5px', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', border: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
                                                     {invType}
                                                 </span>
                                             </div>
@@ -323,10 +323,10 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                             </div>
                         )}
                     </div>
-                    
+
                     <div className="goal-input-group" style={{ justifyContent: 'flex-start' }}>
                         <button className="goal-btn-done" onClick={handleSave}>
-                            <FiPlus style={{marginRight: '8px'}}/> Add Goal
+                            <FiPlus style={{ marginRight: '8px' }} /> Add Goal
                         </button>
                     </div>
                 </div>
@@ -361,10 +361,10 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                     return (
                                         <tr key={goal.goal_id}>
                                             <td>{idx + 1}</td>
-                                            <td style={{fontWeight: 500}}>{goal.goal_name}</td>
-                                            <td style={{color: '#f8fafc'}}>{fmt(goal.target_amount)}</td>
+                                            <td style={{ fontWeight: 500 }}>{goal.goal_name}</td>
+                                            <td style={{ color: '#f8fafc' }}>{fmt(goal.target_amount)}</td>
                                             <td>{goal.target_year}</td>
-                                            <td style={{maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={
+                                            <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={
                                                 goal.linkedInvestments?.map(li => {
                                                     const s = investments?.find(sc => String(sc.investment_id || sc.id || sc.investmentId) === String(li.investment_id || li));
                                                     return s ? (s.scheme_name || s.name || s.schemeName) : 'Unknown';
@@ -378,13 +378,13 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                                     })
                                                 ) : 'No Assets'}
                                             </td>
-                                            <td style={{width: '200px'}}>
-                                                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                                            <td style={{ width: '200px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                     <span className="goal-progress-text">{fmt(progressVal)}</span>
-                                                    <span style={{fontSize: '12px', color: '#94a3b8'}}>{percentage.toFixed(1)}%</span>
+                                                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>{percentage.toFixed(1)}%</span>
                                                 </div>
                                                 <div className="goal-progress-container">
-                                                    <div className="goal-progress-bar" style={{width: `${percentage}%`}}></div>
+                                                    <div className="goal-progress-bar" style={{ width: `${percentage}%` }}></div>
                                                 </div>
                                             </td>
                                             <td>
@@ -399,12 +399,17 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                             </tbody>
                         </table>
                     )}
-                    
+
                     {/* Fixed-Term Investments */}
-                    {investments && investments.filter(inv => inv.end_date && inv.status !== 'SOLD').length > 0 && (
-                        <div style={{ marginTop: '40px' }}>
-                            <h3 style={{ paddingLeft: '16px', marginBottom: '20px' }}>Term Investments (Active)</h3>
-                            <div className="goal-table-wrapper">
+                    {investments && (investments.filter(inv => {
+                        if (!inv.end_date) return false;
+                        const today = new Date();
+                        const start = new Date(inv.start_date || inv.buy_date);
+                        const end = new Date(inv.end_date);
+                        return end > today && end >= start;
+                    })).length > 0 && (
+                            <div style={{ marginTop: '40px' }}>
+                                <h3 style={{ marginBottom: '16px', fontSize: '18px', color: '#f8fafc' }}>Term Investments (Active)</h3>
                                 <table className="goal-table">
                                     <thead>
                                         <tr>
@@ -418,162 +423,165 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                         </tr>
                                     </thead>
                                     <tbody>
-                                    {investments.filter(inv => inv.end_date && inv.status !== 'SOLD').map((inv, idx) => {
-                                        const start = new Date(inv.start_date || inv.buy_date);
-                                        const end = new Date(inv.end_date);
-                                        let targetAmt = parseFloat(inv.amount || 0);
+                                        {investments.filter(inv => inv.end_date && inv.status !== 'SOLD').map((inv, idx) => {
+                                            const start = new Date(inv.start_date || inv.buy_date);
+                                            const end = new Date(inv.end_date);
+                                            let targetAmt = parseFloat(inv.amount || 0);
 
-                                        if (inv.frequency === 'Monthly') {
-                                            let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
-                                            targetAmt = targetAmt * (m > 0 ? m : 1);
-                                        } else if (inv.frequency === 'Yearly') {
-                                            let y = end.getFullYear() - start.getFullYear();
-                                            targetAmt = targetAmt * (y > 0 ? y : 1);
-                                        } else if (inv.frequency === 'Weekly') {
-                                            let w = Math.floor((end - start) / (1000 * 60 * 60 * 24 * 7));
-                                            targetAmt = targetAmt * (w > 0 ? w : 1);
-                                        } else if (inv.frequency === 'Quarterly') {
-                                            let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
-                                            let q = Math.floor(m / 3);
-                                            targetAmt = targetAmt * (q > 0 ? q : 1);
-                                        }
+                                            if (inv.frequency === 'Monthly') {
+                                                let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+                                                targetAmt = targetAmt * (m > 0 ? m : 1);
+                                            } else if (inv.frequency === 'Yearly') {
+                                                let y = end.getFullYear() - start.getFullYear();
+                                                targetAmt = targetAmt * (y > 0 ? y : 1);
+                                            } else if (inv.frequency === 'Weekly') {
+                                                let w = Math.floor((end - start) / (1000 * 60 * 60 * 24 * 7));
+                                                targetAmt = targetAmt * (w > 0 ? w : 1);
+                                            } else if (inv.frequency === 'Quarterly') {
+                                                let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+                                                let q = Math.floor(m / 3);
+                                                targetAmt = targetAmt * (q > 0 ? q : 1);
+                                            }
 
-                                        const progressVal = getCurrentValue ? getCurrentValue(inv) : parseFloat(inv.amount || 0);
-                                        let percentage = targetAmt > 0 ? (progressVal / targetAmt) * 100 : 0;
-                                        if (percentage > 100) percentage = 100;
-                                        if (isNaN(percentage)) percentage = 0;
+                                            const progressVal = getCurrentValue ? getCurrentValue(inv) : parseFloat(inv.amount || 0);
+                                            let percentage = targetAmt > 0 ? (progressVal / targetAmt) * 100 : 0;
+                                            if (percentage > 100) percentage = 100;
+                                            if (isNaN(percentage)) percentage = 0;
 
-                                        return (
-                                            <tr key={`term-${inv.investment_id || idx}`}>
-                                                <td>{idx + 1}</td>
-                                                <td style={{fontWeight: 500}}>{inv.scheme_name || `Fund #${inv.fund_id}`}</td>
-                                                <td style={{color: '#f8fafc'}}>{fmt(targetAmt)}</td>
-                                                <td>{end.getFullYear()}</td>
-                                                <td style={{color: '#94a3b8'}}>-</td>
-                                                <td style={{width: '200px'}}>
-                                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                                                        <span className="goal-progress-text">{fmt(progressVal)}</span>
-                                                        <span style={{fontSize: '12px', color: '#94a3b8'}}>{percentage.toFixed(1)}%</span>
-                                                    </div>
-                                                    <div className="goal-progress-container">
-                                                        <div className="goal-progress-bar" style={{width: `${percentage}%`}}></div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Auto-tracked</span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                            return (
+                                                <tr key={`term-${inv.investment_id || idx}`}>
+                                                    <td>{idx + 1}</td>
+                                                    <td style={{ fontWeight: 500 }}>{inv.scheme_name || `Fund #${inv.fund_id}`}</td>
+                                                    <td style={{ color: '#f8fafc' }}>₹{fmt(targetAmt)}</td>
+                                                    <td>{end.getFullYear()}</td>
+                                                    <td style={{ color: '#94a3b8' }}>-</td>
+                                                    <td style={{ width: '200px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                            <span className="goal-progress-text">{fmt(progressVal)}</span>
+                                                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{percentage.toFixed(1)}%</span>
+                                                        </div>
+                                                        <div className="goal-progress-container">
+                                                            <div className="goal-progress-bar" style={{ width: `${percentage}%` }}></div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Auto-tracked</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
-                    )}
+                        )}
                 </div>
             </div>
 
-            {/* Edit Modal Overlay */}
-            {editModalData && (
-                <div className="goal-modal-overlay">
-                    <div className="goal-modal-content">
-                        <div className="goal-modal-header">
-                            <h2><FiEdit2 /> Edit Goal</h2>
-                            <button className="goal-modal-close" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); }}><FiX /></button>
+            {/* Edit Modal Overlay */ }
+    {
+        editModalData && (
+            <div className="goal-modal-overlay">
+                <div className="goal-modal-content">
+                    <div className="goal-modal-header">
+                        <h2><FiEdit2 /> Edit Goal</h2>
+                        <button className="goal-modal-close" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); }}><FiX /></button>
+                    </div>
+
+                    <div className="goal-input-group" style={{ marginBottom: '16px' }}>
+                        <label>Goal Name</label>
+                        <input type="text" className="goal-input" name="name"
+                            value={editModalData.name} onChange={handleModalInput} />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                        <div className="goal-input-group">
+                            <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
+                            <input type="text" className="goal-input" name="amount"
+                                value={formatIndian(editModalData.amount)} onChange={handleModalInput} />
                         </div>
-                        
-                        <div className="goal-input-group" style={{ marginBottom: '16px' }}>
-                            <label>Goal Name</label>
-                            <input type="text" className="goal-input" name="name" 
-                                value={editModalData.name} onChange={handleModalInput} />
+                        <div className="goal-input-group">
+                            <label>Target Year</label>
+                            <select className="goal-select" name="year"
+                                value={editModalData.year} onChange={handleModalInput}>
+                                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="goal-input-group" style={{ marginBottom: '24px', position: 'relative' }} ref={modalDropdownRef}>
+                        <label>Link Investments</label>
+                        <div className="custom-multiselect" onClick={() => setModalDropdownOpen(!modalDropdownOpen)}>
+                            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
+                                {editModalData.linkedInvestments.length === 0
+                                    ? "Select investments..."
+                                    : editModalData.linkedInvestments.map(id => {
+                                        const s = investments?.find(sc => String(sc.investment_id || sc.id || sc.investmentId) === String(id));
+                                        return s ? (s.scheme_name || s.name || s.schemeName) : 'Unknown';
+                                    }).join(', ')}
+                            </div>
+                            <span style={{ marginLeft: 'auto', fontSize: '10px' }}>▼</span>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                            <div className="goal-input-group">
-                                <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
-                                <input type="text" className="goal-input" name="amount" 
-                                    value={formatIndian(editModalData.amount)} onChange={handleModalInput} />
-                            </div>
-                            <div className="goal-input-group">
-                                <label>Target Year</label>
-                                <select className="goal-select" name="year" 
-                                    value={editModalData.year} onChange={handleModalInput}>
-                                    {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="goal-input-group" style={{ marginBottom: '24px', position: 'relative' }} ref={modalDropdownRef}>
-                            <label>Link Investments</label>
-                            <div className="custom-multiselect" onClick={() => setModalDropdownOpen(!modalDropdownOpen)}>
-                                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
-                                    {editModalData.linkedInvestments.length === 0 
-                                       ? "Select investments..." 
-                                       : editModalData.linkedInvestments.map(id => {
-                                             const s = investments?.find(sc => String(sc.investment_id || sc.id || sc.investmentId) === String(id));
-                                             return s ? (s.scheme_name || s.name || s.schemeName) : 'Unknown';
-                                         }).join(', ')}
-                                </div>
-                                <span style={{marginLeft: 'auto', fontSize: '10px'}}>▼</span>
-                            </div>
-                            
-                            {modalDropdownOpen && (
-                                <div className="custom-multiselect-popup">
-                                    {investments?.map(inv => {
-                                        const invId = String(inv.investment_id || inv.id || inv.investmentId);
-                                        const invName = inv.scheme_name || inv.name || inv.schemeName;
-                                        const invType = inv.investment_type || 'Unknown';
-                                        const isSelected = editModalData.linkedInvestments.includes(invId);
-                                        return (
-                                            <div key={invId} 
-                                                 className={`multiselect-option ${isSelected ? 'selected' : ''}`}
-                                                 onClick={(e) => { e.stopPropagation(); toggleModalScheme(invId); }}
-                                                 onDoubleClick={(e) => { e.stopPropagation(); setModalDropdownOpen(false); }}>
-                                                <input type="checkbox" checked={isSelected} readOnly />
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
-                                                    <strong style={{fontSize: '13.5px', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1}} title={invName}>
-                                                        {invName}
-                                                    </strong>
-                                                    <span style={{fontSize: '11.5px', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', border: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0}}>
-                                                        {invType}
-                                                    </span>
-                                                </div>
+                        {modalDropdownOpen && (
+                            <div className="custom-multiselect-popup">
+                                {investments?.map(inv => {
+                                    const invId = String(inv.investment_id || inv.id || inv.investmentId);
+                                    const invName = inv.scheme_name || inv.name || inv.schemeName;
+                                    const invType = inv.investment_type || 'Unknown';
+                                    const isSelected = editModalData.linkedInvestments.includes(invId);
+                                    return (
+                                        <div key={invId}
+                                            className={`multiselect-option ${isSelected ? 'selected' : ''}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleModalScheme(invId); }}
+                                            onDoubleClick={(e) => { e.stopPropagation(); setModalDropdownOpen(false); }}>
+                                            <input type="checkbox" checked={isSelected} readOnly />
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
+                                                <strong style={{ fontSize: '13.5px', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }} title={invName}>
+                                                    {invName}
+                                                </strong>
+                                                <span style={{ fontSize: '11.5px', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', border: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
+                                                    {invType}
+                                                </span>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
-                        <div className="goal-modal-actions">
-                            <button className="goal-btn-cancel" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); }}>Cancel</button>
-                            <button className="goal-btn-save" onClick={handleModalSave}>Save Changes</button>
-                        </div>
+                    <div className="goal-modal-actions">
+                        <button className="goal-btn-cancel" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); }}>Cancel</button>
+                        <button className="goal-btn-save" onClick={handleModalSave}>Save Changes</button>
                     </div>
                 </div>
-            )}
+            </div>
+        )
+    }
 
-            {/* Delete Confirmation Modal */}
-            {deleteConfirmId && (
-                <div className="goal-modal-overlay">
-                    <div className="goal-modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
-                        <div className="goal-modal-header" style={{ borderBottom: 'none', marginBottom: '0px', justifyContent: 'center' }}>
-                            <h2 style={{ fontSize: '20px' }}>Confirm Deletion</h2>
-                        </div>
-                        <p style={{ color: '#94a3b8', margin: '20px 0 30px 0', fontSize: '15px' }}>
-                            Are you sure you want to delete this goal? This action cannot be undone.
-                        </p>
-                        <div className="goal-modal-actions">
-                            <button className="goal-btn-cancel" onClick={() => setDeleteConfirmId(null)}>No</button>
-                            <button className="goal-btn-save" 
-                                    style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
-                                    onClick={handleConfirmDelete}>
-                                Yes
-                            </button>
-                        </div>
+    {/* Delete Confirmation Modal */ }
+    {
+        deleteConfirmId && (
+            <div className="goal-modal-overlay">
+                <div className="goal-modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+                    <div className="goal-modal-header" style={{ borderBottom: 'none', marginBottom: '0px', justifyContent: 'center' }}>
+                        <h2 style={{ fontSize: '20px' }}>Confirm Deletion</h2>
+                    </div>
+                    <p style={{ color: '#94a3b8', margin: '20px 0 30px 0', fontSize: '15px' }}>
+                        Are you sure you want to delete this goal? This action cannot be undone.
+                    </p>
+                    <div className="goal-modal-actions">
+                        <button className="goal-btn-cancel" onClick={() => setDeleteConfirmId(null)}>No</button>
+                        <button className="goal-btn-save"
+                            style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
+                            onClick={handleConfirmDelete}>
+                            Yes
+                        </button>
                     </div>
                 </div>
-            )}
-        </div>
+            </div>
+        )
+    }
+        </div >
     );
 }
