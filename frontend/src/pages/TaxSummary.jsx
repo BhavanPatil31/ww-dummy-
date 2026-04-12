@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
 import {
     FiFileText, FiDownload, FiCalendar,
     FiTrendingUp, FiTrendingDown, FiFilter, FiInfo, FiTrash2, FiRefreshCw
@@ -7,7 +8,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import '../styles/TaxSummary.css';
 
-export default function TaxSummary({ user, investments = [] }) {
+export default function TaxSummary({ user, investments = [], currency = 'INR' }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
             const today = new Date();
@@ -61,7 +62,8 @@ export default function TaxSummary({ user, investments = [] }) {
     };
 
     const transactions = useMemo(() => {
-        return (taxTransactions || []).map((txn, index) => ({
+        // 1. Start with fetched tax transactions if any
+        const results = (taxTransactions || []).map((txn, index) => ({
             id: txn.id || `tax-${index}`,
             fundName: txn.fundName || 'Unknown',
             buyDate: txn.buyDate,
@@ -71,48 +73,53 @@ export default function TaxSummary({ user, investments = [] }) {
             tax_type: txn.type || 'STCG',
             source: 'Tax'
         }));
-    }, [taxTransactions]);
-    if (!investments || investments.length === 0) return [];
 
-    return investments.map((inv, index) => {
-        const buyDateStr = inv.buy_date || inv.start_date || new Date().toISOString().split('T')[0];
+        // 2. Add simulated transactions from investments that have an end date
+        if (investments && investments.length > 0) {
+            const closedInvestments = investments.filter(inv => {
+                // Same rule: Only show if it has an end date OR is SOLD/CLOSED
+                if (inv.end_date) return true;
+                if (inv.status === 'SOLD' || inv.status === 'CLOSED') return true;
+                return false;
+            });
 
-        // If the user hasn't sold the investment, safely simulate it resolving today so they can see data
-        const sellDateStr = inv.end_date || new Date().toISOString().split('T')[0];
+            const simulated = closedInvestments.map((inv, index) => {
+                const buyDateStr = inv.buy_date || inv.start_date || new Date().toISOString().split('T')[0];
+                const sellDateStr = inv.end_date || new Date().toISOString().split('T')[0];
+                
+                const buyDate = new Date(buyDateStr);
+                const sellDate = new Date(sellDateStr);
+                const daysDiff = (sellDate - buyDate) / (1000 * 60 * 60 * 24);
+                
+                const invested = parseFloat(inv.amount_invested || inv.amount || 0);
+                const units = parseFloat(inv.units || 0);
+                const currentNav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav : (inv.nav_at_buy || 0);
+                
+                const finalValue = units > 0 ? (units * currentNav) : invested;
+                const gain = finalValue - invested;
 
-        const buyDate = new Date(buyDateStr);
-        const sellDate = new Date(sellDateStr);
-
-        const daysDiff = (sellDate - buyDate) / (1000 * 60 * 60 * 24);
-        const type = daysDiff > 365 ? 'LTCG' : 'STCG';
-
-        const invested = parseFloat(inv.amount || 0);
-        const units = parseFloat(inv.units || 0);
-
-        // PRIORITY: If sold, we use the recorded current_nav (which is set to sellNav in backend)
-        // If not sold, we use live current_nav or fallback
-        const currentNav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
-            : inv.nav_at_buy > 0 ? inv.nav_at_buy : 0;
-
-        let finalValue = invested;
-        if (units > 0 && currentNav > 0) {
-            finalValue = units * currentNav;
-        } else {
-            finalValue = invested; // No gain/loss if no units or NAV
+                return {
+                    id: inv.investment_id || `sim-${index}`,
+                    fundName: inv.scheme_name || `Fund #${inv.fund_id || 'Unknown'}`,
+                    buyDate: buyDateStr,
+                    sellDate: sellDateStr,
+                    units: units,
+                    gain: parseFloat(gain.toFixed(2)),
+                    tax_type: daysDiff > 365 ? 'LTCG' : 'STCG',
+                    source: 'Simulated'
+                };
+            });
+            
+            // Avoid duplicates if same fund/date exists in both (simple check)
+            simulated.forEach(s => {
+                if (!results.some(r => r.fundName === s.fundName && r.sellDate === s.sellDate)) {
+                    results.push(s);
+                }
+            });
         }
-        const gain = finalValue - invested;
 
-        return {
-            id: inv.investment_id || `txn-${index}`,
-            fundName: inv.scheme_name || `Fund #${inv.fund_id || 'Unknown'}`,
-            buyDate: buyDateStr,
-            sellDate: sellDateStr,
-            units: parseFloat(inv.units || 0),
-            gain: parseFloat(gain.toFixed(2)),
-            tax_type: type
-        };
-    });
-}, [investments]);
+        return results;
+    }, [taxTransactions, investments]);
 
 const { filteredTransactions, totals } = useMemo(() => {
     const startYear = parseInt(selectedYear.substring(0, 4));

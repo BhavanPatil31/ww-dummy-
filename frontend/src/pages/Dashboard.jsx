@@ -924,7 +924,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     ) : activeView === 'portfolio' ? (
                         <Portfolio user={user} currency={currency} />
                     ) : activeView === 'tax' ? (
-                        <TaxSummary user={user} investments={investments} />
+                        <TaxSummary user={user} investments={investments} currency={currency} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
                     ) : activeView === 'goals' ? (

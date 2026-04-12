@@ -473,10 +473,9 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    )}
+                        )}
+                </div>
             </div>
-        </div>
 
             {/* Edit Modal Overlay */ }
     {

@@ -55,9 +55,8 @@ export default function Portfolio({ user, currency = 'INR' }) {
             let investmentsData = [];
             let portfolioData = null;
 
-            // First refresh portfolio to update NAVs in database
             try {
-                await axios.post(`http://localhost:8088/api/portfolio/refresh/${userId}`, {}, {
+                const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 investmentsData = (invRes.data || []).filter(inv => !inv.end_date && inv.status !== 'SOLD');
@@ -109,13 +108,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
         const currentNav = getCurrentNav(inv);
         if (units > 0 && currentNav > 0) return units * currentNav;
         return Number(inv.amount_invested || inv.amount || 0);
-        return inv.current_nav || inv.nav_at_buy || 0;
-    };
-
-    const getCurrentValue = (inv) => {
-        const units = inv.units || 0;
-        const nav = getCurrentNav(inv);
-        return units * nav;
     };
 
     const getInvestedAmount = (inv) => Number(inv.amount_invested || inv.amount || 0);

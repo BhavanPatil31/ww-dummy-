@@ -64,10 +64,9 @@ public class TaxService {
             }
         }
 
-        List<TaxTransaction> transactions;
-
-        int startYear = 0;
-        int endYear = 0;
+        List<TaxTransactionDTO> result = new ArrayList<>();
+        String userIdString = String.valueOf(userId);
+        
         if (financialYear != null && financialYear.contains("-")) {
             int startYear = Integer.parseInt(financialYear.substring(0, 4));
             int endYear = startYear + 1;

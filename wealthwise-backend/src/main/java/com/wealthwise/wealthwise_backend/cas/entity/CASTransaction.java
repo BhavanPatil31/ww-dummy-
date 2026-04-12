@@ -1,7 +1,7 @@
 package com.wealthwise.wealthwise_backend.cas.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
