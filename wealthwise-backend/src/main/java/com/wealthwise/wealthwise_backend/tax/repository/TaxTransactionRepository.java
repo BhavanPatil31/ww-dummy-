@@ -17,4 +17,7 @@ public interface TaxTransactionRepository extends JpaRepository<TaxTransaction, 
     @Transactional
     @Modifying
     void deleteByUserIdAndSellDateBetween(String userId, LocalDate startDate, LocalDate endDate);
+    @Transactional
+    @Modifying
+    void deleteByUserIdAndSourceAndSellDateBetween(String userId, String source, LocalDate startDate, LocalDate endDate);
 }

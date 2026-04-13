@@ -33,6 +33,9 @@ public class TaxTransaction {
     @Column(name = "tax_type", length = 10, nullable = false)
     private String taxType;
 
+    @Column(name = "source", length = 20, nullable = false)
+    private String source = "APP";
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -61,6 +64,9 @@ public class TaxTransaction {
 
     public String getTaxType() { return taxType; }
     public void setTaxType(String taxType) { this.taxType = taxType; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -18,7 +18,7 @@ public class Goal {
 
     @Column(name = "user_id")
     @JsonProperty("user_id")
-    private Integer userId;
+    private Long userId;
 
     @Column(name = "goal_name")
     @JsonProperty("goal_name")
@@ -49,8 +49,8 @@ public class Goal {
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
-    public Integer getUserId() { return userId; }
-    public void setUserId(Integer userId) { this.userId = userId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public String getGoalName() { return goalName; }
     public void setGoalName(String goalName) { this.goalName = goalName; }

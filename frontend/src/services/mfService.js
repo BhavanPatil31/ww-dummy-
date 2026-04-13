@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://api.mfapi.in/mf';
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8088';
+const NAV_BASE_URL = `${BACKEND_BASE_URL}/api/nav`;
 
 let allFundsCache = null;
 let allFundsPromise = null;
@@ -15,7 +16,10 @@ export const getAllFunds = async () => {
     allFundsPromise = (async () => {
         const fetchWithRetry = async (retries = 2) => {
             try {
-                const response = await axios.get(BASE_URL, { timeout: 15000 });
+                const response = await axios.get(`${NAV_BASE_URL}/search`, {
+                    params: { q: '' },
+                    timeout: 15000
+                });
                 if (response.data && Array.isArray(response.data)) {
                     allFundsCache = response.data;
                     return allFundsCache;
@@ -44,7 +48,7 @@ export const getAllFunds = async () => {
  */
 export const getNavHistory = async (schemeCode) => {
     try {
-        const response = await axios.get(`${BASE_URL}/${schemeCode}`);
+        const response = await axios.get(`${NAV_BASE_URL}/history/${schemeCode}`, { timeout: 15000 });
         if (response.data && response.data.status === "SUCCESS") {
             // CRITICAL: Some schemes return { meta, data: [], status: "SUCCESS" }
             if (!response.data.data || response.data.data.length === 0) {
@@ -97,6 +101,16 @@ export const getNavByDate = (navData, selectedDate) => {
     const match = sortedData.find(item => parseDateValue(item.date) <= selectedTime);
 
     return match || null;
+};
+
+export const daysSince = (ddmmyyyy) => {
+    if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return Infinity;
+    const parts = ddmmyyyy.split('-').map(Number);
+    if (parts.length !== 3) return Infinity;
+    const [d, m, y] = parts;
+    const t = new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+    if (!Number.isFinite(t)) return Infinity;
+    return (Date.now() - t) / (1000 * 3600 * 24);
 };
 
 /**

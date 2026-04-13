@@ -613,3 +613,174 @@ input[type=number]::-webkit-outer-spin-button {
     font-style: italic;
     border-top: 1px dashed var(--ai-border);
 }
+
+/* Compatibility selectors for current AddInvestment.jsx classes */
+.page-header {
+    margin-bottom: 20px;
+}
+
+.page-header h1 {
+    color: var(--text-primary);
+    font-size: 2.1rem;
+    margin: 0 0 6px 0;
+    font-weight: 800;
+}
+
+.page-header p {
+    margin: 0;
+    color: var(--ai-text-muted);
+    font-size: 1rem;
+}
+
+.premium-card {
+    background-color: var(--card-bg);
+    border-radius: 16px;
+    padding: 35px 40px;
+    width: 100%;
+    box-shadow: var(--card-shadow, 0 20px 40px rgba(0, 0, 0, 0.12));
+    border: 1px solid var(--border-color);
+}
+
+.tab-group {
+    display: inline-flex;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--ai-border);
+    padding: 4px;
+    border-radius: 12px;
+    width: fit-content;
+}
+
+.tab-btn {
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ai-text-muted);
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(59, 130, 246, 0.12);
+}
+
+.tab-btn.active {
+    color: #eaf2ff;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    box-shadow: 0 8px 22px rgba(59, 130, 246, 0.35);
+}
+
+.summary-card {
+    background-color: var(--ai-summary-bg);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: var(--card-shadow, 0 15px 35px rgba(0, 0, 0, 0.15));
+    border: 1px solid var(--ai-border);
+}
+
+.summary-card h3 {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    border-bottom: 1px solid var(--ai-border);
+    padding-bottom: 12px;
+}
+
+.summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary);
+    border-bottom: 1px dashed var(--ai-summary-item-border);
+    padding: 8px 0;
+}
+
+.summary-row span {
+    color: var(--ai-text-muted);
+    font-size: 0.9rem;
+}
+
+.summary-row strong {
+    color: var(--text-primary);
+    font-weight: 700;
+    text-align: right;
+}
+
+.highlight-panel {
+    margin-top: 8px;
+    border-radius: 12px;
+    border: 1px solid var(--ai-border);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.highlight-panel .label {
+    color: var(--ai-text-muted);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.highlight-panel .value {
+    color: var(--text-primary);
+    font-weight: 800;
+}
+
+.highlight-panel.units {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.highlight-panel.value {
+    border-color: rgba(34, 197, 94, 0.25);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.currency-prefix {
+    position: absolute;
+    left: 36px;
+    color: var(--ai-text-muted);
+    font-weight: 700;
+}
+
+#amount {
+    padding-left: 60px !important;
+}
+
+.fund-name-clamp {
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-warning-msg,
+.nav-error-msg,
+.nav-metadata {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 0.8rem;
+}
+
+.nav-warning-msg { color: #f59e0b; }
+.nav-error-msg { color: #ef4444; }
+.nav-metadata { color: var(--ai-text-muted); }
+
+.msg-icon {
+    flex-shrink: 0;
+}

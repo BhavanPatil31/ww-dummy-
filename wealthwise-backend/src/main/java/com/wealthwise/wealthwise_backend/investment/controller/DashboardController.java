@@ -3,6 +3,7 @@ package com.wealthwise.wealthwise_backend.investment.controller;
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
 import com.wealthwise.wealthwise_backend.investment.service.InvestmentService;
 import com.wealthwise.wealthwise_backend.portfolio.service.InvestmentValuationService;
+import com.wealthwise.wealthwise_backend.portfolio.service.PortfolioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,9 @@ public class DashboardController {
 
     @Autowired
     private InvestmentValuationService investmentValuationService;
+
+    @Autowired
+    private PortfolioService portfolioService;
 
     @GetMapping("/{userId}")
     public Map<String, Object> getDashboardData(@PathVariable Long userId) {
@@ -66,5 +70,14 @@ public class DashboardController {
         response.put("assetAllocation", assetAllocation);
 
         return response;
+    }
+
+    @GetMapping("/{userId}/history")
+    public List<Map<String, Object>> getDashboardHistory(
+            @PathVariable Long userId,
+            @RequestParam(name = "days", defaultValue = "30") int days
+    ) {
+        int boundedDays = days <= 0 ? 30 : Math.min(days, 36500);
+        return portfolioService.computePortfolioHistory(userId, boundedDays);
     }
 }

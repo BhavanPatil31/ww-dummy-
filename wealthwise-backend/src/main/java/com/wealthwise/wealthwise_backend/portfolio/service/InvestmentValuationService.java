@@ -131,7 +131,7 @@ public class InvestmentValuationService {
         if (inv.getFundId() != null) {
             try {
                 Double liveNav = navService.getLatestNav(String.valueOf(inv.getFundId()));
-                if (liveNav != null && liveNav > 0) {
+                if (isUsableNav(liveNav, navAtBuy)) {
                     return bd(liveNav);
                 }
             } catch (Exception ignored) {
@@ -139,20 +139,20 @@ public class InvestmentValuationService {
         }
 
         BigDecimal existingCurrentNav = bd(inv.getCurrentNav());
-        if (existingCurrentNav.compareTo(BigDecimal.ZERO) > 0) {
+        if (isUsableNav(existingCurrentNav.doubleValue(), navAtBuy)) {
             return existingCurrentNav;
         }
         if (navAtBuy.compareTo(BigDecimal.ZERO) > 0) {
             return navAtBuy;
         }
-        return BigDecimal.ONE;
+        return BigDecimal.ZERO;
     }
 
     private BigDecimal resolveInstallmentNav(String fundId, LocalDate installmentDate, BigDecimal navAtBuy, BigDecimal currentNav) {
         if (fundId != null && !fundId.trim().isEmpty()) {
             try {
                 Double nav = navService.getNavForDate(fundId, installmentDate.toString());
-                if (nav != null && nav > 0) {
+                if (isUsableNav(nav, navAtBuy)) {
                     return bd(nav);
                 }
             } catch (Exception ignored) {
@@ -161,10 +161,16 @@ public class InvestmentValuationService {
         if (navAtBuy.compareTo(BigDecimal.ZERO) > 0) {
             return navAtBuy;
         }
-        if (currentNav.compareTo(BigDecimal.ZERO) > 0) {
+        if (isUsableNav(currentNav.doubleValue(), navAtBuy)) {
             return currentNav;
         }
-        return BigDecimal.ONE;
+        return BigDecimal.ZERO;
+    }
+
+    private boolean isUsableNav(Double nav, BigDecimal navAtBuy) {
+        if (nav == null || nav <= 0) return false;
+        // Protect against fallback sentinel NAV=1 from external API failures.
+        return !(nav <= 1.000001 && navAtBuy != null && navAtBuy.compareTo(BigDecimal.valueOf(1.5)) > 0);
     }
 
     private LocalDate nextInstallmentDate(LocalDate current, String frequency) {
@@ -196,4 +202,3 @@ public class InvestmentValuationService {
         return numerator.divide(denominator, scale, RoundingMode.HALF_UP);
     }
 }
-

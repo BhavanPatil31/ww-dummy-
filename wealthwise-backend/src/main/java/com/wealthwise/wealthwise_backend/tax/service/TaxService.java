@@ -1,7 +1,6 @@
 package com.wealthwise.wealthwise_backend.tax.service;
 
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
-import com.wealthwise.wealthwise_backend.investment.repository.InvestmentRepository;
 import com.wealthwise.wealthwise_backend.tax.dto.TaxTransactionDTO;
 import com.wealthwise.wealthwise_backend.tax.entity.TaxTransaction;
 import com.wealthwise.wealthwise_backend.tax.repository.TaxTransactionRepository;
@@ -11,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -22,15 +20,10 @@ public class TaxService {
     @Autowired
     private TaxTransactionRepository taxTransactionRepository;
 
-    @Autowired
-    private InvestmentRepository investmentRepository;
-
     public List<TaxTransactionDTO> getTaxSummary(Long userId, String financialYear) {
-        Objects.requireNonNull(userId, "User ID cannot be null");
-        String userIdString = userId.toString();
-        List<TaxTransactionDTO> result = new ArrayList<>();
-
-        // Query tax_transactions only (from CAS uploads AND moved investments)
+        List<TaxTransactionDTO> result = new java.util.ArrayList<>();
+        String userIdString = String.valueOf(userId);
+        
         if (financialYear != null && financialYear.contains("-")) {
             int startYear = Integer.parseInt(financialYear.substring(0, 4));
             int endYear = startYear + 1;
@@ -66,6 +59,7 @@ public class TaxService {
         dto.setUnits(txn.getUnits());
         dto.setGain(txn.getGain());
         dto.setType(txn.getTaxType());
+        dto.setSource(txn.getSource());
         return dto;
     }
 
@@ -78,21 +72,24 @@ public class TaxService {
      */
     @Transactional
     public TaxTransaction moveInvestmentToTaxTransaction(Investment investment) {
+        return moveInvestmentToTaxTransaction(investment, null);
+    }
+
+    @Transactional
+    public TaxTransaction moveInvestmentToTaxTransaction(Investment investment, Double sellNav) {
         Objects.requireNonNull(investment, "Investment cannot be null");
         Objects.requireNonNull(investment.getEndDate(), "Investment must have an endDate to be moved to tax transactions");
 
-        // Calculate gain
-        double invested = investment.getAmount() != null ? investment.getAmount() : 0.0;
-        double currentNav = investment.getCurrentNav() != null && investment.getCurrentNav() > 0 
-                ? investment.getCurrentNav()
-                : investment.getNavAtBuy() != null && investment.getNavAtBuy() > 0 
-                    ? investment.getNavAtBuy() * 1.05
-                    : 0.0;
+        // Calculate realized gain using explicit sell NAV whenever provided.
+        double invested = investment.getAmountInvested() != null ? investment.getAmountInvested()
+                : (investment.getAmount() != null ? investment.getAmount() : 0.0);
+        double resolvedSellNav = sellNav != null && sellNav > 0 ? sellNav
+                : (investment.getCurrentNav() != null && investment.getCurrentNav() > 0 ? investment.getCurrentNav()
+                        : (investment.getNavAtBuy() != null ? investment.getNavAtBuy() : 0.0));
+        double units = investment.getUnits() != null ? investment.getUnits() : 0.0;
         double finalValue = invested;
-        if (investment.getUnits() != null && investment.getUnits() > 0 && currentNav > 0) {
-            finalValue = investment.getUnits() * currentNav;
-        } else if (invested > 0) {
-            finalValue = invested * 1.15;
+        if (units > 0 && resolvedSellNav > 0) {
+            finalValue = units * resolvedSellNav;
         }
         double gain = finalValue - invested;
 
@@ -111,11 +108,13 @@ public class TaxService {
         taxTxn.setFundName(investment.getSchemeName() != null ? investment.getSchemeName() : "Fund #" + investment.getFundId());
         taxTxn.setBuyDate(buyDate);
         taxTxn.setSellDate(investment.getEndDate());
-        taxTxn.setUnits(investment.getUnits() != null ? investment.getUnits() : 0.0);
+        taxTxn.setUnits(units);
         taxTxn.setGain(gain);
         taxTxn.setTaxType(taxType);
+        taxTxn.setSource("APP");
 
         // Save to tax_transactions table
         return taxTransactionRepository.save(taxTxn);
     }
 }
+

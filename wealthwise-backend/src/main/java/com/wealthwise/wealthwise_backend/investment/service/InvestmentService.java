@@ -36,7 +36,7 @@ public class InvestmentService {
         Long userId = saved.getUserId();
         if (userId != null) {
             // Create notification
-            String msg = "New " + saved.getInvestmentType() + " investment of ₹" + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
+            String msg = "New " + saved.getInvestmentType() + " investment of Rs." + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
             notificationService.createNotification(userId, msg, "INVESTMENT");
 
             // Check if investment is being added with an endDate (already closed)
@@ -65,9 +65,8 @@ public class InvestmentService {
     public List<Investment> getUserActiveInvestments(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
         return Objects.requireNonNull(
-                investmentRepository.findActiveByUserId(userId, java.time.LocalDate.now()),
-                "Active investment list cannot be null"
-        );
+                investmentRepository.findActiveByUserId(userId),
+                "Active investment list cannot be null");
     }
 
     @Transactional
@@ -151,16 +150,25 @@ public class InvestmentService {
 
     @Transactional
     public Investment sellInvestment(Long id, LocalDate sellDate) {
+        return sellInvestment(id, sellDate, null);
+    }
+
+    @Transactional
+    public Investment sellInvestment(Long id, LocalDate sellDate, Double sellNav) {
         Objects.requireNonNull(id, "Investment ID cannot be null");
         Investment inv = investmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         inv.setEndDate(sellDate != null ? sellDate : LocalDate.now());
+        if (sellNav != null && sellNav > 0) {
+            inv.setCurrentNav(sellNav);
+        }
+        inv.setStatus("SOLD");
         Investment saved = investmentRepository.save(inv);
 
         // Move investment to tax_transactions
-        taxService.moveInvestmentToTaxTransaction(saved);
-        
+        taxService.moveInvestmentToTaxTransaction(saved, sellNav);
+
         Long userId = saved.getUserId();
         if (userId != null) {
             portfolioService.updatePortfolio(userId);
@@ -173,3 +181,4 @@ public class InvestmentService {
         return saved;
     }
 }
+

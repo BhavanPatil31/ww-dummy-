@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableCaching
 public class WealthwiseApplication {
-
+  
     public static void main(String[] args) {
         SpringApplication.run(WealthwiseApplication.class, args);
     }

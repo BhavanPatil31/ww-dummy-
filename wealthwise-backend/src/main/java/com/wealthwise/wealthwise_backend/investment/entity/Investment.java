@@ -52,6 +52,10 @@ public class Investment {
     @JsonProperty("end_date")
     private LocalDate endDate;
 
+    @Column(name = "status")
+    @JsonProperty("status")
+    private String status;
+
     @Column(name = "nav_at_buy")
     @JsonProperty("nav_at_buy")
     private Double navAtBuy;
@@ -188,6 +192,14 @@ public class Investment {
 
     public void setEndDate(LocalDate endDate) {
         this.endDate = endDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Double getNavAtBuy() {

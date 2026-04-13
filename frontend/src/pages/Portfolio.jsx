@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
     FiBriefcase, FiEye, FiEdit2, FiTrash2,
@@ -8,7 +8,7 @@ import {
 import {
     ComposedChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
-    AreaChart, Area, BarChart
+    AreaChart, Area, BarChart, Line
 } from 'recharts';
 import '../styles/Portfolio.css';
 
@@ -30,7 +30,7 @@ const MOCK_FUNDS = [
     { code: "500002", name: "SBI Small Cap Fund - Regular Growth", nav: 142.10 }
 ];
 
-export default function Portfolio({ user }) {
+export default function Portfolio({ user, currency = 'INR' }) {
     const [investments, setInvestments] = useState([]);
     const [portfolioSummary, setPortfolioSummary] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -42,8 +42,10 @@ export default function Portfolio({ user }) {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [sellForm, setSellForm] = useState({ sell_date: '', sellNav: '' });
+    const [loadingSellNav, setLoadingSellNav] = useState(false);
     const [actionStatus, setActionStatus] = useState({ type: '', message: '' });
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
+    const [chartMode, setChartMode] = useState('absolute'); // 'absolute' or 'percentage'
 
     const fetchInvestments = async () => {
         setLoading(true);
@@ -53,31 +55,17 @@ export default function Portfolio({ user }) {
             let investmentsData = [];
             let portfolioData = null;
 
-            // First refresh portfolio to update NAVs in database
-            try {
-                await axios.post(`http://localhost:8088/api/portfolio/refresh/${userId}`, {}, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-            } catch (e) {
-                console.error("Error refreshing portfolio", e);
-            }
-
             try {
                 const invRes = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                const today = new Date().setHours(0, 0, 0, 0);
-                investmentsData = (invRes.data || []).filter(inv => {
-                    if (!inv.end_date) return true;
-                    const endDate = new Date(inv.end_date).setHours(0, 0, 0, 0);
-                    return endDate >= today;
-                });
+                investmentsData = (invRes.data || []).filter(inv => !inv.end_date && inv.status !== 'SOLD');
             } catch (e) {
                 console.error("Error fetching investments", e);
             }
 
             try {
-                const portRes = await axios.get(`http://localhost:8088/api/portfolio/user/${userId}`, {
+                const portRes = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 portfolioData = portRes.data;
@@ -101,18 +89,39 @@ export default function Portfolio({ user }) {
 
     // ── Helpers ────────────────────────────────────────────────
     const formatCurrency = (val) =>
-        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+            style: 'currency',
+            currency: currency,
+            maximumFractionDigits: 0
+        }).format(val || 0);
 
     const getCurrentNav = (inv) => {
         const currentNav = Number(inv.current_nav || inv.currentNav || 0);
         const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
-        if (currentNav > 0) return currentNav;
+        if (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5)) return currentNav;
         if (navAtBuy > 0) return navAtBuy;
         return 0;
     };
 
-    const getCurrentValue = (inv) => {
+    const getUnitsHeld = (inv) => {
         const units = Number(inv.units || 0);
+        const invested = Number(inv.amount_invested || inv.amount || 0);
+        const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
+        // Heal stale DB data caused by fallback NAV=1 during API outages.
+        if (units > 0) {
+            if (navAtBuy > 1.5 && invested > 0 && Math.abs(units - invested) < 0.0001) {
+                return invested / navAtBuy;
+            }
+            return units;
+        }
+        if (invested > 0 && navAtBuy > 0) {
+            return invested / navAtBuy;
+        }
+        return 0;
+    };
+
+    const getCurrentValue = (inv) => {
+        const units = getUnitsHeld(inv);
         const currentNav = getCurrentNav(inv);
         if (units > 0 && currentNav > 0) return units * currentNav;
         return Number(inv.amount_invested || inv.amount || 0);
@@ -131,6 +140,96 @@ export default function Portfolio({ user }) {
     const totalCurrentValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
     const totalPnL = totalCurrentValue - totalInvested;
     const totalReturn = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+    const fallbackPerformance = useMemo(() => {
+        const active = (investments || []).filter(inv => !inv.end_date && inv.status !== 'SOLD' && inv.status !== 'CLOSED');
+        if (!active.length || totalCurrentValue <= 0) {
+            return { xirr: 0, cagr: 0 };
+        }
+
+        const today = new Date();
+        const cashFlows = [];
+
+        const nextDate = (d, freq) => {
+            const date = new Date(d);
+            const f = String(freq || 'Monthly').toLowerCase();
+            if (f === 'weekly') date.setDate(date.getDate() + 7);
+            else if (f === 'quarterly') date.setMonth(date.getMonth() + 3);
+            else if (f === 'yearly' || f === 'annual' || f === 'annually') date.setFullYear(date.getFullYear() + 1);
+            else date.setMonth(date.getMonth() + 1);
+            return date;
+        };
+
+        active.forEach(inv => {
+            const type = String(inv.investment_type || '').toUpperCase();
+            const amount = Number(inv.amount_invested || inv.amountInvested || inv.amount || 0);
+            const startRaw = inv.start_date || inv.startDate || inv.buy_date || inv.buyDate;
+            if (!startRaw || amount <= 0) return;
+            const start = new Date(startRaw);
+            if (isNaN(start.getTime())) return;
+
+            if (type === 'SIP') {
+                const endRaw = inv.end_date || inv.endDate;
+                const end = endRaw ? new Date(endRaw) : today;
+                let cur = new Date(start);
+                while (cur <= end && cur <= today) {
+                    cashFlows.push({ date: new Date(cur), amount: -amount });
+                    cur = nextDate(cur, inv.frequency);
+                }
+            } else {
+                cashFlows.push({ date: start, amount: -amount });
+            }
+        });
+
+        if (!cashFlows.length) return { xirr: 0, cagr: 0 };
+        cashFlows.push({ date: today, amount: totalCurrentValue });
+
+        const startDate = cashFlows.reduce((min, cf) => (cf.date < min ? cf.date : min), cashFlows[0].date);
+        const totalDays = Math.max(1, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)));
+        const years = totalDays / 365.25;
+        const cagr = totalInvested > 0 && years > 0
+            ? (Math.pow(totalCurrentValue / totalInvested, 1 / years) - 1) * 100
+            : 0;
+
+        const xnpv = (rate) => cashFlows.reduce((sum, cf) => {
+            const days = (cf.date - startDate) / (1000 * 60 * 60 * 24);
+            const yearFrac = days / 365.25;
+            return sum + (cf.amount / Math.pow(1 + rate, yearFrac));
+        }, 0);
+
+        const xnpvD = (rate) => cashFlows.reduce((sum, cf) => {
+            const days = (cf.date - startDate) / (1000 * 60 * 60 * 24);
+            const yearFrac = days / 365.25;
+            return sum + (-yearFrac * cf.amount / Math.pow(1 + rate, yearFrac + 1));
+        }, 0);
+
+        let rate = 0.1;
+        for (let i = 0; i < 100; i++) {
+            const f = xnpv(rate);
+            const df = xnpvD(rate);
+            if (Math.abs(df) < 1e-12) break;
+            const next = rate - f / df;
+            if (!Number.isFinite(next) || next <= -0.999999) break;
+            if (Math.abs(next - rate) < 1e-7) {
+                rate = next;
+                break;
+            }
+            rate = next;
+        }
+        const xirr = Number.isFinite(rate) ? rate * 100 : 0;
+
+        return { xirr, cagr: Number.isFinite(cagr) ? cagr : 0 };
+    }, [investments, totalCurrentValue, totalInvested]);
+
+    const effectiveXirr = (() => {
+        const backend = Number(portfolioSummary?.xirr || 0);
+        return Math.abs(backend) > 0.0001 ? backend : fallbackPerformance.xirr;
+    })();
+
+    const effectiveCagr = (() => {
+        const backend = Number(portfolioSummary?.cagr || 0);
+        return Math.abs(backend) > 0.0001 ? backend : fallbackPerformance.cagr;
+    })();
 
     // ── Chart Data (P&L per investment, trading-bar style) ─────
     const generateChartData = () => {
@@ -151,17 +250,64 @@ export default function Portfolio({ user }) {
     };
 
     const chartData = generateChartData();
+    const finalChartData = useMemo(
+        () =>
+            chartData.map((entry, index) => ({
+                ...entry,
+                chartId: `F${index + 1}`,
+                performanceRange: Math.abs((entry.current || 0) - (entry.invested || 0)),
+                type: entry.pnl >= 0 ? 'Profit' : 'Loss'
+            })),
+        [chartData]
+    );
 
-    const PnLTooltip = ({ active, payload, label }) => {
+    const PnLTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
             const isProfit = d.pnl >= 0;
+            const pnlColor = isProfit ? '#10b981' : '#f43f5e';
+
             return (
-                <div style={{ background: 'rgba(10,15,30,0.97)', padding: '12px 16px', border: `1px solid ${isProfit ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: '180px' }}>
-                    <p style={{ margin: '0 0 8px', color: '#94a3b8', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{d.fullName}</p>
-                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Invested: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.invested)}</span></p>
-                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Current: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.current)}</span></p>
-                    <p style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800, color: isProfit ? '#22c55e' : '#ef4444' }}>{isProfit ? '+' : ''}{formatCurrency(d.pnl)} ({isProfit ? '+' : ''}{d.pct}%)</p>
+                <div className={`premium-glass-tooltip ${isProfit ? 'profit' : 'loss'}`}>
+                    <div className="tooltip-header">
+                        <span className="tooltip-type">{d.type}</span>
+                        <div className="tooltip-status-pill">
+                            {isProfit ? <FiTrendingUp className="status-icon green" /> : <FiTrendingDown className="status-icon red" />}
+                            <span className={isProfit ? 'green' : 'red'}>
+                                {isProfit ? '+' : ''}{((d.pct || 0)).toFixed(2)}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <h4 className="tooltip-title">{d.fullName}</h4>
+
+                    <div className="tooltip-stats-vertical">
+                        <div className="t-stat-row">
+                            <div className="t-stat-info">
+                                <span className="t-label">Invested Amount</span>
+                                <span className="t-val">{formatCurrency(d.invested)}</span>
+                            </div>
+                            <div className="t-marker-square invested" />
+                        </div>
+
+                        <div className="t-stat-row">
+                            <div className="t-stat-info">
+                                <span className="t-label">Current Value</span>
+                                <span className="t-val current">{formatCurrency(d.current)}</span>
+                            </div>
+                            <div className="t-marker-circle current" />
+                        </div>
+
+                        <div className={`t-stat-row pnl-highlight ${isProfit ? 'profit' : 'loss'}`}>
+                            <div className="t-stat-info">
+                                <span className="t-label">{isProfit ? 'Absolute Gain' : 'Absolute Loss'}</span>
+                                <span className="t-val pnl-val">
+                                    {isProfit ? '+' : ''}{formatCurrency(d.pnl)}
+                                </span>
+                            </div>
+                            <div className="t-stat-trend-bar" style={{ background: pnlColor }} />
+                        </div>
+                    </div>
                 </div>
             );
         }
@@ -248,7 +394,49 @@ export default function Portfolio({ user }) {
         setSellForm({ sell_date: today, sellNav: getCurrentNav(inv).toFixed(2) });
         setSellModalOpen(true);
     };
-    const closeSell = () => { setSellModalOpen(false); setSelectedInvestment(null); setSellForm({ sell_date: '', sellNav: '' }); };
+    const closeSell = () => {
+        setSellModalOpen(false);
+        setSelectedInvestment(null);
+        setSellForm({ sell_date: '', sellNav: '' });
+        setLoadingSellNav(false);
+    };
+
+    // Auto-fetch historical NAV when sell date changes
+    useEffect(() => {
+        const fetchHistoricalSellNav = async () => {
+            if (!sellModalOpen || !selectedInvestment || !sellForm.sell_date) return;
+
+            const fundId = selectedInvestment.fund_id;
+            if (!fundId) return;
+
+            setLoadingSellNav(true);
+            try {
+                const response = await axios.get(`https://api.mfapi.in/mf/${fundId}`);
+                const data = response.data;
+                if (data && data.data && data.data.length > 0) {
+                    // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
+                    const parts = sellForm.sell_date.split('-');
+                    const targetFormat = `${parts[2]}-${parts[1]}-${parts[0]}`;
+
+                    const historicalNav = data.data.find(d => d.date === targetFormat);
+                    if (historicalNav) {
+                        setSellForm(prev => ({ ...prev, sellNav: historicalNav.nav }));
+                    } else {
+                        // If exact date not found, use latest
+                        setSellForm(prev => ({ ...prev, sellNav: data.data[0].nav }));
+                        console.warn("Historical NAV not found for this exact date, using latest.");
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch historical sell NAV", err);
+            } finally {
+                setLoadingSellNav(false);
+            }
+        };
+
+        const timer = setTimeout(fetchHistoricalSellNav, 500);
+        return () => clearTimeout(timer);
+    }, [sellForm.sell_date, sellModalOpen, selectedInvestment]);
 
     const handleSellSubmit = async (e) => {
         e.preventDefault();
@@ -365,35 +553,84 @@ export default function Portfolio({ user }) {
                 {/* ── Portfolio Growth Chart ── */}
                 <div className="portfolio-chart-side">
                     {investments.length > 0 ? (
-                        <div className="portfolio-chart-wrapper">
+                        <div className="portfolio-chart-wrapper premium-chart-card">
                             <div className="chart-header-row">
-                                <h3 className="chart-title">P&amp;L Per Investment</h3>
-                                <span className={`pnl-live-badge ${totalPnL >= 0 ? 'positive' : 'negative'}`}>
-                                    {totalPnL >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
-                                    {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
-                                    <span className="pnl-pct">({totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(2)}%)</span>
-                                </span>
+                                <div className="c-title-group">
+                                    <h3 className="chart-title">Performance Analytics</h3>
+                                    <div className="chart-toggle-pill">
+                                        <button className={chartMode === 'absolute' ? 'active' : ''} onClick={() => setChartMode('absolute')}>Absolute P&L</button>
+                                        <button className={chartMode === 'percentage' ? 'active' : ''} onClick={() => setChartMode('percentage')}>% Returns</button>
+                                    </div>
+                                </div>
+                                <div className="c-legend">
+                                    <div className="l-item"><span className="l-dot marker-square" /> Invested</div>
+                                    <div className="l-item"><span className="l-dot marker-circle" /> Current</div>
+                                    <div className="l-item"><span className="l-dot pnl-area" /> Difference (P&L)</div>
+                                </div>
                             </div>
-                            <div className="chart-container">
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
+
+                            <div className="chart-container-main">
+                                <ResponsiveContainer width="100%" height={400}>
+                                    <ComposedChart data={finalChartData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
                                         <defs>
-                                            <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.95} />
-                                                <stop offset="100%" stopColor="#16a34a" stopOpacity={0.7} />
+                                            {/* Invested - Minimal Bar Gradient */}
+                                            <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.2} />
+                                                <stop offset="100%" stopColor="#475569" stopOpacity={0.05} />
                                             </linearGradient>
-                                            <linearGradient id="barRed" x1="0" y1="1" x2="0" y2="0">
-                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.95} />
-                                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.7} />
+
+                                            {/* Current Value Area Gradient (Dynamic based on profit/loss theme) */}
+                                            <linearGradient id="colorCurrentArea" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
+                                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+
+                                            {/* Specialized Bar Gradients */}
+                                            <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" />
+                                                <stop offset="100%" stopColor="#06b6d4" />
+                                            </linearGradient>
+                                            <linearGradient id="gradLoss" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#f43f5e" />
+                                                <stop offset="100%" stopColor="#fb923c" />
+                                            </linearGradient>
+
+                                            {/* Glow Filters */}
+                                            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                                                <feGaussianBlur stdDeviation="4" result="blur" />
+                                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                            </filter>
+
+                                            {/* Visual Performance Ranges */}
+                                            <linearGradient id="profitRange" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
+                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
+                                            </linearGradient>
+                                            <linearGradient id="lossRange" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.25} />
+                                                <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.05} />
+                                            </linearGradient>
+
+                                            {/* Invested Background Area */}
+                                            <linearGradient id="investedArea" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1} />
+                                                <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+
+                                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" strokeDasharray="5 5" />
+
                                         <XAxis
-                                            dataKey="name"
-                                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
-                                            axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
+                                            dataKey="chartId"
+                                            axisLine={false}
                                             tickLine={false}
-                                            dy={8}
+                                            tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+                                            tickFormatter={(val) => {
+                                                const d = finalChartData.find(item => item.chartId === val);
+                                                return d ? d.name : val;
+                                            }}
+                                            dy={15}
+                                            interval={0}
                                         />
                                         <YAxis
                                             tick={{ fill: '#64748b', fontSize: 10 }}
@@ -402,18 +639,64 @@ export default function Portfolio({ user }) {
                                             tickFormatter={(val) => `${val >= 0 ? '+' : ''}₹${Math.abs(val / 1000).toFixed(0)}k`}
                                             dx={-6}
                                         />
-                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
-                                        <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                                        <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                                            {chartData.map((entry, i) => (
-                                                <Cell
-                                                    key={i}
-                                                    fill={entry.pnl >= 0 ? 'url(#barGreen)' : 'url(#barRed)'}
-                                                    stroke={entry.pnl >= 0 ? '#22c55e' : '#ef4444'}
-                                                    strokeWidth={1}
+
+                                        <Tooltip
+                                            content={<PnLTooltip />}
+                                            cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                            animationDuration={300}
+                                        />
+
+                                        {chartMode === 'absolute' ? (
+                                            <>
+                                                {/* 1. Range Area to represent Difference (The Gap) */}
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="performanceRange"
+                                                    stroke="none"
+                                                    fill="url(#profitRange)"
+                                                    animationDuration={2000}
                                                 />
-                                            ))}
-                                        </Bar>
+
+                                                {/* 2. Invested Amount (Neutral Baseline Line) */}
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="invested"
+                                                    name="Invested Amount"
+                                                    stroke="#94a3b8"
+                                                    strokeWidth={2}
+                                                    strokeDasharray="5 5"
+                                                    dot={{ r: 4, stroke: "#64748b", strokeWidth: 1.5, fill: "#0b1120" }}
+                                                    // Squares are set in CSS or via path, but here we use a hollow circle to represent square-hollow feel
+                                                    activeDot={{ r: 6, stroke: "#94a3b8", strokeWidth: 2, fill: "#fff" }}
+                                                    animationDuration={1500}
+                                                />
+
+                                                {/* 3. Current Value (Vibrant Glow Line) */}
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="current"
+                                                    name="Current Value"
+                                                    stroke="#06b6d4"
+                                                    strokeWidth={4}
+                                                    filter="url(#glow)"
+                                                    dot={{ r: 5, fill: "#06b6d4", stroke: "#fff", strokeWidth: 2 }}
+                                                    activeDot={{ r: 8, fill: "#fff", stroke: "#06b6d4", strokeWidth: 3, filter: 'url(#glow)' }}
+                                                    animationDuration={2500}
+                                                />
+                                            </>
+                                        ) : (
+                                            <Bar dataKey="pct" name="Return %" animationDuration={1500} barSize={24} radius={[10, 10, 0, 0]}>
+                                                {finalChartData.map((entry, index) => (
+                                                    <Cell
+                                                        key={`cell-pct-${index}`}
+                                                        fill={entry.pct >= 0 ? "url(#gradProfit)" : "url(#gradLoss)"}
+                                                        style={{ filter: entry.pct >= 0 ? 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.4))' : 'drop-shadow(0 0 10px rgba(244, 63, 94, 0.4))' }}
+                                                    />
+                                                ))}
+                                            </Bar>
+                                        )}
+
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="3 3" />
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
@@ -491,11 +774,11 @@ export default function Portfolio({ user }) {
                         </div>
                         <div className="p-summary-card">
                             <span className="p-label">XIRR</span>
-                            <span className="p-value blue">{(portfolioSummary?.xirr || 0).toFixed(2)}%</span>
+                            <span className="p-value blue">{effectiveXirr.toFixed(2)}%</span>
                         </div>
                         <div className="p-summary-card">
                             <span className="p-label">CAGR</span>
-                            <span className="p-value blue">{(portfolioSummary?.cagr || 0).toFixed(2)}%</span>
+                            <span className="p-value blue">{effectiveCagr.toFixed(2)}%</span>
                         </div>
 
                     </div>
@@ -809,7 +1092,7 @@ export default function Portfolio({ user }) {
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Units Held</span>
-                                    <span className="detail-value">{parseFloat(selectedInvestment.units || 0).toFixed(4)}</span>
+                                    <span className="detail-value">{getUnitsHeld(selectedInvestment).toFixed(4)}</span>
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Current NAV (Est.)</span>
@@ -905,7 +1188,7 @@ export default function Portfolio({ user }) {
                                             <FiActivity className="input-icon" />
                                             <input
                                                 type="number"
-                                                value={parseFloat(selectedInvestment.units || 0).toFixed(4)}
+                                                value={getUnitsHeld(selectedInvestment).toFixed(4)}
                                                 readOnly
                                                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
                                             />
@@ -1033,9 +1316,12 @@ export default function Portfolio({ user }) {
                                                 type="number"
                                                 step="0.01"
                                                 value={sellForm.sellNav || ''}
-                                                onChange={(e) => setSellForm({ ...sellForm, sellNav: e.target.value })}
+                                                onChange={(e) => setSellForm(prev => ({ ...prev, sellNav: e.target.value }))}
                                                 required
+                                                placeholder={loadingSellNav ? "Fetching..." : "0.00"}
+                                                className={loadingSellNav ? "nav-loading-input" : ""}
                                             />
+                                            {loadingSellNav && <div className="inline-spinner-small"></div>}
                                         </div>
                                     </div>
                                 </div>
@@ -1044,7 +1330,7 @@ export default function Portfolio({ user }) {
                                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase' }}>Estimated Payout</span>
                                     <span style={{ color: '#10b981', fontSize: '18px', fontWeight: '700' }}>
-                                        {formatCurrency(parseFloat(selectedInvestment?.units || 0) * parseFloat(sellForm.sellNav || 0))}
+                                        {formatCurrency(getUnitsHeld(selectedInvestment) * parseFloat(sellForm.sellNav || 0))}
                                     </span>
                                 </div>
 
