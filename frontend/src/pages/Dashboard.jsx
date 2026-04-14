@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-import workerSrc from "pdfjs-dist/build/pdf.worker.min.js?url";
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.js?url';
 import {
-    ComposedChart, Area, Line, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+    AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import {
@@ -20,99 +20,26 @@ import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
 import '../styles/Dashboard.css';
 
+// FIX 1: Set workerSrc once at module level, not inside a function
+GlobalWorkerOptions.workerSrc = workerSrc;
+
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
 
 const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
     if (!active || !payload?.length) return null;
-    const fmt = (val) =>
+    const formatCurrency = (val) =>
         new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
             currency: currency,
             maximumFractionDigits: 0
         }).format(val || 0);
-    const currentVal = payload.find(p => p.dataKey === 'value');
-    const investedVal = payload.find(p => p.dataKey === 'invested');
-    const gain = currentVal && investedVal ? (currentVal.value - investedVal.value) : 0;
-    const gainPct = investedVal?.value > 0 ? ((gain / investedVal.value) * 100) : 0;
-    // Format the date label nicely
-    let dateStr = label;
-    try {
-        const d = new Date(label + 'T00:00:00');
-        dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    } catch (err) {
-        console.warn("Date parsing failed in Tooltip", err);
-    }
     return (
-        <div className="chart-tooltip-pro">
-            <div className="ct-date-pro">{dateStr}</div>
-            <div className="ct-rows">
-                {currentVal && (
-                    <div className="ct-row">
-                        <span className="ct-dot" style={{ background: '#3b82f6' }} />
-                        <span className="ct-label">Current Value</span>
-                        <span className="ct-amount">{fmt(currentVal.value)}</span>
-                    </div>
-                )}
-                {investedVal && (
-                    <div className="ct-row">
-                        <span className="ct-dot" style={{ background: '#a855f7' }} />
-                        <span className="ct-label">Invested</span>
-                        <span className="ct-amount">{fmt(investedVal.value)}</span>
-                    </div>
-                )}
-            </div>
+        <div className="chart-tooltip">
+            <div className="ct-date">{label}</div>
+            <div className="ct-val">{formatCurrency(payload[0].value)}</div>
         </div>
     );
 };
-
-// Format Y-axis tick values as short currency
-const formatYAxis = (val, currency = 'INR') => {
-    const sym = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
-    if (currency === 'INR') {
-        if (val >= 10000000) return `${sym}${(val / 10000000).toFixed(1)}Cr`;
-        if (val >= 100000) return `${sym}${(val / 100000).toFixed(1)}L`;
-        if (val >= 1000) return `${sym}${(val / 1000).toFixed(0)}K`;
-    } else {
-        if (val >= 1000000) return `${sym}${(val / 1000000).toFixed(1)}M`;
-        if (val >= 1000) return `${sym}${(val / 1000).toFixed(0)}K`;
-    }
-    return `${sym}${val}`;
-};
-
-// Format X-axis date ticks
-const formatXDate = (dateStr) => {
-    try {
-        const d = new Date(dateStr + 'T00:00:00');
-        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-    } catch { return dateStr; }
-};
-const HISTORY_DAYS = { '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365, 'ALL': 5000 };
-
-/** When API history is missing or all zeros, show a readable trend from invested → current. */
-function buildFallbackHistory(timeFrame, totalInvested, portfolioValue) {
-    const span = HISTORY_DAYS[timeFrame] ?? 30;
-    const n = Math.min(Math.max(span, 7), 120);
-    const out = [];
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(start.getDate() - (n - 1));
-    const inv = Number(totalInvested) || 0;
-    const cur = Number(portfolioValue) || 0;
-    for (let i = 0; i < n; i++) {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        const t = n <= 1 ? 1 : i / (n - 1);
-        const eased = t * t * (3 - 2 * t);
-        const value = inv + (cur - inv) * eased;
-        const iso = d.toISOString().slice(0, 10);
-        out.push({
-            date: iso,
-            value: Math.round(value * 100) / 100,
-            invested: Math.round(inv * 100) / 100,
-        });
-    }
-    return out;
-}
 
 export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency, setCurrency }) {
     const [investments, setInvestments] = useState([]);
@@ -121,7 +48,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [chartLoading, setChartLoading] = useState(false);
     const [timeFrame, setTimeFrame] = useState('1M');
     const [activeView, setActiveView] = useState(
         () => localStorage.getItem('activeView') || 'dashboard'
@@ -129,7 +55,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef(null);
     const casFileInputRef = useRef(null);
-    const [liveClock, setLiveClock] = useState(new Date());
 
     // Close notifications on click outside
     useEffect(() => {
@@ -142,25 +67,15 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        const timer = setInterval(() => setLiveClock(new Date()), 60000);
-        return () => clearInterval(timer);
-    }, []);
-
-    const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
-
-    const showToast = useCallback((message, type = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 4000);
-    }, []);
-
+    const [loginSuccessMsg, setLoginSuccessMsg] = useState("");
     useEffect(() => {
         const msg = localStorage.getItem("showLoginToast");
         if (msg) {
-            showToast(msg, 'success');
+            setLoginSuccessMsg(msg);
             localStorage.removeItem("showLoginToast");
+            setTimeout(() => setLoginSuccessMsg(""), 3500);
         }
-    }, [showToast]);
+    }, []);
 
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
@@ -168,6 +83,11 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
             currency: currency,
+            maximumFractionDigits: 0
+        }).format(val || 0);
+
+    const fmt = (val) =>
+        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
             maximumFractionDigits: 0
         }).format(val || 0);
 
@@ -199,7 +119,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return Number(inv.amount_invested || inv.amount || 0);
     }, []);
 
-
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
         if (!user) return;
@@ -212,9 +131,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             try {
                 const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
                 invData = r.data || [];
-            } catch (err) {
-                console.warn("Failed to fetch investments", err);
-            }
+            } catch { }
 
             let dbData = null;
             try {
@@ -222,36 +139,54 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 dbData = r.data;
                 if (dbData && dbData.profitLoss === undefined)
                     dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
-            } catch (err) {
-                console.warn("Failed to fetch dashboard summary", err);
-            }
+            } catch { }
 
-            setChartLoading(true);
             let histData = [];
             try {
-                const points = HISTORY_DAYS[timeFrame] ?? 30;
+                // FIX 2: 'ALL' now sends 9999 so the backend triggers full history mode
+                const points = timeFrame === '1W' ? 7
+                    : timeFrame === '1M' ? 30
+                        : timeFrame === '3M' ? 90
+                            : timeFrame === '6M' ? 180
+                                : timeFrame === '1Y' ? 365
+                                    : timeFrame === 'ALL' ? 9999
+                                        : 730;
                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
                 histData = r.data || [];
             } catch { }
+
+            // Strict separation: If no investments pass the active filter, force graph to zero
+            const hasActive = (invData || []).some(inv => {
+                const s = (inv.status || "").toUpperCase();
+                if (s === "SOLD" || s === "CLOSED") return false;
+                if (!inv.end_date) return true;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const end = new Date(inv.end_date);
+                end.setHours(0, 0, 0, 0);
+                return end >= today;
+            });
 
             setInvestments(invData);
             setDashboardData(dbData);
             setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
         } finally {
             setLoading(false);
-            setChartLoading(false);
         }
-    }, [user, timeFrame, getCurrentValue]);
+        // FIX 3: Removed getCurrentValue from deps — it never changes and caused infinite re-renders
+    }, [user, timeFrame]);
 
     const activeInvestments = useMemo(() => {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
+        // FIX 4: Removed unused `today` variable
         return (investments || []).filter(inv => {
-            // New strict logic: Hide if it has an end date OR it is sold
-            if (inv.end_date) return false;
-            if (inv.status === 'SOLD' || inv.status === 'CLOSED') return false;
-
-            return true;
+            const s = (inv.status || "").toUpperCase();
+            if (s === 'SOLD' || s === 'CLOSED') return false;
+            if (!inv.end_date) return true;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(inv.end_date);
+            end.setHours(0, 0, 0, 0);
+            return end >= today;
         });
     }, [investments]);
 
@@ -260,16 +195,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             fetchAllData();
         }
     }, [user, activeView, timeFrame]);
-
-    // Auto-refresh dashboard data every 60s for real-time graph
-    useEffect(() => {
-        if (!user || activeView !== 'dashboard') return;
-        const interval = setInterval(() => {
-            fetchAllData();
-        }, 60000);
-        return () => clearInterval(interval);
-    }, [user, activeView, timeFrame, fetchAllData]);
-
 
     // Notifications
     const fetchNotifications = useCallback(async () => {
@@ -282,9 +207,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
             setNotifications(res.data || []);
             setUnreadCount((res.data || []).filter(n => !n.read).length);
-        } catch (err) {
-            console.warn("Failed to fetch notifications", err);
-        }
+        } catch { }
     }, [user]);
 
     useEffect(() => {
@@ -326,7 +249,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             console.log('Selected PDF file:', file.name);
             parseCASPDF(file);
         } else if (file) {
-            showToast('Please select a valid PDF file', 'error');
+            alert('Please select a valid PDF file');
         }
         // Reset the input value so the same file can be selected again
         if (casFileInputRef.current) {
@@ -337,7 +260,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const parseCASPDF = async (file) => {
         try {
             const arrayBuffer = await file.arrayBuffer();
-            GlobalWorkerOptions.workerSrc = workerSrc;
+            // FIX 1 applied: workerSrc is set at module level, not here
             const pdf = await getDocument({ data: arrayBuffer }).promise;
             let allText = '';
 
@@ -355,7 +278,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             }
         } catch (err) {
             console.error('Error parsing PDF:', err);
-            showToast('Error parsing PDF file. Please ensure it\'s a valid CAS PDF.', 'error');
+            alert('Error parsing PDF file. Please ensure it\'s a valid CAS PDF.');
         }
     };
 
@@ -511,12 +434,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             );
 
             console.log('CAS data saved:', response.data);
-            showToast('CAS data uploaded successfully!', 'success');
             fetchAllData(); // Refresh dashboard
+            setActiveView('tax');
         } catch (err) {
             const serverMessage = err?.response?.data?.message || err?.response?.data || err?.message;
             console.error('Error sending CAS data to backend:', err?.response?.status, serverMessage, err);
-            showToast(`Error uploading CAS data. ${serverMessage || 'Check PDF format.'}`, 'error');
+            alert(`Error uploading CAS data. ${serverMessage || 'Please check the PDF format.'}`);
         }
     };
 
@@ -607,24 +530,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return out.slice(0, 3);
     }, [investments, metrics]);
 
-    const chartDisplayData = useMemo(() => {
-        const raw = Array.isArray(historyData) ? historyData : [];
-        const normalized = raw
-            .map((p) => ({
-                date: p.date,
-                value: Number(p.value ?? 0),
-                invested: Number(p.invested ?? 0),
-            }))
-            .filter((p) => p.date)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-        const maxVal = normalized.reduce((m, p) => Math.max(m, p.value), 0);
-        const looksEmpty = normalized.length === 0 || (maxVal <= 0 && (metrics.portfolioValue || 0) > 0);
-        if (looksEmpty && (metrics.portfolioValue || 0) > 0) {
-            return buildFallbackHistory(timeFrame, metrics.totalInvested, metrics.portfolioValue);
-        }
-        return normalized;
-    }, [historyData, timeFrame, metrics.portfolioValue, metrics.totalInvested]);
-
     const profitPill = () => {
         const { profitLoss, returnPct } = metrics;
         if (!dashboardData && activeInvestments.length === 0) return null;
@@ -641,9 +546,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     return (
         <div className="dashboard-container">
-            {toast && (
-                <div className={`ww-toast ${toast.type === 'error' ? 'error-toast' : 'success-toast'}`}>
-                    <span className="toast-icon">{toast.type === 'error' ? '✕' : '✓'}</span> {toast.message}
+            {loginSuccessMsg && (
+                <div className="login-success-toast">
+                    <span className="toast-icon">✓</span> {loginSuccessMsg}
                 </div>
             )}
 
@@ -753,15 +658,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <div className="premium-dashboard">
 
                             {/* ── 1. PORTFOLIO GROWTH HERO ── */}
-                            <section className="groww-style-hero">
-                                <div className="hero-header-groww">
-                                    <span className="hero-label-small">Total Portfolio Value</span>
-                                    <div className="hero-main-row">
-                                        <div className="hero-value-big">{formatCurrency(metrics.portfolioValue)}</div>
-                                        <div className={`profit-badge-groww ${metrics.profitLoss >= 0 ? 'pos' : 'neg'}`}>
-                                            <span className="profit-badge-tri">{metrics.profitLoss >= 0 ? '▲' : '▼'}</span>
-                                            <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
-                                            <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
+                            <section className="growth-hero-card">
+                                <div className="hero-top">
+                                    <div className="hero-left">
+                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE</span>
+                                        <div className="hero-value-row">
+                                            <span className="big-price">{formatCurrency(metrics.portfolioValue)}</span>
+                                            {profitPill()}
                                         </div>
                                         <div className="timeframe-filters">
                                             {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
@@ -776,7 +679,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         </div>
                                         <div className="hero-mini-stat">
                                             <span>Holdings</span>
-                                            <strong>{investments.length}</strong>
+                                            <strong>{activeInvestments.length}</strong>
                                         </div>
                                         <div className="hero-mini-stat">
                                             <span>Return</span>
@@ -790,11 +693,14 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                     <ResponsiveContainer width="100%" height={260}>
                                         <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                                             <defs>
-                                                <linearGradient id="gwValGrad" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
-                                                    <stop offset="55%" stopColor="#3b82f6" stopOpacity={0.08} />
-                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                                                    <stop offset="90%" stopColor="#3b82f6" stopOpacity={0} />
                                                 </linearGradient>
+                                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                                    <feGaussianBlur stdDeviation="4" result="blur" />
+                                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                                </filter>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                                             <XAxis
@@ -831,49 +737,19 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                 strokeWidth={2.5}
                                                 fill="url(#areaGrad)"
                                                 dot={false}
-                                                activeDot={{ r: 5, fill: '#3b82f6', stroke: '#0f172a', strokeWidth: 2 }}
-                                                isAnimationActive
-                                                animationDuration={500}
-                                                animationEasing="ease-in-out"
+                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                                                animationDuration={1500}
                                             />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="invested"
-                                                stroke="#a855f7"
-                                                strokeWidth={2}
-                                                strokeDasharray="6 5"
-                                                dot={false}
-                                                activeDot={false}
-                                                isAnimationActive
-                                                animationDuration={500}
-                                                animationEasing="ease-in-out"
-                                            />
-                                        </ComposedChart>
+                                        </AreaChart>
                                     </ResponsiveContainer>
-                                    )}
-                                </div>
-
-                                <div className="chart-footer-legend">
-                                    <div className="legend-item-gw">
-                                        <div className="l-line blue" />
-                                        Current Value
-                                    </div>
-                                    <div className="legend-item-gw">
-                                        <div className="l-line purple" />
-                                        Invested
-                                    </div>
-                                    <div className="live-tag">
-                                        <div className="live-dot-pulse" />
-                                        Live · {liveClock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
                                 </div>
                             </section>
 
                             {/* ── 2. KPI CARDS ── */}
                             <div className="kpi-grid">
                                 {[
-                                    { label: 'Total Invested', value: `₹${fmt(metrics.totalInvested)}`, icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
-                                    { label: 'Portfolio Value', value: `₹${fmt(metrics.portfolioValue)}`, icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
+                                    { label: 'Total Invested', value: formatCurrency(metrics.totalInvested), icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
+                                    { label: 'Portfolio Value', value: formatCurrency(metrics.portfolioValue), icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
                                     {
                                         label: 'Total Gain / Loss',
                                         value: metrics.profitLoss === 0 ? 'Break-even'
@@ -925,7 +801,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         >
                                                             {assetAllocation.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => [`₹${fmt(v)}`, '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        <Tooltip formatter={(v) => [formatCurrency(v), '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                                 <div className="donut-center">
@@ -980,7 +856,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                     <div className="performer-ret pos"><FiArrowUpRight />+{topPerformers.best.returnPct.toFixed(2)}%</div>
                                                 </div>
                                             )}
-                                            {topPerformers.worst && topPerformers.worst.fundId !== topPerformers.best?.fundId && (
+                                            {/* FIX 5: was comparing .fundId (camelCase) — correct field is .fund_id (snake_case) */}
+                                            {topPerformers.worst && topPerformers.worst.fund_id !== topPerformers.best?.fund_id && (
                                                 <div className="performer-item">
                                                     <div className="performer-badge red">Lowest</div>
                                                     <div className="performer-info">
@@ -1030,8 +907,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 <div className="card-top"><h3>Financial Goals</h3><FiTarget /></div>
                                 <div className="goals-grid">
                                     {[
-                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: '₹6.5L', total: '₹10L', rem: '₹3.5L', color: '' },
-                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: '₹80K', total: '₹2L', rem: '₹1.2L', color: 'blue' },
+                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: formatCurrency(650000), total: formatCurrency(1000000), rem: formatCurrency(350000), color: '' },
+                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: formatCurrency(80000), total: formatCurrency(200000), rem: formatCurrency(120000), color: 'blue' },
                                     ].map((g, i) => (
                                         <div key={i} className="goal-card">
                                             <div className="goal-header">
@@ -1055,13 +932,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 <button className="cas-button" onClick={openCASFilePicker}>
                                     📄 Upload CAS (.pdf)
                                 </button>
-                                <input
-                                    ref={casFileInputRef}
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleCASFileSelect}
-                                    hidden
-                                />
                             </div>
 
                         </div>
@@ -1070,7 +940,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     ) : activeView === 'portfolio' ? (
                         <Portfolio user={user} currency={currency} />
                     ) : activeView === 'tax' ? (
-                        <TaxSummary user={user} investments={investments} currency={currency} />
+                        <TaxSummary user={user} investments={investments} currency={currency} onOpenCAS={openCASFilePicker} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
                     ) : activeView === 'goals' ? (
@@ -1079,6 +949,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <Settings user={user} theme={theme} setTheme={setTheme} currency={currency} setCurrency={setCurrency} />
                     ) : null}
                 </div>
+                <input
+                    ref={casFileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleCASFileSelect}
+                    hidden
+                />
             </main>
         </div>
     );

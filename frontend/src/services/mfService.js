@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://api.mfapi.in/mf';
+const BASE_URL = 'http://localhost:8088/api/mf/proxy';
 
 // ─── Fund list cache (singleton) ────────────────────────────────────────────
 let allFundsCache = null;

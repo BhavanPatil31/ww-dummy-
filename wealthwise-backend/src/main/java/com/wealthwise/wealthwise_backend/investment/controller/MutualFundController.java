@@ -3,6 +3,8 @@ package com.wealthwise.wealthwise_backend.investment.controller;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -35,5 +37,19 @@ public class MutualFundController {
     @GetMapping("/search")
     public @NonNull List<Map<String, Object>> searchFunds(@RequestParam @NonNull String query) {
         return mutualFundService.searchFunds(query);
+    }
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @GetMapping("/proxy")
+    public @NonNull ResponseEntity<String> proxyAllFunds() {
+        String url = "https://api.mfapi.in/mf";
+        return restTemplate.getForEntity(url, String.class);
+    }
+
+    @GetMapping("/proxy/{schemeCode}")
+    public @NonNull ResponseEntity<String> proxyFundDetails(@PathVariable String schemeCode) {
+        String url = "https://api.mfapi.in/mf/" + schemeCode;
+        return restTemplate.getForEntity(url, String.class);
     }
 }

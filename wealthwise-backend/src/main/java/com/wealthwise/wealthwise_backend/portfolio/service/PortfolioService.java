@@ -22,52 +22,26 @@ public class PortfolioService {
 
     private final PortfolioRepository portfolioRepository;
     private final InvestmentRepository investmentRepository;
-    private final InvestmentValuationService investmentValuationService;
     private final UserRepository userRepository;
     private final NavService navService;
 
     public PortfolioService(PortfolioRepository portfolioRepository,
             InvestmentRepository investmentRepository,
-            InvestmentValuationService investmentValuationService,
             UserRepository userRepository,
             NavService navService) {
         this.portfolioRepository = portfolioRepository;
         this.investmentRepository = investmentRepository;
-        this.investmentValuationService = investmentValuationService;
         this.userRepository = userRepository;
         this.navService = navService;
     }
 
-    @Transactional
-    public Portfolio updatePortfolio(Long userId) {
-        Objects.requireNonNull(userId, "User ID cannot be null");
-        List<Investment> investments = Objects.requireNonNull(investmentRepository.findActiveByUserId(userId, java.time.LocalDate.now()), "Active investment list cannot be null");
-        
-        BigDecimal totalInvested = BigDecimal.ZERO;
-        BigDecimal totalUnits = BigDecimal.ZERO;
-        BigDecimal currentValue = BigDecimal.ZERO;
 
-        if (investments != null) {
-            for (Investment inv : investments) {
-                InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, LocalDate.now());
-
-                totalInvested = totalInvested.add(valuation.getInvestedAmount());
-                totalUnits = totalUnits.add(valuation.getUnits());
-                currentValue = currentValue.add(valuation.getCurrentValue());
-
-                // Persist refreshed current NAV so other screens can reuse it.
-                if (valuation.getCurrentNav() != null) {
-                    inv.setCurrentNav(valuation.getCurrentNav().doubleValue());
-                }
-                // Persist normalized invested amount and units so list endpoints remain consistent.
-                inv.setAmountInvested(valuation.getInvestedAmount().doubleValue());
-                inv.setUnits(valuation.getUnits().doubleValue());
-                investmentRepository.save(inv);
     public PortfolioDTO computeDetailedPortfolio(Long userId) {
         List<Investment> investments = investmentRepository.findByUserId(userId);
         
         Map<Long, HoldingDTO> holdingsMap = new HashMap<>();
         double totalInvested = 0.0;
+        double totalRealizedProfitLoss = 0.0;
         
         // Sort investments by date to ensure SIPs and sells are processed correctly
         investments.sort(Comparator.comparing(inv -> inv.getBuyDate() != null ? inv.getBuyDate() : (inv.getStartDate() != null ? inv.getStartDate() : LocalDate.MIN)));
@@ -106,7 +80,7 @@ public class PortfolioService {
                 double amountPerInst = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
 
                 LocalDate currentInstDate = start;
-                while (currentInstDate != null && !currentInstDate.isAfter(calcEnd)) {
+                while (currentInstDate != null && !currentInstDate.isAfter(end)) {
                     Double navOnDate = navService.getNavForDate(String.valueOf(fundId), currentInstDate.toString());
                     double navOnDateValue = (navOnDate != null) ? navOnDate : 0.0;
                     double unitsOnDate = navOnDateValue > 0 ? amountPerInst / navOnDateValue : 0.0;
@@ -222,7 +196,7 @@ public class PortfolioService {
     public Portfolio updatePortfolio(Long userId) {
         PortfolioDTO dto = computeDetailedPortfolio(userId);
         
-        Portfolio portfolio = portfolioRepository.findByUserId(userId).orElse(new Portfolio());
+        Portfolio portfolio = portfolioRepository.findFirstByUserId(userId).orElse(new Portfolio());
         portfolio.setUserId(userId);
         portfolio.setTotal_invested(toSafeBigDecimal(dto.getTotalInvested(), 2));
         portfolio.setTotal_units(toSafeBigDecimal(dto.getActiveHoldings().stream().mapToDouble(HoldingDTO::getTotalUnits).sum(), 4));
@@ -478,4 +452,9 @@ public class PortfolioService {
         return csv.toString();
     }
 
+    private BigDecimal toSafeBigDecimal(Double val, int scale) {
+        if (val == null || val.isInfinite() || val.isNaN())
+            return BigDecimal.ZERO.setScale(scale, RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(val).setScale(scale, RoundingMode.HALF_UP);
+    }
 }

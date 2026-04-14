@@ -573,7 +573,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                         <div className="input-wrapper">
                                             <CurrencyIcon className="input-icon" />
 
-                                            <span className="currency-prefix">₹</span>
+                                            <span className="currency-prefix">{currencySymbols[currency] || '₹'}</span>
                                             <input
                                                 id="amount"
                                                 type="number"

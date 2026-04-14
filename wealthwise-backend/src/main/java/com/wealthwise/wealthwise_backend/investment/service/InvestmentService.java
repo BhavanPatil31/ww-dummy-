@@ -42,19 +42,18 @@ public class InvestmentService {
                     + saved.getSchemeName() + " added successfully.";
             notificationService.createNotification(userId, msg, "INVESTMENT");
 
-            // Check if investment is being added with an endDate (already closed)
-            if (saved.getEndDate() != null) {
-                // Move to tax_transactions immediately
+            // Check if investment is being added with an endDate that is already passed or today
+            if (saved.getEndDate() != null && !saved.getEndDate().isAfter(java.time.LocalDate.now())) {
+                // Move to tax_transactions immediately if already completed
                 taxService.moveInvestmentToTaxTransaction(saved);
-                // Delete from investments table
                 investmentRepository.deleteById(saved.getInvestmentId());
                 notificationService.createNotification(userId, 
-                        "Your investment in " + saved.getSchemeName() + " with an end date has been moved to tax transactions.", 
+                        "Your investment in " + saved.getSchemeName() + " has been completed and moved to tax transactions.", 
                         "INVESTMENT_CLOSED");
                 return saved;
             }
 
-            // Otherwise, for active investments, update portfolio
+            // Otherwise, for active or future term investments, update portfolio
             portfolioService.updatePortfolio(userId);
         }
         return saved;
@@ -128,14 +127,13 @@ public class InvestmentService {
         Investment saved = Objects.requireNonNull(investmentRepository.save(existing),
                 "Saved investment cannot be null");
 
-        // If investment is being closed (endDate is being set), move it to
-        // tax_transactions
-        if (isBeingClosed) {
+        // If investment has an end_date that has arrived or passed, move it to tax_transactions
+        if (saved.getEndDate() != null && !saved.getEndDate().isAfter(java.time.LocalDate.now())) {
             taxService.moveInvestmentToTaxTransaction(saved);
             // Delete the investment after moving to tax_transactions
             investmentRepository.deleteById(id);
             notificationService.createNotification(saved.getUserId(),
-                    "Your investment in " + saved.getSchemeName() + " has been moved to tax transactions.",
+                    "Your investment in " + saved.getSchemeName() + " has matured/ended and moved to tax transactions.",
                     "INVESTMENT_CLOSED");
         } else {
             // Force portfolio recalculation if not closed

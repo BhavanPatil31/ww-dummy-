@@ -294,7 +294,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
 
             setLoadingSellNav(true);
             try {
-                const response = await axios.get(`https://api.mfapi.in/mf/${fundId}`);
+                const response = await axios.get(`http://localhost:8088/api/mf/proxy/${fundId}`);
                 const data = response.data;
                 if (data && data.data && data.data.length > 0) {
                     // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
@@ -446,7 +446,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 </span>
                             </div>
                             <div className="chart-container">
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ResponsiveContainer width="100%" height={380}>
                                     <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
                                         <defs>
                                             <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
@@ -477,7 +477,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             dx={-6}
                                         />
                                         <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
-                                        <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                                        <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} allowEscapeViewBox={{ x: true, y: true }} />
                                         <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
                                             {chartData.map((entry, i) => (
                                                 <Cell

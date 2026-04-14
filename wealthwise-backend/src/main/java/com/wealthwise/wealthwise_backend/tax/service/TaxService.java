@@ -1,6 +1,7 @@
 package com.wealthwise.wealthwise_backend.tax.service;
 
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
+import com.wealthwise.wealthwise_backend.investment.repository.InvestmentRepository;
 
 import com.wealthwise.wealthwise_backend.tax.dto.TaxTransactionDTO;
 import com.wealthwise.wealthwise_backend.tax.entity.TaxTransaction;
@@ -21,6 +22,9 @@ public class TaxService {
 
     @Autowired
     private TaxTransactionRepository taxTransactionRepository;
+
+    @Autowired
+    private InvestmentRepository investmentRepository;
 
 
 
