@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import InfoHint from "./InfoHint";
 import "../styles/AuthModal.css";
 
 function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initialEmail }) {
@@ -8,7 +9,6 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
 
   const [requiresOtp, setRequiresOtp] = useState(false);
   const [otp, setOtp] = useState("");
@@ -126,23 +126,20 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         <h2 className="modal-title">Welcome Back</h2>
         <p className="modal-subtitle">Sign in to your WealthWise account</p>
 
-        {successMsg && (
-          <div style={{ color: "#10b981", marginBottom: "15px", fontSize: "0.95rem", fontWeight: "600", padding: "12px", backgroundColor: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-            <span style={{ fontSize: "1.2rem" }}>✓</span> {successMsg}
-          </div>
-        )}
-
-        {errorMsg && !successMsg && (
+        {errorMsg && (
           <div style={{ color: "#ef4444", marginBottom: "10px", fontSize: "0.9rem" }}>
             {errorMsg}
           </div>
         )}
 
-        {requiresOtp && !successMsg && (
+        {requiresOtp && (
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ marginBottom: "0.4rem", fontWeight: 600 }}>Enter OTP sent to your email</div>
             <div className="input-group">
-              <label className="input-label">OTP</label>
+              <label className="input-label">
+                OTP
+                <InfoHint text="Enter the 6-digit OTP sent to your registered email to complete verification." />
+              </label>
               <input
                 type="text"
                 className="modal-input"
@@ -179,7 +176,10 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
 
         <form onSubmit={handleLogin}>
           <div className="input-group">
-            <label className="input-label">Email Address</label>
+            <label className="input-label">
+              Email Address
+              <InfoHint text="Use the same email you used during signup." />
+            </label>
             <input
               type="email"
               className="modal-input"
@@ -196,6 +196,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
               style={{ display: "flex", justifyContent: "space-between" }}
             >
               Password
+              <InfoHint text="Enter your account password. Use Forgot? if you cannot remember it." />
               <span
                 className="auth-link"
                 style={{ fontSize: "0.8rem" }}
@@ -223,8 +224,8 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
             </div>
           </div>
 
-          <button type="submit" className="auth-btn" disabled={isLoading || successMsg}>
-            {successMsg ? "Success!" : isLoading ? "Signing In..." : "Sign In"}
+          <button type="submit" className="auth-btn" disabled={isLoading}>
+            {isLoading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

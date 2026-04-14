@@ -10,6 +10,7 @@ public class TaxTransactionDTO {
     private Double units;
     private Double gain;
     private String type; // LTCG or STCG
+    private String source; // APP or CAS
 
     public TaxTransactionDTO() {}
 
@@ -33,4 +34,7 @@ public class TaxTransactionDTO {
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
 }

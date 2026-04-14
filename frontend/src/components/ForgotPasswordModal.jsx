@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import InfoHint from "./InfoHint";
 import "../styles/AuthModal.css";
 
 function ForgotPasswordModal({ close, openLogin }) {
@@ -127,7 +128,10 @@ function ForgotPasswordModal({ close, openLogin }) {
             {step === 1 && (
               <form onSubmit={requestOtp}>
                 <div className="input-group">
-                  <label className="input-label">Email Address</label>
+                  <label className="input-label">
+                    Email Address
+                    <InfoHint text="We will send a one-time code to this email to verify it is your account." />
+                  </label>
                   <input
                     type="email"
                     className="modal-input"
@@ -146,7 +150,10 @@ function ForgotPasswordModal({ close, openLogin }) {
             {step === 2 && (
               <form onSubmit={verifyOtp}>
                 <div className="input-group">
-                  <label className="input-label">Verification Code</label>
+                  <label className="input-label">
+                    Verification Code
+                    <InfoHint text="Enter the OTP received in your inbox. It usually expires in a few minutes." />
+                  </label>
                   <input
                     type="text"
                     className="modal-input"
@@ -165,7 +172,10 @@ function ForgotPasswordModal({ close, openLogin }) {
             {step === 3 && (
               <form onSubmit={resetPassword}>
                 <div className="input-group">
-                  <label className="input-label">New Password</label>
+                  <label className="input-label">
+                    New Password
+                    <InfoHint text="Create a strong password you do not use anywhere else." />
+                  </label>
                   <div className="password-input-wrapper">
                     <input
                       type={showNewPassword ? "text" : "password"}
@@ -186,7 +196,10 @@ function ForgotPasswordModal({ close, openLogin }) {
                   </div>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Confirm Password</label>
+                  <label className="input-label">
+                    Confirm Password
+                    <InfoHint text="Re-enter the same new password to avoid typos." />
+                  </label>
                   <div className="password-input-wrapper">
                     <input
                       type={showConfirmPassword ? "text" : "password"}

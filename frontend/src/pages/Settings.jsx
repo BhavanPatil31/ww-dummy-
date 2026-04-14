@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
     FiShield, FiBell, FiMonitor, FiLock,
     FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle, FiAlertTriangle
 } from 'react-icons/fi';
 import axios from 'axios';
+import InfoHint from '../components/InfoHint';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme, currency, setCurrency }) {
+export default function Settings({ user, currency, setCurrency }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
@@ -100,7 +101,7 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        } catch (error) {
+        } catch {
             alert("Failed to export data");
         }
     };
@@ -157,15 +158,15 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
         switch (activeTab) {
             case 'security':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <div className="settings-section-header">
-                            <h2>Security & Login</h2>
+                            <h2>Security & Login <InfoHint text="Update password and review login safety options for your account." /></h2>
                             <p>Manage your password, two-factor authentication, and active sessions.</p>
                         </div>
 
                         <form className="settings-form" onSubmit={handleSave}>
                             <div className="settings-input-group">
-                                <label>Current Password</label>
+                                <label>Current Password <InfoHint text="Enter your current password to authorize this change." /></label>
                                 <div className="input-wrapper" style={{ position: 'relative' }}>
                                     <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
@@ -180,7 +181,7 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                                 </div>
                             </div>
                             <div className="settings-input-group">
-                                <label>New Password</label>
+                                <label>New Password <InfoHint text="Use a strong password with letters, numbers, and symbols." /></label>
                                 <div className="input-wrapper" style={{ position: 'relative' }}>
                                     <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
@@ -195,7 +196,7 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                                 </div>
                             </div>
                             <div className="settings-input-group">
-                                <label>Confirm New Password</label>
+                                <label>Confirm New Password <InfoHint text="Re-enter your new password exactly to avoid mismatch." /></label>
                                 <div className="input-wrapper" style={{ position: 'relative' }}>
                                     <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
@@ -238,14 +239,14 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                                 <button onClick={handleLogoutAll} className="btn-danger" style={{ padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', background: 'transparent', border: '1px solid var(--danger-color, #ef4444)', color: 'var(--danger-color, #ef4444)' }}>Log out all</button>
                             </div>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 );
 
             case 'notifications':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <div className="settings-section-header">
-                            <h2>Notification Preferences</h2>
+                            <h2>Notification Preferences <InfoHint text="Choose which app/email alerts you want to receive." /></h2>
                             <p>Choose what updates you want to receive and how you receive them.</p>
                         </div>
 
@@ -271,15 +272,15 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                                 </div>
                             ))}
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 );
 
 
             case 'privacy':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <div className="settings-section-header">
-                            <h2>Privacy & Data</h2>
+                            <h2>Privacy & Data <InfoHint text="Control profile visibility, exports, and sensitive account actions." /></h2>
                             <p>Manage your data, visibility, and account lifecycle.</p>
                         </div>
 
@@ -356,7 +357,7 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                                 Delete Account
                             </button>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 );
 
             default: return null;
@@ -403,7 +404,7 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
             {/* DELETE ACCOUNT MODAL */}
             <AnimatePresence>
                 {showDeleteModal && (
-                    <motion.div 
+                    <Motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -418,7 +419,7 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                             zIndex: 9999
                         }}
                     >
-                        <motion.div
+                        <Motion.div
                             initial={{ scale: 0.95, opacity: 0, y: 10 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 10 }}
@@ -500,10 +501,11 @@ export default function Settings({ user, theme, setTheme, currency, setCurrency 
                                     Cancel
                                 </button>
                             </div>
-                        </motion.div>
-                    </motion.div>
+                        </Motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
         </div>
     );
 }
+

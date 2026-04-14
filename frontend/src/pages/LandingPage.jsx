@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
-function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
+function LandingPage({ openLogin, user, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

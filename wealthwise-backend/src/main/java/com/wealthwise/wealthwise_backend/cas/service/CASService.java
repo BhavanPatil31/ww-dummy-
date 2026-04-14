@@ -140,7 +140,7 @@ public class CASService {
             int endYear = startYear + 1;
             LocalDate fyStart = LocalDate.of(startYear, 4, 1);
             LocalDate fyEnd = LocalDate.of(endYear, 3, 31);
-            taxTransactionRepository.deleteByUserIdAndSellDateBetween(userIdString, fyStart, fyEnd);
+            taxTransactionRepository.deleteByUserIdAndSourceAndSellDateBetween(userIdString, "CAS", fyStart, fyEnd);
         }
 
         List<TaxTransaction> taxTransactions = new ArrayList<>();
@@ -154,6 +154,7 @@ public class CASService {
             taxTransaction.setUnits(transaction.getUnits());
             taxTransaction.setGain(transaction.getGain());
             taxTransaction.setTaxType(transaction.getTaxType());
+            taxTransaction.setSource("CAS");
             taxTransactions.add(taxTransaction);
         }
         taxTransactionRepository.saveAll(taxTransactions);

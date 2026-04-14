@@ -18,16 +18,26 @@ import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
 import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
+import InfoHint from '../components/InfoHint';
 import '../styles/Dashboard.css';
 
+GlobalWorkerOptions.workerSrc = workerSrc;
+
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
+const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings'];
+
+const normalizeCurrency = (value) => {
+    const code = String(value || '').toUpperCase();
+    return ['INR', 'USD', 'EUR', 'GBP'].includes(code) ? code : 'INR';
+};
 
 const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
     if (!active || !payload?.length) return null;
+    const safeCurrency = normalizeCurrency(currency);
     const formatCurrency = (val) =>
-        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
-            currency: currency,
+            currency: safeCurrency,
             maximumFractionDigits: 0
         }).format(val || 0);
     return (
@@ -38,17 +48,19 @@ const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
     );
 };
 
-export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency, setCurrency }) {
+export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency = 'INR', setCurrency }) {
+    const safeCurrency = normalizeCurrency(currency);
     const [investments, setInvestments] = useState([]);
     const [dashboardData, setDashboardData] = useState(null);
+    const [goals, setGoals] = useState([]);
     const [historyData, setHistoryData] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [loading, setLoading] = useState(true);
     const [timeFrame, setTimeFrame] = useState('1M');
-    const [activeView, setActiveView] = useState(
-        () => localStorage.getItem('activeView') || 'dashboard'
-    );
+    const [activeView, setActiveView] = useState(() => {
+        const stored = localStorage.getItem('activeView');
+        return VALID_VIEWS.includes(stored) ? stored : 'dashboard';
+    });
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef(null);
     const casFileInputRef = useRef(null);
@@ -66,31 +78,42 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     const [loginSuccessMsg, setLoginSuccessMsg] = useState("");
     useEffect(() => {
-        const msg = localStorage.getItem("showLoginToast");
-        if (msg) {
-            setLoginSuccessMsg(msg);
-            localStorage.removeItem("showLoginToast");
-            setTimeout(() => setLoginSuccessMsg(""), 3500);
-        }
+        const timer = setTimeout(() => {
+            const msg = localStorage.getItem("showLoginToast");
+            if (msg) {
+                setLoginSuccessMsg(msg);
+                localStorage.removeItem("showLoginToast");
+                setTimeout(() => setLoginSuccessMsg(""), 3500);
+            }
+        }, 0);
+        return () => clearTimeout(timer);
     }, []);
 
-    useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
+    useEffect(() => {
+        const safeView = VALID_VIEWS.includes(activeView) ? activeView : 'dashboard';
+        localStorage.setItem('activeView', safeView);
+    }, [activeView]);
 
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+    const formatCurrency = useCallback((val) =>
+        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
-            currency: currency,
+            currency: safeCurrency,
             maximumFractionDigits: 0
-        }).format(val || 0);
+        }).format(val || 0), [safeCurrency]);
 
-    const fmtShort = (val) => {
-        const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
-        if (currency === 'INR') {
-            if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-            if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+    const fmt = (val) =>
+        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
+            maximumFractionDigits: 0
+        }).format(Number(val) || 0);
+
+    const fmtShort = useCallback((val) => {
+        const symbol = safeCurrency === 'INR' ? '₹' : safeCurrency === 'USD' ? '$' : safeCurrency === 'EUR' ? '€' : '£';
+        if (safeCurrency === 'INR') {
+            if (val >= 10000000) return `${symbol}${(val / 10000000).toFixed(2)}Cr`;
+            if (val >= 100000) return `${symbol}${(val / 100000).toFixed(2)}L`;
         }
         return formatCurrency(val);
-    };
+    }, [safeCurrency, formatCurrency]);
     const formatDate = (d) => {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
@@ -98,33 +121,43 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Value helpers ────────────────────────────────────────────
     const getCurrentValue = useCallback((inv) => {
-        const units = Number(inv.units || 0);
-        const currentNav = Number(inv.current_nav || 0);
-        const navAtBuy = Number(inv.nav_at_buy || 0);
+        const storedUnits = Number(inv.units || 0);
+        const currentNav = Number(inv.current_nav || inv.currentNav || 0);
+        const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
+        const invested = Number(inv.amount_invested || inv.amountInvested || inv.amount || 0);
+        const healedUnits = (storedUnits > 0 && navAtBuy > 1.5 && invested > 0 && Math.abs(storedUnits - invested) < 0.0001)
+            ? (invested / navAtBuy)
+            : storedUnits;
+        const units = healedUnits > 0
+            ? healedUnits
+            : (invested > 0 && navAtBuy > 0 ? invested / navAtBuy : 0);
+        const usableCurrentNav = (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5))
+            ? currentNav
+            : 0;
 
-        if (units > 0 && currentNav > 0) {
-            return units * currentNav;
+        if (units > 0 && usableCurrentNav > 0) {
+            return units * usableCurrentNav;
         }
         if (units > 0 && navAtBuy > 0) {
             return units * navAtBuy;
         }
-        return Number(inv.amount_invested || inv.amount || 0);
+        return invested;
     }, []);
 
 
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
         if (!user) return;
-        setLoading(true);
         const token = localStorage.getItem('jwt_token');
         const userId = user?.userId || user?.id;
         const headers = { Authorization: `Bearer ${token}` };
-        try {
-            let invData = [];
+        let invData = [];
             try {
                 const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
                 invData = r.data || [];
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
 
             let dbData = null;
             try {
@@ -132,36 +165,84 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 dbData = r.data;
                 if (dbData && dbData.profitLoss === undefined)
                     dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
 
             let histData = [];
             try {
-                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 730;
+                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
                 histData = r.data || [];
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
+
+            let goalsData = [];
+            try {
+                const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
+                goalsData = r.data || [];
+            } catch {
+                // optional source endpoint
+            }
 
             // Strict separation: If no investments pass the active filter, force graph to zero
             const hasActive = (invData || []).some(inv => {
-                if (inv.end_date) return false;
+                if (inv.end_date || inv.endDate) return false;
                 const s = (inv.status || "").toUpperCase();
                 return s !== "SOLD" && s !== "CLOSED";
             });
 
+            const livePortfolioValue = (invData || [])
+                .filter(inv => {
+                    if (inv.end_date || inv.endDate) return false;
+                    const s = (inv.status || "").toUpperCase();
+                    return s !== "SOLD" && s !== "CLOSED";
+                })
+                .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+
+            let resolvedHistory = hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 }));
+            const historyAllZero = !resolvedHistory.length || resolvedHistory.every(pt => Number(pt?.value || 0) <= 0);
+            if (hasActive && livePortfolioValue > 0 && historyAllZero) {
+                const activeInv = (invData || []).filter(inv => {
+                    if (inv.end_date || inv.endDate) return false;
+                    const s = (inv.status || "").toUpperCase();
+                    return s !== "SOLD" && s !== "CLOSED";
+                });
+
+                const liveInvested = activeInv.reduce(
+                    (sum, inv) => sum + Number(inv.amount_invested || inv.amountInvested || inv.amount || 0),
+                    0
+                );
+                const earliestDate = activeInv
+                    .map(inv => new Date(inv.buy_date || inv.buyDate || inv.start_date || inv.startDate || new Date()))
+                    .sort((a, b) => a - b)[0] || new Date();
+                const today = new Date();
+                const totalDays = Math.max(1, Math.floor((today - earliestDate) / (1000 * 60 * 60 * 24)));
+                const points = resolvedHistory.length ? resolvedHistory : [{ date: today.toISOString().slice(0, 10), value: liveInvested }];
+
+                resolvedHistory = points.map(pt => {
+                    const d = new Date(pt.date);
+                    if (isNaN(d.getTime()) || d <= earliestDate) {
+                        return { ...pt, value: liveInvested };
+                    }
+                    const elapsed = Math.max(0, Math.floor((d - earliestDate) / (1000 * 60 * 60 * 24)));
+                    const progress = Math.min(1, elapsed / totalDays);
+                    const synthetic = liveInvested + (livePortfolioValue - liveInvested) * progress;
+                    return { ...pt, value: Number(synthetic.toFixed(2)) };
+                });
+            }
+
             setInvestments(invData);
             setDashboardData(dbData);
-            setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
-        } finally {
-            setLoading(false);
-        }
+            setGoals(goalsData);
+            setHistoryData(resolvedHistory);
     }, [user, timeFrame, getCurrentValue]);
 
     const activeInvestments = useMemo(() => {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
         return (investments || []).filter(inv => {
             // New strict logic: Hide if it has an end date OR it is sold
-            if (inv.end_date) return false;
+            if (inv.end_date || inv.endDate) return false;
             if (inv.status === 'SOLD' || inv.status === 'CLOSED') return false;
 
             return true;
@@ -170,9 +251,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
-            fetchAllData();
+            const timer = setTimeout(() => {
+                fetchAllData();
+            }, 0);
+            return () => clearTimeout(timer);
         }
-    }, [user, activeView, timeFrame]);
+    }, [user, activeView, fetchAllData]);
 
     // Notifications
     const fetchNotifications = useCallback(async () => {
@@ -185,14 +269,21 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
             setNotifications(res.data || []);
             setUnreadCount((res.data || []).filter(n => !n.read).length);
-        } catch { }
+        } catch {
+            // optional notifications endpoint
+        }
     }, [user]);
 
     useEffect(() => {
         if (user) {
-            fetchNotifications();
+            const timer = setTimeout(() => {
+                fetchNotifications();
+            }, 0);
             const id = setInterval(fetchNotifications, 15000);
-            return () => clearInterval(id);
+            return () => {
+                clearTimeout(timer);
+                clearInterval(id);
+            };
         }
     }, [user, fetchNotifications]);
 
@@ -238,7 +329,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const parseCASPDF = async (file) => {
         try {
             const arrayBuffer = await file.arrayBuffer();
-            GlobalWorkerOptions.workerSrc = workerSrc;
             const pdf = await getDocument({ data: arrayBuffer }).promise;
             let allText = '';
 
@@ -319,7 +409,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             return trimmed.length >= 5 && !/(Fund Name|Buy Date|Simulated Sell|Gain\/Loss|Type)/i.test(trimmed);
         };
 
-        const fundPattern = /([A-Za-z0-9\s&\-\(\)\.,'\/]+?)\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?\s*(?:Rs\.?|₹)\s*[\d,]+)\s+(LTCG|STCG)/gi;
+        const fundPattern = /([A-Za-z0-9\s&\-().,'/]+?)\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?\s*(?:Rs\.?|₹)\s*[\d,]+)\s+(LTCG|STCG)/gi;
 
         const cleanText = (source) => source.replace(/\s+/g, ' ').trim();
 
@@ -427,15 +517,25 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Derived metrics ──────────────────────────────────────────
     const metrics = useMemo(() => {
-        if (dashboardData) return {
-            totalInvested: dashboardData.totalInvested || 0,
-            portfolioValue: dashboardData.portfolioValue || 0,
-            profitLoss: dashboardData.profitLoss || 0,
-            returnPct: dashboardData.returnPercentage || 0,
-            realizedPnL: dashboardData.realizedProfitLoss || 0,
+        const totalInvested = activeInvestments.reduce(
+            (sum, inv) => sum + Number(inv.amount_invested || inv.amount || 0),
+            0
+        );
+        const portfolioValue = activeInvestments.reduce(
+            (sum, inv) => sum + getCurrentValue(inv),
+            0
+        );
+        const profitLoss = portfolioValue - totalInvested;
+        const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
+
+        return {
+            totalInvested,
+            portfolioValue,
+            profitLoss,
+            returnPct,
+            realizedPnL: dashboardData?.realizedProfitLoss || 0,
         };
-        return { totalInvested: 0, portfolioValue: 0, profitLoss: 0, returnPct: 0, realizedPnL: 0 };
-    }, [dashboardData]);
+    }, [activeInvestments, getCurrentValue, dashboardData]);
 
     const assetAllocation = useMemo(() => {
         if (!activeInvestments.length) return [];
@@ -483,6 +583,30 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         [activeInvestments]
     );
 
+    const goalsPreview = useMemo(() => {
+        const idOf = (inv) => String(inv?.investment_id || inv?.id || inv?.investmentId);
+        return (goals || []).slice(0, 4).map((g, idx) => {
+            const target = Number(g.target_amount || g.targetAmount || 0);
+            const linked = g.linkedInvestments || [];
+            const current = linked.reduce((sum, li) => {
+                const liId = String(li?.investment_id || li);
+                const inv = investments.find(i => idOf(i) === liId);
+                return sum + (inv ? getCurrentValue(inv) : 0);
+            }, 0);
+            const pctRaw = target > 0 ? (current / target) * 100 : 0;
+            const pct = Math.max(0, Math.min(100, Math.round(pctRaw)));
+            return {
+                key: g.goal_id || g.id || idx,
+                name: g.goal_name || g.goalName || `Goal ${idx + 1}`,
+                pct,
+                cur: fmtShort(current),
+                total: fmtShort(target),
+                rem: fmtShort(Math.max(target - current, 0)),
+                color: idx % 2 === 1 ? 'blue' : '',
+            };
+        });
+    }, [goals, investments, getCurrentValue, fmtShort]);
+
     const insights = useMemo(() => {
         const out = [];
         if (!activeInvestments.length) {
@@ -506,7 +630,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             out.push({ type: 'green', icon: <FiPlus />, text: 'Add more investments to unlock full diversification analytics.' });
         }
         return out.slice(0, 3);
-    }, [investments, metrics]);
+    }, [activeInvestments, investments.length, metrics.returnPct]);
 
     const profitPill = () => {
         const { profitLoss, returnPct } = metrics;
@@ -534,7 +658,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             <aside className="dashboard-sidebar">
                 <div className="brand">
                     <div className="logo-wrapper">
-                        <img src="/logo.png" alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
+                        <img src="/logo.svg" alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
                     </div>
                     <h2>WealthWise</h2>
                 </div>
@@ -582,6 +706,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                 : activeView === 'settings' ? 'Configure application preferences and security'
                                                     : activeView === 'goals' ? 'Set and track your financial milestones'
                                                         : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            <InfoHint text="Use the left menu to switch modules. Hover or click info icons on pages to see short guidance." />
                         </p>
                     </div>
                     <div className="header-actions">
@@ -882,26 +1007,27 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 5. GOALS PREVIEW ── */}
                             <div className="goals-preview-card">
                                 <div className="card-top"><h3>Financial Goals</h3><FiTarget /></div>
-                                <div className="goals-grid">
-                                    {[
-                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: '₹6.5L', total: '₹10L', rem: '₹3.5L', color: '' },
-                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: '₹80K', total: '₹2L', rem: '₹1.2L', color: 'blue' },
-                                    ].map((g, i) => (
-                                        <div key={i} className="goal-card">
-                                            <div className="goal-header">
-                                                <span>{g.emoji} {g.name}</span>
-                                                <span className="goal-pct">{g.pct}%</span>
+                                {goalsPreview.length === 0 ? (
+                                    <div className="empty-state-sm"><FiTarget /><p>No goals created yet</p></div>
+                                ) : (
+                                    <div className="goals-grid">
+                                        {goalsPreview.map((g) => (
+                                            <div key={g.key} className="goal-card">
+                                                <div className="goal-header">
+                                                    <span>{g.name}</span>
+                                                    <span className="goal-pct">{g.pct}%</span>
+                                                </div>
+                                                <div className="goal-bar">
+                                                    <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
+                                                </div>
+                                                <div className="goal-footer">
+                                                    <span>{g.cur} of {g.total}</span>
+                                                    <span className="goal-rem">{g.rem} to go</span>
+                                                </div>
                                             </div>
-                                            <div className="goal-bar">
-                                                <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
-                                            </div>
-                                            <div className="goal-footer">
-                                                <span>{g.cur} of {g.total}</span>
-                                                <span className="goal-rem">{g.rem} to go</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* ── 6. CAS UPLOAD SECTION ── */}

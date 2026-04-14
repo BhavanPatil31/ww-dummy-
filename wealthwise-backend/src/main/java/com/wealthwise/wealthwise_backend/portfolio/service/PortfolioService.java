@@ -1,26 +1,21 @@
 package com.wealthwise.wealthwise_backend.portfolio.service;
 
+import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
+import com.wealthwise.wealthwise_backend.investment.dto.HoldingDTO;
+import com.wealthwise.wealthwise_backend.investment.dto.InvestmentActivityDTO;
+import com.wealthwise.wealthwise_backend.investment.dto.PortfolioDTO;
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
 import com.wealthwise.wealthwise_backend.investment.repository.InvestmentRepository;
 import com.wealthwise.wealthwise_backend.investment.service.NavService;
-import com.wealthwise.wealthwise_backend.investment.dto.PortfolioDTO;
-import com.wealthwise.wealthwise_backend.investment.dto.HoldingDTO;
-import com.wealthwise.wealthwise_backend.investment.dto.InvestmentActivityDTO;
 import com.wealthwise.wealthwise_backend.portfolio.entity.Portfolio;
 import com.wealthwise.wealthwise_backend.portfolio.repository.PortfolioRepository;
-import com.wealthwise.wealthwise_backend.auth.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Objects;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,9 +27,6 @@ public class PortfolioService {
 
     @Autowired
     private InvestmentRepository investmentRepository;
-
-    @Autowired
-    private InvestmentValuationService investmentValuationService;
 
     @Autowired
     private UserRepository userRepository;
@@ -70,6 +62,7 @@ public class PortfolioService {
 
         Map<Long, HoldingDTO> holdingsMap = new HashMap<>();
         double totalInvested = 0.0;
+        List<CashFlow> cashFlows = new ArrayList<>();
         
         // Sort investments by date to ensure SIPs are processed correctly
         investments.sort(Comparator.comparing(inv -> inv.getBuyDate() != null ? inv.getBuyDate() : (inv.getStartDate() != null ? inv.getStartDate() : LocalDate.MIN)));
@@ -96,6 +89,11 @@ public class PortfolioService {
                 holding.setTotalUnits(holding.getTotalUnits() + units);
                 holding.setInvestedAmount(holding.getInvestedAmount() + amount);
                 totalInvested += amount;
+                LocalDate flowDate = inv.getBuyDate() != null ? inv.getBuyDate()
+                        : (inv.getStartDate() != null ? inv.getStartDate() : today);
+                if (amount > 0) {
+                    cashFlows.add(new CashFlow(flowDate, -amount));
+                }
                 
             } else if ("SIP".equalsIgnoreCase(type)) {
                 LocalDate start = inv.getStartDate() != null ? inv.getStartDate() : inv.getBuyDate();
@@ -112,11 +110,16 @@ public class PortfolioService {
                 LocalDate currentInstDate = start;
                 while (currentInstDate != null && !currentInstDate.isAfter(calcEnd)) {
                     Double navOnDate = navService.getNavForDate(String.valueOf(fundId), currentInstDate.toString());
-                    double navOnDateValue = (navOnDate != null) ? navOnDate : 0.0;
+                    double navOnDateValue = isUsableNav(navOnDate, inv)
+                            ? navOnDate
+                            : fallbackNav(inv);
                     double unitsOnDate = navOnDateValue > 0 ? amountPerInst / navOnDateValue : 0.0;
                     
                     sipTotalUnits += unitsOnDate;
                     sipTotalInvested += amountPerInst;
+                    if (amountPerInst > 0) {
+                        cashFlows.add(new CashFlow(currentInstDate, -amountPerInst));
+                    }
 
                     if ("Weekly".equalsIgnoreCase(freq)) currentInstDate = currentInstDate.plusWeeks(1);
                     else if ("Monthly".equalsIgnoreCase(freq)) currentInstDate = currentInstDate.plusMonths(1);
@@ -144,6 +147,9 @@ public class PortfolioService {
         for (HoldingDTO holding : holdingsMap.values()) {
             if (holding.getTotalUnits() > 0.0001) {
                 Double latestNav = navService.getLatestNav(String.valueOf(holding.getFundId()));
+                if (!isUsableNav(latestNav, findFirstInvestmentByFund(investments, holding.getFundId()))) {
+                    latestNav = fallbackNavForFund(investments, holding.getFundId());
+                }
                 holding.setLatestNav(latestNav);
                 holding.setCurrentValue(holding.getTotalUnits() * (latestNav != null ? latestNav : 0.0));
                 holding.setProfitLoss(holding.getCurrentValue() - holding.getInvestedAmount());
@@ -171,6 +177,11 @@ public class PortfolioService {
         dto.setRealizedProfitLoss(0.0); // Realized P&L from closed inv is excluded from Dashboard
         dto.setProfitLoss(totalCurrentValue - totalInvested);
         dto.setReturnPercentage(totalInvested > 0 ? (dto.getProfitLoss() / totalInvested) * 100 : 0);
+        if (totalCurrentValue > 0) {
+            cashFlows.add(new CashFlow(today, totalCurrentValue));
+        }
+        dto.setXirr(calculateXirr(cashFlows));
+        dto.setCagr(calculateCagr(totalInvested, totalCurrentValue, cashFlows, today));
         dto.setActiveHoldings(activeHoldings);
         
         if (userId != null) {
@@ -204,17 +215,20 @@ public class PortfolioService {
 
     @Transactional
     public Portfolio updatePortfolio(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
         PortfolioDTO dto = computeDetailedPortfolio(userId);
-        
+        double totalUnits = dto.getActiveHoldings() == null
+                ? 0.0
+                : dto.getActiveHoldings().stream().mapToDouble(HoldingDTO::getTotalUnits).sum();
+
         Portfolio portfolio = portfolioRepository.findByUserId(userId).orElse(new Portfolio());
         portfolio.setUserId(userId);
         portfolio.setTotal_invested(toSafeBigDecimal(dto.getTotalInvested(), 2));
-        portfolio.setTotal_units(toSafeBigDecimal(dto.getActiveHoldings().stream().mapToDouble(HoldingDTO::getTotalUnits).sum(), 4));
+        portfolio.setTotal_units(toSafeBigDecimal(totalUnits, 4));
         portfolio.setCurrent_value(toSafeBigDecimal(dto.getPortfolioValue(), 2));
-        portfolio.setProfit_loss(toSafeBigDecimal(dto.getProfitLoss(), 2));
         portfolio.setReturn_percentage(toSafeBigDecimal(dto.getReturnPercentage(), 2));
-        portfolio.setXirr(toSafeBigDecimal(0.0, 2)); 
-        portfolio.setCagr(toSafeBigDecimal(0.0, 2));
+        portfolio.setXirr(toSafeBigDecimal(dto.getXirr(), 2));
+        portfolio.setCagr(toSafeBigDecimal(dto.getCagr(), 2));
         
         return portfolioRepository.save(portfolio);
     }
@@ -288,8 +302,11 @@ public class PortfolioService {
                 LocalDate current = start;
                 while (!current.isAfter(end)) {
                     Double nav = navService.getNavForDate(String.valueOf(fundId), current.toString());
-                    if (nav != null && nav > 0) {
-                        unitChangesByFund.get(fundId).add(new UnitChange(current, amount / nav));
+                    double navValue = isUsableNav(nav, inv)
+                            ? nav
+                            : fallbackNav(inv);
+                    if (navValue > 0) {
+                        unitChangesByFund.get(fundId).add(new UnitChange(current, amount / navValue));
                     }
                     
                     if ("Weekly".equalsIgnoreCase(freq)) current = current.plusWeeks(1);
@@ -344,7 +361,10 @@ public class PortfolioService {
                 double unitsHeld = currentUnitsByFund.get(fundId);
                 if (unitsHeld > 0.0001) {
                     Double navOnDate = navService.getNavForDate(String.valueOf(fundId), date.toString());
-                    totalPortfolioValueOnDate += unitsHeld * (navOnDate != null ? navOnDate : 0.0);
+                    double navValue = isUsableNav(navOnDate, findFirstInvestmentByFund(investments, fundId))
+                            ? navOnDate
+                            : fallbackNavForFund(investments, fundId);
+                    totalPortfolioValueOnDate += unitsHeld * navValue;
                 }
             }
             
@@ -355,6 +375,82 @@ public class PortfolioService {
         }
         
         return history;
+    }
+
+    private double calculateCagr(double totalInvested, double totalCurrentValue, List<CashFlow> cashFlows, LocalDate today) {
+        if (totalInvested <= 0 || totalCurrentValue <= 0 || cashFlows == null || cashFlows.isEmpty()) {
+            return 0.0;
+        }
+        LocalDate startDate = cashFlows.stream()
+                .map(CashFlow::getDate)
+                .min(LocalDate::compareTo)
+                .orElse(today);
+        long days = Math.max(1, ChronoUnit.DAYS.between(startDate, today));
+        double years = days / 365.25;
+        if (years <= 0.0) return 0.0;
+        return (Math.pow(totalCurrentValue / totalInvested, 1.0 / years) - 1.0) * 100.0;
+    }
+
+    private double calculateXirr(List<CashFlow> cashFlows) {
+        if (cashFlows == null || cashFlows.size() < 2) return 0.0;
+
+        LocalDate start = cashFlows.stream().map(CashFlow::getDate).min(LocalDate::compareTo).orElse(LocalDate.now());
+        boolean hasPositive = cashFlows.stream().anyMatch(cf -> cf.getAmount() > 0);
+        boolean hasNegative = cashFlows.stream().anyMatch(cf -> cf.getAmount() < 0);
+        if (!hasPositive || !hasNegative) return 0.0;
+
+        double rate = 0.10;
+        for (int i = 0; i < 100; i++) {
+            double f = xnpv(rate, cashFlows, start);
+            double df = xnpvDerivative(rate, cashFlows, start);
+            if (Math.abs(df) < 1e-12) break;
+            double next = rate - f / df;
+            if (Double.isNaN(next) || Double.isInfinite(next) || next <= -0.999999) break;
+            if (Math.abs(next - rate) < 1e-7) {
+                rate = next;
+                break;
+            }
+            rate = next;
+        }
+        return rate * 100.0;
+    }
+
+    private double xnpv(double rate, List<CashFlow> cashFlows, LocalDate start) {
+        double total = 0.0;
+        for (CashFlow cf : cashFlows) {
+            long days = ChronoUnit.DAYS.between(start, cf.getDate());
+            double yearFrac = days / 365.25;
+            total += cf.getAmount() / Math.pow(1.0 + rate, yearFrac);
+        }
+        return total;
+    }
+
+    private double xnpvDerivative(double rate, List<CashFlow> cashFlows, LocalDate start) {
+        double total = 0.0;
+        for (CashFlow cf : cashFlows) {
+            long days = ChronoUnit.DAYS.between(start, cf.getDate());
+            double yearFrac = days / 365.25;
+            total += -yearFrac * cf.getAmount() / Math.pow(1.0 + rate, yearFrac + 1.0);
+        }
+        return total;
+    }
+
+    private static class CashFlow {
+        private final LocalDate date;
+        private final double amount;
+
+        CashFlow(LocalDate date, double amount) {
+            this.date = date;
+            this.amount = amount;
+        }
+
+        LocalDate getDate() {
+            return date;
+        }
+
+        double getAmount() {
+            return amount;
+        }
     }
 
     private static class UnitChange {
@@ -370,32 +466,29 @@ public class PortfolioService {
         return portfolioRepository.findByUserId(userId).orElseGet(() -> updatePortfolio(userId));
     }
 
+    @Transactional(readOnly = true)
     public String generateCsvExport(Long userId) {
-        PortfolioDTO dto = computeDetailedPortfolio(userId);
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> investments = investmentRepository.findByUserId(userId);
+        
         StringBuilder csv = new StringBuilder();
+        csv.append("Scheme Name,Investment Type,Amount,Units,Buy Date,NAV at Buy,Current NAV,Current Value\n");
         
-        // Header
-        csv.append("Fund Name,Total Units,Invested Amount,Current Value,Latest NAV,Return %,Profit/Loss\n");
-        
-        // Rows
-        for (HoldingDTO holding : dto.getActiveHoldings()) {
-            csv.append(String.format("\"%s\",%.4f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
-                    holding.getFundName(),
-                    holding.getTotalUnits(),
-                    holding.getInvestedAmount(),
-                    holding.getCurrentValue(),
-                    holding.getLatestNav(),
-                    holding.getReturnPercentage(),
-                    holding.getProfitLoss()));
+        if (investments != null) {
+            for (Investment inv : investments) {
+                String scheme = inv.getSchemeName() != null ? inv.getSchemeName().replace(",", " ") : "N/A";
+                String type = inv.getInvestmentType() != null ? inv.getInvestmentType() : "N/A";
+                double amount = inv.getAmount() != null ? inv.getAmount() : 0.0;
+                double units = inv.getUnits() != null ? inv.getUnits() : 0.0;
+                String buyDate = inv.getBuyDate() != null ? inv.getBuyDate().toString() : "N/A";
+                double navAtBuy = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 0.0;
+                double currentNav = inv.getCurrentNav() != null ? inv.getCurrentNav() : 0.0;
+                double currentValue = units * currentNav;
+
+                csv.append(String.format("%s,%s,%.2f,%.4f,%s,%.4f,%.4f,%.2f\n", 
+                    scheme, type, amount, units, buyDate, navAtBuy, currentNav, currentValue));
+            }
         }
-        
-        // Summary Footer
-        csv.append(String.format("\nSummary,,%.2f,%.2f,,%.2f,%.2f\n",
-                dto.getTotalInvested(),
-                dto.getPortfolioValue(),
-                dto.getReturnPercentage(),
-                dto.getProfitLoss()));
-        
         return csv.toString();
     }
 
@@ -409,4 +502,38 @@ public class PortfolioService {
             return BigDecimal.ZERO.setScale(scale, RoundingMode.HALF_UP);
         }
     }
+
+    private double fallbackNav(Investment inv) {
+        if (inv == null) return 0.0;
+        if (inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0) return inv.getNavAtBuy();
+        if (isUsableNav(inv.getCurrentNav(), inv)) return inv.getCurrentNav();
+        return 0.0;
+    }
+
+    private double fallbackNavForFund(List<Investment> investments, Long fundId) {
+        if (investments == null || fundId == null) return 0.0;
+        for (Investment inv : investments) {
+            if (fundId.equals(inv.getFundId())) {
+                double nav = fallbackNav(inv);
+                if (nav > 0) return nav;
+            }
+        }
+        return 0.0;
+    }
+
+    private boolean isUsableNav(Double nav, Investment inv) {
+        if (nav == null || nav <= 0) return false;
+        double navAtBuy = inv != null && inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 0.0;
+        // Protect against fallback sentinel NAV=1 from external API failures.
+        return !(nav <= 1.000001 && navAtBuy > 1.5);
+    }
+
+    private Investment findFirstInvestmentByFund(List<Investment> investments, Long fundId) {
+        if (investments == null || fundId == null) return null;
+        for (Investment inv : investments) {
+            if (fundId.equals(inv.getFundId())) return inv;
+        }
+        return null;
+    }
 }
+
