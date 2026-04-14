@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FiEdit2, FiTrash2, FiTarget, FiPlus, FiX } from 'react-icons/fi';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { FiEdit2, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
 import axios from 'axios';
+import InfoHint from '../components/InfoHint';
 import '../styles/GoalPlanning.css';
 
 export default function GoalPlanning({ user, investments, getCurrentValue, currency = 'INR' }) {
@@ -41,7 +42,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
 
 
-    const fetchGoals = async () => {
+    const fetchGoals = useCallback(async () => {
         if (!user) return;
         const userId = user.userId || user.id;
         const token = localStorage.getItem('jwt_token');
@@ -53,11 +54,14 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         } catch (error) {
             console.error("Failed to fetch goals", error);
         }
-    };
+    }, [user, API_BASE]);
 
     useEffect(() => {
-        fetchGoals();
-    }, [user]);
+        const timer = setTimeout(() => {
+            fetchGoals();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [fetchGoals]);
 
     const investmentIdOf = (inv) => String(inv?.investment_id || inv?.id || inv?.investmentId);
 
@@ -323,27 +327,33 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     return (
         <div className="goal-planning-container">
-            <h1 className="goal-planning-title">Goal Planning Page</h1>
+            <h1 className="goal-planning-title">
+                Goal Planning Page
+                <InfoHint text="Create goals, set target amount/year, and link investments to track progress automatically." />
+            </h1>
 
             {/* Form Section */}
             <div className="goal-card" style={{ position: 'relative', zIndex: 10 }}>
                 <div className="goal-form">
                     <div className="goal-input-group">
-                        <label>Goal Name</label>
+                        <label>Goal Name <InfoHint text="Example: Emergency Fund, Dream Home, Retirement." /></label>
                         <input type="text" className="goal-input" name="name"
                             placeholder="e.g. Dream Home, Retirement"
                             value={form.name} onChange={handleInput} />
                     </div>
 
                     <div className="goal-input-group">
-                        <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
+                        <label>
+                            Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})
+                            <InfoHint text="Set how much you want to accumulate by the target year." />
+                        </label>
                         <input type="text" className="goal-input" name="amount"
                             placeholder="e.g. 5,00,000"
                             value={formatIndian(form.amount)} onChange={handleInput} />
                     </div>
 
                     <div className="goal-input-group">
-                        <label>Target Year</label>
+                        <label>Target Year <InfoHint text="Choose your expected completion year for this goal." /></label>
                         <select className="goal-select" name="year"
                             value={form.year} onChange={handleInput}>
                             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -351,7 +361,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                     </div>
 
                     <div className="goal-input-group" style={{ position: 'relative' }} ref={dropdownRef}>
-                        <label>Link Investments</label>
+                        <label>Link Investments <InfoHint text="Only active investments are shown. Linked assets count toward goal progress." /></label>
                         <div className="custom-multiselect" onClick={() => setDropdownOpen(!dropdownOpen)}>
                             <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
                                 {form.linkedInvestments.length === 0

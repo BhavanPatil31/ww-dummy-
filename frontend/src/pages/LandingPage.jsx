@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
-function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
+function LandingPage({ openLogin, user, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -32,6 +32,9 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
       <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-container">
           <div className="logo-container">
+            <div className="logo-icon-small">
+              <img src="/logo.png" alt="WealthWise Logo" style={{ width: '38px', height: '38px', borderRadius: '6px', objectFit: 'cover' }} />
+            </div>
             <h2 className="brand-title">WealthWise</h2>
           </div>
 
@@ -232,7 +235,7 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
           <div className="social-icons">
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Twitter"><FiTwitter /></a>
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Instagram"><FiInstagram /></a>
-            <a href="mailto:shankarrao0420@gmail.com" className="social-circle" title="Email Us"><FiMail /></a>
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=shankarrao0420@gmail.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Email Us"><FiMail /></a>
           </div>
         </div>
       </footer>

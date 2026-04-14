@@ -149,6 +149,20 @@ public class InvestmentService {
     }
 
     @Transactional
+    public void deleteAllInvestments(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> userInvestments = investmentRepository.findByUserId(userId);
+        for (Investment inv : userInvestments) {
+            Long investmentId = inv.getInvestmentId();
+            if (investmentId != null) {
+                investmentRepository.deleteGoalInvestmentsByInvestmentId(investmentId);
+            }
+        }
+        investmentRepository.deleteByUserId(userId);
+        portfolioService.updatePortfolio(userId);
+    }
+
+    @Transactional
     public Investment sellInvestment(Long id, LocalDate sellDate) {
         return sellInvestment(id, sellDate, null);
     }

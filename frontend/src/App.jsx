@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-import UserProfile from "./pages/UserProfile";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 
@@ -26,12 +25,17 @@ function App() {
 
     const [theme, setTheme] = useState("dark");
 
+    const [currency, setCurrency] = useState(() => {
+        const saved = localStorage.getItem("wealthwise_currency");
+        return saved ? saved : "INR";
+    });
+
     const [currentPage, setCurrentPage] = useState(() => {
         try {
             const savedPage = localStorage.getItem("wealthwise_current_page");
             if (savedPage) return savedPage;
             return localStorage.getItem("jwt_token") ? "dashboard" : "home";
-        } catch (e) {
+        } catch {
             return "home";
         }
     });
@@ -54,12 +58,17 @@ function App() {
         localStorage.setItem("wealthwise_current_page", currentPage);
     }, [currentPage]);
 
+    useEffect(() => {
+        localStorage.setItem("wealthwise_currency", currency);
+    }, [currency]);
+
     // ✅ 3. Logout logic
     const handleLogout = () => {
         localStorage.removeItem("jwt_token");
         localStorage.removeItem("wealthwise_user");
         localStorage.removeItem("wealthwise_current_page");
         localStorage.removeItem("activeView");
+        localStorage.removeItem("wealthwise_currency"); // Optional: clear currency on logout? Maybe keep it.
         setCurrentUser(null);
         setCurrentPage("home");
     };
@@ -82,6 +91,8 @@ function App() {
                     onProfileUpdate={handleProfileUpdate}
                     theme={theme}
                     setTheme={setTheme}
+                    currency={currency}
+                    setCurrency={setCurrency}
                 />
 
             /* LANDING PAGE */
@@ -92,6 +103,7 @@ function App() {
                     onLogout={handleLogout}
                     theme={theme}
                     setTheme={setTheme}
+                    currency={currency}
                 />
             )}
 

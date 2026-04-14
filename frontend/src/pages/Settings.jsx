@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
     FiShield, FiBell, FiMonitor, FiLock,
-    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle
+    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle, FiAlertTriangle
 } from 'react-icons/fi';
 import axios from 'axios';
+import InfoHint from '../components/InfoHint';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme }) {
+export default function Settings({ user, currency, setCurrency }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    
+    // Delete Account Modal State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteInput, setDeleteInput] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // 1. Security State
     const [passwords, setPasswords] = useState({
@@ -28,10 +34,7 @@ export default function Settings({ user, theme, setTheme }) {
         promo: false
     });
 
-    // 3. Appearance State
-    const [currency, setCurrency] = useState('USD');
-
-    // 4. Privacy State
+    // 3. Privacy State
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });
@@ -98,24 +101,40 @@ export default function Settings({ user, theme, setTheme }) {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        } catch (error) {
+        } catch {
             alert("Failed to export data");
         }
     };
-
-    const handleDeleteAccount = async () => {
-        if (!window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) return;
+    
+    const handleResetPortfolio = async () => {
+        if (!window.confirm("Are you sure you want to delete ALL your investments? This action cannot be undone.")) return;
         
         try {
             const token = localStorage.getItem('jwt_token');
             const headers = { Authorization: `Bearer ${token}` };
             const uid = user?.userId || user?.id;
+            await axios.delete(`http://localhost:8088/api/investments/user/${uid}/all`, { headers });
+            alert("Portfolio reset successfully.");
+            window.location.reload(); 
+        } catch (error) {
+            alert(error.response?.data?.error || "Failed to reset portfolio.");
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const headers = { Authorization: `Bearer ${token}` };
+            const uid = user?.userId || user?.id;
             await axios.delete(`http://localhost:8088/api/auth/delete/${uid}`, { headers });
-            alert("Account deleted securely.");
             localStorage.clear();
             window.location.reload();
         } catch (error) {
             alert(error.response?.data?.error || "Failed to delete account.");
+            setIsDeleting(false);
+            setShowDeleteModal(false);
+            setDeleteInput("");
         }
     };
 
@@ -139,15 +158,15 @@ export default function Settings({ user, theme, setTheme }) {
         switch (activeTab) {
             case 'security':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <div className="settings-section-header">
-                            <h2>Security & Login</h2>
+                            <h2>Security & Login <InfoHint text="Update password and review login safety options for your account." /></h2>
                             <p>Manage your password, two-factor authentication, and active sessions.</p>
                         </div>
 
                         <form className="settings-form" onSubmit={handleSave}>
                             <div className="settings-input-group">
-                                <label>Current Password</label>
+                                <label>Current Password <InfoHint text="Enter your current password to authorize this change." /></label>
                                 <div className="input-wrapper" style={{ position: 'relative' }}>
                                     <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
@@ -162,7 +181,7 @@ export default function Settings({ user, theme, setTheme }) {
                                 </div>
                             </div>
                             <div className="settings-input-group">
-                                <label>New Password</label>
+                                <label>New Password <InfoHint text="Use a strong password with letters, numbers, and symbols." /></label>
                                 <div className="input-wrapper" style={{ position: 'relative' }}>
                                     <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
@@ -177,7 +196,7 @@ export default function Settings({ user, theme, setTheme }) {
                                 </div>
                             </div>
                             <div className="settings-input-group">
-                                <label>Confirm New Password</label>
+                                <label>Confirm New Password <InfoHint text="Re-enter your new password exactly to avoid mismatch." /></label>
                                 <div className="input-wrapper" style={{ position: 'relative' }}>
                                     <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
@@ -220,14 +239,14 @@ export default function Settings({ user, theme, setTheme }) {
                                 <button onClick={handleLogoutAll} className="btn-danger" style={{ padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', background: 'transparent', border: '1px solid var(--danger-color, #ef4444)', color: 'var(--danger-color, #ef4444)' }}>Log out all</button>
                             </div>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 );
 
             case 'notifications':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <div className="settings-section-header">
-                            <h2>Notification Preferences</h2>
+                            <h2>Notification Preferences <InfoHint text="Choose which app/email alerts you want to receive." /></h2>
                             <p>Choose what updates you want to receive and how you receive them.</p>
                         </div>
 
@@ -253,15 +272,15 @@ export default function Settings({ user, theme, setTheme }) {
                                 </div>
                             ))}
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 );
 
 
             case 'privacy':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <div className="settings-section-header">
-                            <h2>Privacy & Data</h2>
+                            <h2>Privacy & Data <InfoHint text="Control profile visibility, exports, and sensitive account actions." /></h2>
                             <p>Manage your data, visibility, and account lifecycle.</p>
                         </div>
 
@@ -317,6 +336,16 @@ export default function Settings({ user, theme, setTheme }) {
                             </button>
                         </div>
 
+                        <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
+                            <div className="setting-info">
+                                <h4>Reset Portfolio</h4>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0' }}>Permanently remove all investments and transaction history.</p>
+                            </div>
+                            <button onClick={handleResetPortfolio} className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444' }}>
+                                <FiTrash2 /> Reset Portfolio
+                            </button>
+                        </div>
+
                         <div className="setting-item" style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             <div className="setting-info" style={{ marginBottom: '1rem' }}>
                                 <h4 style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FiTrash2 /> Danger Zone</h4>
@@ -324,11 +353,11 @@ export default function Settings({ user, theme, setTheme }) {
                                     Permanently delete your account and all associated data. This action is immediate and irreversible.
                                 </p>
                             </div>
-                            <button onClick={handleDeleteAccount} className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                            <button onClick={() => setShowDeleteModal(true)} className="btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
                                 Delete Account
                             </button>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 );
 
             default: return null;
@@ -371,6 +400,112 @@ export default function Settings({ user, theme, setTheme }) {
                     {renderContent()}
                 </AnimatePresence>
             </div>
+
+            {/* DELETE ACCOUNT MODAL */}
+            <AnimatePresence>
+                {showDeleteModal && (
+                    <Motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.75)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 9999
+                        }}
+                    >
+                        <Motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                            style={{
+                                background: '#0f172a',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '16px',
+                                padding: '32px',
+                                width: '90%',
+                                maxWidth: '420px',
+                                boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+                            }}
+                        >
+                            <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444', fontSize: '1.25rem' }}>
+                                <FiAlertTriangle size={22} /> Delete Account
+                            </h3>
+                            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                                <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>
+                                    This action <strong>cannot</strong> be undone. This will permanently delete your account, 
+                                    portfolio data, and remove all associations.
+                                </p>
+                            </div>
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', color: '#cbd5e1' }}>
+                                Please type <strong style={{ userSelect: 'none', color: '#f8fafc' }}>{user?.email}</strong> to confirm.
+                            </label>
+                            <input 
+                                type="text"
+                                value={deleteInput}
+                                onChange={(e) => setDeleteInput(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    background: 'rgba(0, 0, 0, 0.2)',
+                                    color: '#f8fafc',
+                                    marginBottom: '28px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                    fontSize: '1rem'
+                                }}
+                                autoFocus
+                            />
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button 
+                                    disabled={deleteInput !== user?.email || isDeleting}
+                                    onClick={handleDeleteAccount}
+                                    style={{
+                                        flex: 2, 
+                                        padding: '12px',
+                                        background: deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.15)',
+                                        color: deleteInput === user?.email ? '#fff' : 'rgba(255,255,255,0.4)',
+                                        border: '1px solid ' + (deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.2)'), 
+                                        borderRadius: '8px', 
+                                        cursor: deleteInput === user?.email ? 'pointer' : 'not-allowed',
+                                        fontWeight: '600',
+                                        transition: 'all 0.2s ease',
+                                        fontSize: '0.95rem'
+                                    }}
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Delete this account'}
+                                </button>
+                                <button 
+                                    onClick={() => { setShowDeleteModal(false); setDeleteInput(""); }}
+                                    style={{
+                                        flex: 1, 
+                                        padding: '12px',
+                                        background: 'transparent',
+                                        color: '#cbd5e1',
+                                        border: '1px solid rgba(255,255,255,0.1)', 
+                                        borderRadius: '8px', 
+                                        cursor: 'pointer',
+                                        fontWeight: '500',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
+                                    onMouseOut={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </Motion.div>
+                    </Motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
+

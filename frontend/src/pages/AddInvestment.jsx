@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
     FiCalendar, FiSearch, FiTrendingUp, FiInfo,
     FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiDollarSign
 } from 'react-icons/fi';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
+import InfoHint from '../components/InfoHint';
 
 import '../styles/AddInvestment.css';
 
@@ -88,27 +89,6 @@ const FALLBACK_NAV_BY_CODE = {
     "126503": 104.63, "130322": 144.21, "130324": 72.19, "119551": 31.42, "120318": 73.58
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const getCategory = (name = '') => {
-    const n = name.toLowerCase();
-    if (n.includes('small cap') || n.includes('smallcap'))      return 'Small Cap';
-    if (n.includes('midcap') || n.includes('mid cap'))          return 'Mid Cap';
-    if (n.includes('large cap') || n.includes('bluechip') ||
-        n.includes('top 100') || n.includes('frontline'))       return 'Large Cap';
-    if (n.includes('flexi cap') || n.includes('flexicap'))      return 'Flexi Cap';
-    if (n.includes('index') || n.includes('nifty') ||
-        n.includes('sensex'))                                    return 'Index Funds';
-    if (n.includes('debt') || n.includes('liquid') ||
-        n.includes('bond') || n.includes('gilt'))               return 'Debt Funds';
-    if (n.includes('elss') || n.includes('tax'))                return 'ELSS / Tax Saving';
-    return 'Other';
-};
-
-const formatINR = (val) =>
-    new Intl.NumberFormat('en-IN', {
-        style: 'currency', currency: 'INR', maximumFractionDigits: 0
-    }).format(val || 0);
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
     // pick icon dynamically
@@ -156,7 +136,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
     // ── Submission ─────────────────────────────────────────────────────────
     const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
-    const [toastMsg, setToastMsg] = useState('');
+    const [toastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
     const navValue      = parseFloat(formData.nav);
@@ -408,10 +388,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     // ─────────────────────────────────────────────────────────────────────
     // 5. HANDLERS
     // ─────────────────────────────────────────────────────────────────────
-    const showToast = (msg) => {
-        setToastMsg(msg);
-        setTimeout(() => setToastMsg(''), 4500);
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -587,7 +563,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 <div className="form-group dropdown-container" ref={suggestionRef}>
                                     <label>
                                         Fund Name
-                                        <FiInfo className="info-icon" title="Search from full AMFI fund list" />
+                                        <InfoHint text="Type scheme name or code and select one from suggestions. This links the correct NAV history." />
                                     </label>
                                     <div className="input-wrapper">
                                         <FiSearch className="input-icon" />
@@ -654,6 +630,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     <div className="form-group">
                                         <label>
                                             Amount ({currencySymbols[currency] || "$"})
+                                            <InfoHint text="Enter the amount invested in one installment (for SIP) or full amount (for lumpsum)." />
                                         </label>
 
                                         <div className="input-wrapper">
@@ -673,7 +650,10 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     </div>
 
                                     <div className="form-group">
-                                        <label>NAV at Purchase Date</label>
+                                        <label>
+                                            NAV at Purchase Date
+                                            <InfoHint text="This is auto-fetched based on selected fund and date. It is used to compute units." />
+                                        </label>
                                         <div className="input-wrapper">
                                             <FiTrendingUp className="input-icon" />
                                             <input
@@ -726,6 +706,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     <div className="form-group">
                                         <label>
                                             {type === 'SIP' ? 'SIP Start Date' : 'Purchase Date'}
+                                            <InfoHint text="Choose the actual first investment date. NAV will be resolved from this date." />
                                         </label>
                                         <div className="input-wrapper">
                                             <FiCalendar className="input-icon" />
@@ -867,6 +848,8 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         </div>
     );
 }
+
+
 
 
 

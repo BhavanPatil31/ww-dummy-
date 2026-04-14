@@ -29,9 +29,11 @@ public class NavService {
 
     private static final String API_URL = "https://api.mfapi.in/mf/";
     private static final DateTimeFormatter MF_DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final String ALL_FUNDS_URL = "https://api.mfapi.in/mf";
 
     // In-memory cache for fund data
     private final Map<String, MfApiResponse> fundCache = new ConcurrentHashMap<>();
+    private volatile List<Map<String, Object>> allFundsCache = null;
 
     private static final class FallbackFund {
         private final String code;
@@ -95,6 +97,7 @@ public class NavService {
 
     public List<Map<String, Object>> searchFunds(String query) {
         String normalized = query == null ? "" : query.trim();
+        if (normalized.isEmpty()) return getAllFunds();
         String url = "https://api.mfapi.in/mf/search?q=" + normalized;
 
         try {
@@ -105,14 +108,37 @@ public class NavService {
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
             List<Map<String, Object>> body = response.getBody();
-            if (body != null && !body.isEmpty()) {
-                return body;
-            }
+            return body != null ? body : Collections.emptyList();
         } catch (Exception e) {
             System.err.println("NavService: search API unavailable, using fallback schemes. Reason: " + e.getMessage());
+            return getFallbackSearchResults(normalized);
+        }
+    }
+
+    public List<Map<String, Object>> getAllFunds() {
+        if (allFundsCache != null && !allFundsCache.isEmpty()) {
+            return allFundsCache;
         }
 
-        return getFallbackSearchResults(normalized);
+        try {
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    ALL_FUNDS_URL,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            List<Map<String, Object>> body = response.getBody();
+            if (body != null && !body.isEmpty()) {
+                List<Map<String, Object>> normalized = body.stream()
+                        .map(this::normalizeFundRow)
+                        .collect(Collectors.toList());
+                allFundsCache = normalized;
+                return normalized;
+            }
+        } catch (Exception e) {
+            System.err.println("NavService: all-funds API unavailable, using fallback schemes. Reason: " + e.getMessage());
+        }
+        return getFallbackSearchResults("");
     }
 
     public Double getLatestNav(String fundId) {
@@ -255,5 +281,18 @@ public class NavService {
         }
 
         return result;
+    }
+
+    private Map<String, Object> normalizeFundRow(Map<String, Object> row) {
+        Map<String, Object> normalized = new HashMap<>(row);
+        Object schemeCode = normalized.get("schemeCode");
+        Object schemeName = normalized.get("schemeName");
+        if (schemeCode != null) {
+            normalized.put("code", String.valueOf(schemeCode));
+        }
+        if (schemeName != null) {
+            normalized.put("name", String.valueOf(schemeName));
+        }
+        return normalized;
     }
 }

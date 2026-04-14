@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.investment.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDate;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -29,6 +29,10 @@ public class Investment {
     @Column(name = "investment_type")
     @JsonProperty("investment_type")
     private String investmentType;
+    
+    @Column(name = "status")
+    @JsonProperty("status")
+    private String status = "ACTIVE";  
 
     @JsonProperty("amount")
     private Double amount;
@@ -51,10 +55,6 @@ public class Investment {
     @Column(name = "end_date")
     @JsonProperty("end_date")
     private LocalDate endDate;
-
-    @Column(name = "status")
-    @JsonProperty("status")
-    private String status;
 
     @Column(name = "nav_at_buy")
     @JsonProperty("nav_at_buy")
@@ -104,6 +104,9 @@ public class Investment {
     @PrePersist
     public void onCreate() {
         this.createdDate = LocalDate.now();
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "ACTIVE";
+        }
     }
 
     public Long getInvestmentId() {
@@ -144,6 +147,14 @@ public class Investment {
 
     public void setInvestmentType(String investmentType) {
         this.investmentType = investmentType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Double getAmount() {
@@ -192,14 +203,6 @@ public class Investment {
 
     public void setEndDate(LocalDate endDate) {
         this.endDate = endDate;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 
     public Double getNavAtBuy() {

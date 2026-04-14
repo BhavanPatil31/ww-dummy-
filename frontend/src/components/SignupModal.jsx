@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import InfoHint from "./InfoHint";
 import "../styles/AuthModal.css";
 
 function SignupModal({ closeSignup, openLogin }) {
@@ -99,7 +100,10 @@ function SignupModal({ closeSignup, openLogin }) {
                 {step === "signup" && (
                     <form onSubmit={handleSignup}>
                         <div className="input-group">
-                            <label className="input-label">Full Name</label>
+                            <label className="input-label">
+                                Full Name
+                                <InfoHint text="Enter your real name. This helps personalize your dashboard and reports." />
+                            </label>
                             <input
                                 type="text"
                                 className="modal-input"
@@ -111,7 +115,10 @@ function SignupModal({ closeSignup, openLogin }) {
                         </div>
 
                         <div className="input-group">
-                            <label className="input-label">Email Address</label>
+                            <label className="input-label">
+                                Email Address
+                                <InfoHint text="We will send OTP and security updates to this email." />
+                            </label>
                             <input
                                 type="email"
                                 className="modal-input"
@@ -123,7 +130,10 @@ function SignupModal({ closeSignup, openLogin }) {
                         </div>
 
                         <div className="input-group">
-                            <label className="input-label">Create Password</label>
+                            <label className="input-label">
+                                Create Password
+                                <InfoHint text="Use at least 6 characters. Combine letters, numbers, and symbols for better security." />
+                            </label>
                             <div className="password-input-wrapper">
                                 <input
                                     type={showPassword ? "text" : "password"}
@@ -160,7 +170,10 @@ function SignupModal({ closeSignup, openLogin }) {
                         </div>
 
                         <div className="input-group">
-                            <label className="input-label">OTP</label>
+                            <label className="input-label">
+                                OTP
+                                <InfoHint text="Enter the OTP from your email to activate your account." />
+                            </label>
                             <input
                                 type="text"
                                 className="modal-input"

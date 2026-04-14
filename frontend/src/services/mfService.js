@@ -16,10 +16,7 @@ export const getAllFunds = async () => {
     allFundsPromise = (async () => {
         const fetchWithRetry = async (retries = 2) => {
             try {
-                const response = await axios.get(`${NAV_BASE_URL}/search`, {
-                    params: { q: '' },
-                    timeout: 15000
-                });
+                const response = await axios.get(`${NAV_BASE_URL}/all`, { timeout: 15000 });
                 if (response.data && Array.isArray(response.data)) {
                     allFundsCache = response.data;
                     return allFundsCache;

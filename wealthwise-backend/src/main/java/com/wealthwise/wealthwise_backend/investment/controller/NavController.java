@@ -29,6 +29,11 @@ public class NavController {
         return navService.searchFunds(q);
     }
 
+    @GetMapping("/all")
+    public List<Map<String, Object>> allFunds() {
+        return navService.getAllFunds();
+    }
+
     @GetMapping("/history/{fundId}")
     public MfApiResponse history(@PathVariable Long fundId) {
         return navService.getFundHistory(String.valueOf(fundId));

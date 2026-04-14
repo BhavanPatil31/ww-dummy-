@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import {
     FiBriefcase, FiEye, FiEdit2, FiTrash2,
     FiTrendingUp, FiTrendingDown, FiX, FiCheckCircle,
     FiDollarSign, FiCalendar, FiTag, FiActivity, FiAlertTriangle, FiRefreshCw
 } from 'react-icons/fi';
+import InfoHint from '../components/InfoHint';
 import {
     ComposedChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
@@ -47,7 +48,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
     const [chartMode, setChartMode] = useState('absolute'); // 'absolute' or 'percentage'
 
-    const fetchInvestments = async () => {
+    const fetchInvestments = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem("jwt_token");
@@ -81,11 +82,11 @@ export default function Portfolio({ user, currency = 'INR' }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         if (user) fetchInvestments();
-    }, [user]);
+    }, [user, fetchInvestments]);
 
     // ── Helpers ────────────────────────────────────────────────
     const formatCurrency = (val) =>
@@ -543,6 +544,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
 
             {/* ── Page Header ── */}
             <div className="portfolio-page-header" style={{ justifyContent: 'flex-end' }}>
+                <InfoHint text="Portfolio shows active holdings, live value, returns, and actions like edit/sell/delete." />
                 <button className="btn-refresh" onClick={handleFullRefresh} disabled={loading}>
                     <FiRefreshCw className={loading ? 'spin' : ''} /> Refresh All
                 </button>
@@ -836,7 +838,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
                                             axisLine={false} tickLine={false} />
                                         <Tooltip content={<AllocTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)', rx: 6 }} />
-                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v, entry) => `${barData.find(b => b.value === v)?.pct || ''}%` }}>
+                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v) => `${barData.find(b => b.value === v)?.pct || ''}%` }}>
                                             {barData.map((entry, i) => (
                                                 <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
                                             ))}
@@ -854,7 +856,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
             {investments.length > 0 && (() => {
                 const sorted_by_ret = [...investments].sort((a, b) => getReturnPct(b) - getReturnPct(a));
                 const winners = sorted_by_ret.slice(0, 3);
-                const losers = sorted_by_ret.slice().reverse().slice(0, 3).filter(i => getReturnPct(i) < getReturnPct(winners[winners.length - 1]));
                 const types = [...new Set(investments.map(i => i.investment_type || 'Other'))];
                 const avgReturn = investments.length > 0 ? investments.reduce((s, i) => s + getReturnPct(i), 0) / investments.length : 0;
                 const winRate = investments.length > 0 ? Math.round((investments.filter(i => getReturnPct(i) >= 0).length / investments.length) * 100) : 0;
@@ -1000,7 +1001,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
                         </thead>
                         <tbody>
                             {sorted.map((inv, index) => {
-                                const currentVal = getCurrentValue(inv);
                                 const returnPct = getReturnPct(inv);
                                 const isPositive = returnPct >= 0;
                                 return (

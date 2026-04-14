@@ -18,9 +18,13 @@ import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
 import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
+import InfoHint from '../components/InfoHint';
 import '../styles/Dashboard.css';
 
+GlobalWorkerOptions.workerSrc = workerSrc;
+
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
+const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings'];
 
 const normalizeCurrency = (value) => {
     const code = String(value || '').toUpperCase();
@@ -45,7 +49,6 @@ const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
 };
 
 export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency = 'INR', setCurrency }) {
-    const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings'];
     const safeCurrency = normalizeCurrency(currency);
     const [investments, setInvestments] = useState([]);
     const [dashboardData, setDashboardData] = useState(null);
@@ -53,7 +56,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [historyData, setHistoryData] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [loading, setLoading] = useState(true);
     const [timeFrame, setTimeFrame] = useState('1M');
     const [activeView, setActiveView] = useState(() => {
         const stored = localStorage.getItem('activeView');
@@ -76,42 +78,42 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     const [loginSuccessMsg, setLoginSuccessMsg] = useState("");
     useEffect(() => {
-        const msg = localStorage.getItem("showLoginToast");
-        if (msg) {
-            setLoginSuccessMsg(msg);
-            localStorage.removeItem("showLoginToast");
-            setTimeout(() => setLoginSuccessMsg(""), 3500);
-        }
+        const timer = setTimeout(() => {
+            const msg = localStorage.getItem("showLoginToast");
+            if (msg) {
+                setLoginSuccessMsg(msg);
+                localStorage.removeItem("showLoginToast");
+                setTimeout(() => setLoginSuccessMsg(""), 3500);
+            }
+        }, 0);
+        return () => clearTimeout(timer);
     }, []);
 
     useEffect(() => {
-        if (!VALID_VIEWS.includes(activeView)) {
-            setActiveView('dashboard');
-            return;
-        }
-        localStorage.setItem('activeView', activeView);
+        const safeView = VALID_VIEWS.includes(activeView) ? activeView : 'dashboard';
+        localStorage.setItem('activeView', safeView);
     }, [activeView]);
 
-    const formatCurrency = (val) =>
+    const formatCurrency = useCallback((val) =>
         new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
             currency: safeCurrency,
             maximumFractionDigits: 0
-        }).format(val || 0);
+        }).format(val || 0), [safeCurrency]);
 
     const fmt = (val) =>
         new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
             maximumFractionDigits: 0
         }).format(Number(val) || 0);
 
-    const fmtShort = (val) => {
+    const fmtShort = useCallback((val) => {
         const symbol = safeCurrency === 'INR' ? '₹' : safeCurrency === 'USD' ? '$' : safeCurrency === 'EUR' ? '€' : '£';
         if (safeCurrency === 'INR') {
             if (val >= 10000000) return `${symbol}${(val / 10000000).toFixed(2)}Cr`;
             if (val >= 100000) return `${symbol}${(val / 100000).toFixed(2)}L`;
         }
         return formatCurrency(val);
-    };
+    }, [safeCurrency, formatCurrency]);
     const formatDate = (d) => {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
@@ -146,16 +148,16 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
         if (!user) return;
-        setLoading(true);
         const token = localStorage.getItem('jwt_token');
         const userId = user?.userId || user?.id;
         const headers = { Authorization: `Bearer ${token}` };
-        try {
-            let invData = [];
+        let invData = [];
             try {
                 const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
                 invData = r.data || [];
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
 
             let dbData = null;
             try {
@@ -163,20 +165,26 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 dbData = r.data;
                 if (dbData && dbData.profitLoss === undefined)
                     dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
 
             let histData = [];
             try {
                 const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
                 histData = r.data || [];
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
 
             let goalsData = [];
             try {
                 const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
                 goalsData = r.data || [];
-            } catch { }
+            } catch {
+                // optional source endpoint
+            }
 
             // Strict separation: If no investments pass the active filter, force graph to zero
             const hasActive = (invData || []).some(inv => {
@@ -229,14 +237,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             setDashboardData(dbData);
             setGoals(goalsData);
             setHistoryData(resolvedHistory);
-        } finally {
-            setLoading(false);
-        }
     }, [user, timeFrame, getCurrentValue]);
 
     const activeInvestments = useMemo(() => {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
         return (investments || []).filter(inv => {
             // New strict logic: Hide if it has an end date OR it is sold
             if (inv.end_date || inv.endDate) return false;
@@ -248,9 +251,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
-            fetchAllData();
+            const timer = setTimeout(() => {
+                fetchAllData();
+            }, 0);
+            return () => clearTimeout(timer);
         }
-    }, [user, activeView, timeFrame]);
+    }, [user, activeView, fetchAllData]);
 
     // Notifications
     const fetchNotifications = useCallback(async () => {
@@ -263,14 +269,21 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
             setNotifications(res.data || []);
             setUnreadCount((res.data || []).filter(n => !n.read).length);
-        } catch { }
+        } catch {
+            // optional notifications endpoint
+        }
     }, [user]);
 
     useEffect(() => {
         if (user) {
-            fetchNotifications();
+            const timer = setTimeout(() => {
+                fetchNotifications();
+            }, 0);
             const id = setInterval(fetchNotifications, 15000);
-            return () => clearInterval(id);
+            return () => {
+                clearTimeout(timer);
+                clearInterval(id);
+            };
         }
     }, [user, fetchNotifications]);
 
@@ -316,7 +329,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const parseCASPDF = async (file) => {
         try {
             const arrayBuffer = await file.arrayBuffer();
-            GlobalWorkerOptions.workerSrc = workerSrc;
             const pdf = await getDocument({ data: arrayBuffer }).promise;
             let allText = '';
 
@@ -397,7 +409,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             return trimmed.length >= 5 && !/(Fund Name|Buy Date|Simulated Sell|Gain\/Loss|Type)/i.test(trimmed);
         };
 
-        const fundPattern = /([A-Za-z0-9\s&\-\(\)\.,'\/]+?)\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?\s*(?:Rs\.?|₹)\s*[\d,]+)\s+(LTCG|STCG)/gi;
+        const fundPattern = /([A-Za-z0-9\s&\-().,'/]+?)\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?\s*(?:Rs\.?|₹)\s*[\d,]+)\s+(LTCG|STCG)/gi;
 
         const cleanText = (source) => source.replace(/\s+/g, ' ').trim();
 
@@ -593,7 +605,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 color: idx % 2 === 1 ? 'blue' : '',
             };
         });
-    }, [goals, investments, getCurrentValue]);
+    }, [goals, investments, getCurrentValue, fmtShort]);
 
     const insights = useMemo(() => {
         const out = [];
@@ -618,7 +630,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             out.push({ type: 'green', icon: <FiPlus />, text: 'Add more investments to unlock full diversification analytics.' });
         }
         return out.slice(0, 3);
-    }, [investments, metrics]);
+    }, [activeInvestments, investments.length, metrics.returnPct]);
 
     const profitPill = () => {
         const { profitLoss, returnPct } = metrics;
@@ -694,6 +706,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                 : activeView === 'settings' ? 'Configure application preferences and security'
                                                     : activeView === 'goals' ? 'Set and track your financial milestones'
                                                         : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            <InfoHint text="Use the left menu to switch modules. Hover or click info icons on pages to see short guidance." />
                         </p>
                     </div>
                     <div className="header-actions">
