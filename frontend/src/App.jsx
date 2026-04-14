@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-import UserProfile from "./pages/UserProfile";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 
@@ -36,7 +35,7 @@ function App() {
             const savedPage = localStorage.getItem("wealthwise_current_page");
             if (savedPage) return savedPage;
             return localStorage.getItem("jwt_token") ? "dashboard" : "home";
-        } catch (e) {
+        } catch {
             return "home";
         }
     });

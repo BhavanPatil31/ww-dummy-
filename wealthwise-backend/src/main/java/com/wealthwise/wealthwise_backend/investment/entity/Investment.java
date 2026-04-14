@@ -32,7 +32,7 @@ public class Investment {
     
     @Column(name = "status")
     @JsonProperty("status")
-    private String status = "ACTIVE";
+    private String status = "ACTIVE";  
 
     @JsonProperty("amount")
     private Double amount;
@@ -104,6 +104,9 @@ public class Investment {
     @PrePersist
     public void onCreate() {
         this.createdDate = LocalDate.now();
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "ACTIVE";
+        }
     }
 
     public Long getInvestmentId() {

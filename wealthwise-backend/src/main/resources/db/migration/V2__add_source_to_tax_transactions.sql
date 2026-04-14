@@ -1,0 +1,3 @@
+ALTER TABLE tax_transactions
+ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'APP';
+

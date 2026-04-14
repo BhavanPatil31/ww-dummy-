@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import {
     FiBriefcase, FiEye, FiEdit2, FiTrash2,
     FiTrendingUp, FiTrendingDown, FiX, FiCheckCircle,
     FiDollarSign, FiCalendar, FiTag, FiActivity, FiAlertTriangle, FiRefreshCw
 } from 'react-icons/fi';
+import InfoHint from '../components/InfoHint';
 import {
     ComposedChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
@@ -47,7 +48,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
     const [chartMode, setChartMode] = useState('absolute'); // 'absolute' or 'percentage'
 
-    const fetchInvestments = async () => {
+    const fetchInvestments = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem("jwt_token");
@@ -81,11 +82,11 @@ export default function Portfolio({ user, currency = 'INR' }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         if (user) fetchInvestments();
-    }, [user]);
+    }, [user, fetchInvestments]);
 
     // ── Helpers ────────────────────────────────────────────────
     const formatCurrency = (val) =>
@@ -98,13 +99,30 @@ export default function Portfolio({ user, currency = 'INR' }) {
     const getCurrentNav = (inv) => {
         const currentNav = Number(inv.current_nav || inv.currentNav || 0);
         const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
-        if (currentNav > 0) return currentNav;
+        if (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5)) return currentNav;
         if (navAtBuy > 0) return navAtBuy;
         return 0;
     };
 
-    const getCurrentValue = (inv) => {
+    const getUnitsHeld = (inv) => {
         const units = Number(inv.units || 0);
+        const invested = Number(inv.amount_invested || inv.amount || 0);
+        const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
+        // Heal stale DB data caused by fallback NAV=1 during API outages.
+        if (units > 0) {
+            if (navAtBuy > 1.5 && invested > 0 && Math.abs(units - invested) < 0.0001) {
+                return invested / navAtBuy;
+            }
+            return units;
+        }
+        if (invested > 0 && navAtBuy > 0) {
+            return invested / navAtBuy;
+        }
+        return 0;
+    };
+
+    const getCurrentValue = (inv) => {
+        const units = getUnitsHeld(inv);
         const currentNav = getCurrentNav(inv);
         if (units > 0 && currentNav > 0) return units * currentNav;
         return Number(inv.amount_invested || inv.amount || 0);
@@ -119,10 +137,100 @@ export default function Portfolio({ user, currency = 'INR' }) {
     };
 
     // ── Aggregates ─────────────────────────────────────────────
-    const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const totalInvested = investments.reduce((s, i) => s + getInvestedAmount(i), 0);
     const totalCurrentValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
     const totalPnL = totalCurrentValue - totalInvested;
     const totalReturn = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+    const fallbackPerformance = useMemo(() => {
+        const active = (investments || []).filter(inv => !inv.end_date && inv.status !== 'SOLD' && inv.status !== 'CLOSED');
+        if (!active.length || totalCurrentValue <= 0) {
+            return { xirr: 0, cagr: 0 };
+        }
+
+        const today = new Date();
+        const cashFlows = [];
+
+        const nextDate = (d, freq) => {
+            const date = new Date(d);
+            const f = String(freq || 'Monthly').toLowerCase();
+            if (f === 'weekly') date.setDate(date.getDate() + 7);
+            else if (f === 'quarterly') date.setMonth(date.getMonth() + 3);
+            else if (f === 'yearly' || f === 'annual' || f === 'annually') date.setFullYear(date.getFullYear() + 1);
+            else date.setMonth(date.getMonth() + 1);
+            return date;
+        };
+
+        active.forEach(inv => {
+            const type = String(inv.investment_type || '').toUpperCase();
+            const amount = Number(inv.amount_invested || inv.amountInvested || inv.amount || 0);
+            const startRaw = inv.start_date || inv.startDate || inv.buy_date || inv.buyDate;
+            if (!startRaw || amount <= 0) return;
+            const start = new Date(startRaw);
+            if (isNaN(start.getTime())) return;
+
+            if (type === 'SIP') {
+                const endRaw = inv.end_date || inv.endDate;
+                const end = endRaw ? new Date(endRaw) : today;
+                let cur = new Date(start);
+                while (cur <= end && cur <= today) {
+                    cashFlows.push({ date: new Date(cur), amount: -amount });
+                    cur = nextDate(cur, inv.frequency);
+                }
+            } else {
+                cashFlows.push({ date: start, amount: -amount });
+            }
+        });
+
+        if (!cashFlows.length) return { xirr: 0, cagr: 0 };
+        cashFlows.push({ date: today, amount: totalCurrentValue });
+
+        const startDate = cashFlows.reduce((min, cf) => (cf.date < min ? cf.date : min), cashFlows[0].date);
+        const totalDays = Math.max(1, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)));
+        const years = totalDays / 365.25;
+        const cagr = totalInvested > 0 && years > 0
+            ? (Math.pow(totalCurrentValue / totalInvested, 1 / years) - 1) * 100
+            : 0;
+
+        const xnpv = (rate) => cashFlows.reduce((sum, cf) => {
+            const days = (cf.date - startDate) / (1000 * 60 * 60 * 24);
+            const yearFrac = days / 365.25;
+            return sum + (cf.amount / Math.pow(1 + rate, yearFrac));
+        }, 0);
+
+        const xnpvD = (rate) => cashFlows.reduce((sum, cf) => {
+            const days = (cf.date - startDate) / (1000 * 60 * 60 * 24);
+            const yearFrac = days / 365.25;
+            return sum + (-yearFrac * cf.amount / Math.pow(1 + rate, yearFrac + 1));
+        }, 0);
+
+        let rate = 0.1;
+        for (let i = 0; i < 100; i++) {
+            const f = xnpv(rate);
+            const df = xnpvD(rate);
+            if (Math.abs(df) < 1e-12) break;
+            const next = rate - f / df;
+            if (!Number.isFinite(next) || next <= -0.999999) break;
+            if (Math.abs(next - rate) < 1e-7) {
+                rate = next;
+                break;
+            }
+            rate = next;
+        }
+        const xirr = Number.isFinite(rate) ? rate * 100 : 0;
+
+        return { xirr, cagr: Number.isFinite(cagr) ? cagr : 0 };
+    }, [investments, totalCurrentValue, totalInvested]);
+
+    const effectiveXirr = (() => {
+        const backend = Number(portfolioSummary?.xirr || 0);
+        return Math.abs(backend) > 0.0001 ? backend : fallbackPerformance.xirr;
+    })();
+
+    const effectiveCagr = (() => {
+        const backend = Number(portfolioSummary?.cagr || 0);
+        return Math.abs(backend) > 0.0001 ? backend : fallbackPerformance.cagr;
+    })();
 
     // ── Chart Data (P&L per investment, trading-bar style) ─────
     const generateChartData = () => {
@@ -133,7 +241,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
             return (isNaN(d1) ? 0 : d1.getTime()) - (isNaN(d2) ? 0 : d2.getTime());
         });
         return sorted.map(inv => {
-            const invested = parseFloat(inv.amount || 0);
+            const invested = getInvestedAmount(inv);
             const current = getCurrentValue(inv);
             const pnl = parseFloat((current - invested).toFixed(0));
             const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
@@ -143,6 +251,16 @@ export default function Portfolio({ user, currency = 'INR' }) {
     };
 
     const chartData = generateChartData();
+    const finalChartData = useMemo(
+        () =>
+            chartData.map((entry, index) => ({
+                ...entry,
+                chartId: `F${index + 1}`,
+                performanceRange: Math.abs((entry.current || 0) - (entry.invested || 0)),
+                type: entry.pnl >= 0 ? 'Profit' : 'Loss'
+            })),
+        [chartData]
+    );
 
     const PnLTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
@@ -426,6 +544,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
 
             {/* ── Page Header ── */}
             <div className="portfolio-page-header" style={{ justifyContent: 'flex-end' }}>
+                <InfoHint text="Portfolio shows active holdings, live value, returns, and actions like edit/sell/delete." />
                 <button className="btn-refresh" onClick={handleFullRefresh} disabled={loading}>
                     <FiRefreshCw className={loading ? 'spin' : ''} /> Refresh All
                 </button>
@@ -565,11 +684,11 @@ export default function Portfolio({ user, currency = 'INR' }) {
                         </div>
                         <div className="p-summary-card">
                             <span className="p-label">XIRR</span>
-                            <span className="p-value blue">{(portfolioSummary?.xirr || 0).toFixed(2)}%</span>
+                            <span className="p-value blue">{effectiveXirr.toFixed(2)}%</span>
                         </div>
                         <div className="p-summary-card">
                             <span className="p-label">CAGR</span>
-                            <span className="p-value blue">{(portfolioSummary?.cagr || 0).toFixed(2)}%</span>
+                            <span className="p-value blue">{effectiveCagr.toFixed(2)}%</span>
                         </div>
 
                     </div>
@@ -627,7 +746,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
                                             axisLine={false} tickLine={false} />
                                         <Tooltip content={<AllocTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)', rx: 6 }} />
-                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v, entry) => `${barData.find(b => b.value === v)?.pct || ''}%` }}>
+                                        <Bar dataKey="value" radius={[4, 6, 6, 4]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 10, formatter: (v) => `${barData.find(b => b.value === v)?.pct || ''}%` }}>
                                             {barData.map((entry, i) => (
                                                 <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
                                             ))}
@@ -645,7 +764,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
             {investments.length > 0 && (() => {
                 const sorted_by_ret = [...investments].sort((a, b) => getReturnPct(b) - getReturnPct(a));
                 const winners = sorted_by_ret.slice(0, 3);
-                const losers = sorted_by_ret.slice().reverse().slice(0, 3).filter(i => getReturnPct(i) < getReturnPct(winners[winners.length - 1]));
                 const types = [...new Set(investments.map(i => i.investment_type || 'Other'))];
                 const avgReturn = investments.length > 0 ? investments.reduce((s, i) => s + getReturnPct(i), 0) / investments.length : 0;
                 const winRate = investments.length > 0 ? Math.round((investments.filter(i => getReturnPct(i) >= 0).length / investments.length) * 100) : 0;
@@ -791,7 +909,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
                         </thead>
                         <tbody>
                             {sorted.map((inv, index) => {
-                                const currentVal = getCurrentValue(inv);
                                 const returnPct = getReturnPct(inv);
                                 const isPositive = returnPct >= 0;
                                 return (
@@ -883,7 +1000,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Units Held</span>
-                                    <span className="detail-value">{parseFloat(selectedInvestment.units || 0).toFixed(4)}</span>
+                                    <span className="detail-value">{getUnitsHeld(selectedInvestment).toFixed(4)}</span>
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Current NAV (Est.)</span>
@@ -979,7 +1096,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             <FiActivity className="input-icon" />
                                             <input
                                                 type="number"
-                                                value={parseFloat(selectedInvestment.units || 0).toFixed(4)}
+                                                value={getUnitsHeld(selectedInvestment).toFixed(4)}
                                                 readOnly
                                                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
                                             />
@@ -1121,7 +1238,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase' }}>Estimated Payout</span>
                                     <span style={{ color: '#10b981', fontSize: '18px', fontWeight: '700' }}>
-                                        {formatCurrency(parseFloat(selectedInvestment?.units || 0) * parseFloat(sellForm.sellNav || 0))}
+                                        {formatCurrency(getUnitsHeld(selectedInvestment) * parseFloat(sellForm.sellNav || 0))}
                                     </span>
                                 </div>
 

@@ -8,6 +8,8 @@ public class PortfolioDTO {
     private double portfolioValue;
     private double profitLoss;
     private double returnPercentage;
+    private double xirr;
+    private double cagr;
     private double realizedProfitLoss;
     private String userName;
     private List<HoldingDTO> activeHoldings;
@@ -28,6 +30,12 @@ public class PortfolioDTO {
 
     public double getReturnPercentage() { return returnPercentage; }
     public void setReturnPercentage(double returnPercentage) { this.returnPercentage = returnPercentage; }
+
+    public double getXirr() { return xirr; }
+    public void setXirr(double xirr) { this.xirr = xirr; }
+
+    public double getCagr() { return cagr; }
+    public void setCagr(double cagr) { this.cagr = cagr; }
 
     public double getRealizedProfitLoss() { return realizedProfitLoss; }
     public void setRealizedProfitLoss(double realizedProfitLoss) { this.realizedProfitLoss = realizedProfitLoss; }

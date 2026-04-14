@@ -30,30 +30,28 @@ public class InvestmentService {
     @Autowired
     private TaxService taxService;
 
-    @Transactional
     public Investment addInvestment(Investment investment) {
         Objects.requireNonNull(investment, "Investment cannot be null");
-        Investment saved = Objects.requireNonNull(investmentRepository.save(investment),
-                "Saved investment cannot be null");
+        Investment saved = Objects.requireNonNull(investmentRepository.save(investment), "Saved investment cannot be null");
         Long userId = saved.getUserId();
         if (userId != null) {
             // Create notification
-            String msg = "New " + saved.getInvestmentType() + " investment of ₹" + saved.getAmount() + " in "
-                    + saved.getSchemeName() + " added successfully.";
+            String msg = "New " + saved.getInvestmentType() + " investment of Rs." + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
             notificationService.createNotification(userId, msg, "INVESTMENT");
 
-            // Check if investment is being added with an endDate that is already passed or today
-            if (saved.getEndDate() != null && !saved.getEndDate().isAfter(java.time.LocalDate.now())) {
-                // Move to tax_transactions immediately if already completed
+            // Check if investment is being added with an endDate (already closed)
+            if (saved.getEndDate() != null) {
+                // Move to tax_transactions immediately
                 taxService.moveInvestmentToTaxTransaction(saved);
+                // Delete from investments table
                 investmentRepository.deleteById(saved.getInvestmentId());
                 notificationService.createNotification(userId, 
-                        "Your investment in " + saved.getSchemeName() + " has been completed and moved to tax transactions.", 
+                        "Your investment in " + saved.getSchemeName() + " with an end date has been moved to tax transactions.", 
                         "INVESTMENT_CLOSED");
                 return saved;
             }
-
-            // Otherwise, for active or future term investments, update portfolio
+            
+            // Otherwise, for active investments, update portfolio
             portfolioService.updatePortfolio(userId);
         }
         return saved;
@@ -67,7 +65,7 @@ public class InvestmentService {
     public List<Investment> getUserActiveInvestments(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
         return Objects.requireNonNull(
-                investmentRepository.findActiveByUserId(userId, java.time.LocalDate.now()),
+                investmentRepository.findActiveByUserId(userId),
                 "Active investment list cannot be null");
     }
 
@@ -84,9 +82,8 @@ public class InvestmentService {
         // Update core fields
         existing.setSchemeName(investment.getSchemeName());
         existing.setAmount(investment.getAmount());
-
-        // Explicitly sync amount_invested if it's null or we want to ensure it matches
-        // amount
+        
+        // Explicitly sync amount_invested if it's null or we want to ensure it matches amount
         if (investment.getAmountInvested() != null) {
             existing.setAmountInvested(investment.getAmountInvested());
         } else {
@@ -94,7 +91,7 @@ public class InvestmentService {
         }
 
         existing.setNavAtBuy(investment.getNavAtBuy());
-
+        
         // Sync current_nav if not provided
         if (investment.getCurrentNav() != null) {
             existing.setCurrentNav(investment.getCurrentNav());
@@ -107,33 +104,25 @@ public class InvestmentService {
         existing.setStartDate(investment.getStartDate() != null ? investment.getStartDate() : investment.getBuyDate());
         existing.setEndDate(investment.getEndDate());
         existing.setFrequency(investment.getFrequency());
-
+        
         // Update additional metadata if available
-        if (investment.getAssetCategory() != null)
-            existing.setAssetCategory(investment.getAssetCategory());
-        if (investment.getPlatform() != null)
-            existing.setPlatform(investment.getPlatform());
-        if (investment.getNotes() != null)
-            existing.setNotes(investment.getNotes());
-        if (investment.getExpectedReturn() != null)
-            existing.setExpectedReturn(investment.getExpectedReturn());
-        if (investment.getInvestmentDuration() != null)
-            existing.setInvestmentDuration(investment.getInvestmentDuration());
-        if (investment.getInvestmentGoal() != null)
-            existing.setInvestmentGoal(investment.getInvestmentGoal());
-        if (investment.getRiskLevel() != null)
-            existing.setRiskLevel(investment.getRiskLevel());
-
-        Investment saved = Objects.requireNonNull(investmentRepository.save(existing),
-                "Saved investment cannot be null");
-
-        // If investment has an end_date that has arrived or passed, move it to tax_transactions
-        if (saved.getEndDate() != null && !saved.getEndDate().isAfter(java.time.LocalDate.now())) {
+        if (investment.getAssetCategory() != null) existing.setAssetCategory(investment.getAssetCategory());
+        if (investment.getPlatform() != null) existing.setPlatform(investment.getPlatform());
+        if (investment.getNotes() != null) existing.setNotes(investment.getNotes());
+        if (investment.getExpectedReturn() != null) existing.setExpectedReturn(investment.getExpectedReturn());
+        if (investment.getInvestmentDuration() != null) existing.setInvestmentDuration(investment.getInvestmentDuration());
+        if (investment.getInvestmentGoal() != null) existing.setInvestmentGoal(investment.getInvestmentGoal());
+        if (investment.getRiskLevel() != null) existing.setRiskLevel(investment.getRiskLevel());
+        
+        Investment saved = Objects.requireNonNull(investmentRepository.save(existing), "Saved investment cannot be null");
+        
+        // If investment is being closed (endDate is being set), move it to tax_transactions
+        if (isBeingClosed) {
             taxService.moveInvestmentToTaxTransaction(saved);
             // Delete the investment after moving to tax_transactions
             investmentRepository.deleteById(id);
-            notificationService.createNotification(saved.getUserId(),
-                    "Your investment in " + saved.getSchemeName() + " has matured/ended and moved to tax transactions.",
+            notificationService.createNotification(saved.getUserId(), 
+                    "Your investment in " + saved.getSchemeName() + " has been moved to tax transactions.", 
                     "INVESTMENT_CLOSED");
         } else {
             // Force portfolio recalculation if not closed
@@ -142,7 +131,7 @@ public class InvestmentService {
                 portfolioService.updatePortfolio(userId);
             }
         }
-
+        
         return saved;
     }
 
@@ -153,14 +142,29 @@ public class InvestmentService {
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         Long userId = inv.getUserId();
-
-        // Remove foreign key references from goal_investments
-        investmentRepository.deleteGoalInvestmentsByInvestmentId(id);
-
         investmentRepository.delete(inv);
         if (userId != null) {
             portfolioService.updatePortfolio(userId);
         }
+    }
+
+    @Transactional
+    public void deleteAllInvestments(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> userInvestments = investmentRepository.findByUserId(userId);
+        for (Investment inv : userInvestments) {
+            Long investmentId = inv.getInvestmentId();
+            if (investmentId != null) {
+                investmentRepository.deleteGoalInvestmentsByInvestmentId(investmentId);
+            }
+        }
+        investmentRepository.deleteByUserId(userId);
+        portfolioService.updatePortfolio(userId);
+    }
+
+    @Transactional
+    public Investment sellInvestment(Long id, LocalDate sellDate) {
+        return sellInvestment(id, sellDate, null);
     }
 
     @Transactional
@@ -170,31 +174,25 @@ public class InvestmentService {
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         inv.setEndDate(sellDate != null ? sellDate : LocalDate.now());
+        if (sellNav != null && sellNav > 0) {
+            inv.setCurrentNav(sellNav);
+        }
+        inv.setStatus("SOLD");
         Investment saved = investmentRepository.save(inv);
 
         // Move investment to tax_transactions
-        taxService.moveInvestmentToTaxTransaction(saved);
+        taxService.moveInvestmentToTaxTransaction(saved, sellNav);
 
         Long userId = saved.getUserId();
         if (userId != null) {
             portfolioService.updatePortfolio(userId);
-            notificationService.createNotification(userId,
-                    "You have successfully realized your investment in " + saved.getSchemeName() + ".",
-                    "INVESTMENT_SOLD");
+            notificationService.createNotification(userId, "You have successfully realized your investment in " + saved.getSchemeName() + ".", "INVESTMENT_SOLD");
         }
-
+        
         // Delete the investment after moving to tax_transactions
         investmentRepository.deleteById(id);
-
+        
         return saved;
     }
-
-    @Transactional
-    public void deleteAllInvestments(Long userId) {
-        Objects.requireNonNull(userId, "User ID cannot be null");
-        investmentRepository.deleteByUserId(userId);
-        portfolioService.updatePortfolio(userId);
-        notificationService.createNotification(userId, "All investments have been removed from your portfolio.",
-                "INVESTMENT_RESET");
-    }
 }
+

@@ -5,6 +5,7 @@ import {
     FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiDollarSign
 } from 'react-icons/fi';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
+import InfoHint from '../components/InfoHint';
 
 import '../styles/AddInvestment.css';
 
@@ -75,7 +76,26 @@ const FALLBACK_FUNDS = [
     { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
 ];
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const getCategory = (name = '') => {
+    const n = name.toLowerCase();
+    if (n.includes('small cap') || n.includes('smallcap'))      return 'Small Cap';
+    if (n.includes('midcap') || n.includes('mid cap'))          return 'Mid Cap';
+    if (n.includes('large cap') || n.includes('bluechip') ||
+        n.includes('top 100') || n.includes('frontline'))       return 'Large Cap';
+    if (n.includes('flexi cap') || n.includes('flexicap'))      return 'Flexi Cap';
+    if (n.includes('index') || n.includes('nifty') ||
+        n.includes('sensex'))                                    return 'Index Funds';
+    if (n.includes('debt') || n.includes('liquid') ||
+        n.includes('bond') || n.includes('gilt'))               return 'Debt Funds';
+    if (n.includes('elss') || n.includes('tax'))                return 'ELSS / Tax Saving';
+    return 'Other';
+};
 
+const formatINR = (val) =>
+    new Intl.NumberFormat('en-IN', {
+        style: 'currency', currency: 'INR', maximumFractionDigits: 0
+    }).format(val || 0);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
@@ -113,6 +133,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const [navDate,       setNavDate]       = useState('');   // actual date of the NAV shown
     const [latestNavInfo, setLatestNavInfo] = useState({ nav: '', date: '' });
     const [navError,      setNavError]      = useState('');   // '' | 'NO_FUND_DATA' | 'NO_DATE_MATCH' | 'FETCH_ERROR'
+    const [usingFallbackNav, setUsingFallbackNav] = useState(false);
 
     /**
      * Two-level cache:
@@ -123,6 +144,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
     // ── Submission ─────────────────────────────────────────────────────────
     const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
+    const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
     const navValue      = parseFloat(formData.nav);
@@ -221,6 +243,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             setNavDate('');
             setLatestNavInfo({ nav: '', date: '' });
             setNavError('');
+            setUsingFallbackNav(false);
             setLoadingNav(false);
             return;
         }
@@ -234,6 +257,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             setNavDate(c.navDate);
             setLatestNavInfo(c.latestNavInfo);
             setNavError(c.navError);
+            setUsingFallbackNav(c.navSource === 'FALLBACK');
             setLoadingNav(false);
             return;
         }
@@ -246,6 +270,28 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             setNavDate('');
             setLatestNavInfo({ nav: '', date: '' });
             setNavError('');
+            setUsingFallbackNav(false);
+
+            const fallbackNav = FALLBACK_NAV_BY_CODE[String(formData.fund_id)];
+            const canUseFallbackNav = Number.isFinite(fallbackNav) && fallbackNav > 0;
+            const applyFallbackNav = () => {
+                if (!canUseFallbackNav) return false;
+                const nav = fallbackNav.toFixed(4);
+                const result = {
+                    nav,
+                    navDate: formData.startDate,
+                    latestNavInfo: { nav, date: '' },
+                    navError: '',
+                    navSource: 'FALLBACK'
+                };
+                navCache.current[cacheKey] = result;
+                setFormData(p => ({ ...p, nav }));
+                setNavDate(formData.startDate);
+                setLatestNavInfo(result.latestNavInfo);
+                setNavError('');
+                setUsingFallbackNav(true);
+                return true;
+            };
 
             try {
                 // getNavHistory uses its own fund-level cache in mfService.js
@@ -254,11 +300,16 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                 // ── CASE A: Fund has no NAV data whatsoever ───────────────
                 if (!history || !history.data || history.data.length === 0) {
+                    if (applyFallbackNav()) {
+                        setLoadingNav(false);
+                        return;
+                    }
                     const result = {
                         nav: '',
                         navDate: '',
                         latestNavInfo: { nav: '', date: '' },
-                        navError: 'NO_FUND_DATA'
+                        navError: 'NO_FUND_DATA',
+                        navSource: 'API'
                     };
                     navCache.current[cacheKey] = result;
                     setNavError(result.navError);
@@ -283,12 +334,17 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                 const entry = getNavByDate(history.data, formData.startDate);
 
                 if (!entry) {
+                    if (applyFallbackNav()) {
+                        setLoadingNav(false);
+                        return;
+                    }
                     // ── CASE B: No NAV on or before selected date ─────────
                     const result = {
                         nav: '',
                         navDate: '',
                         latestNavInfo: latestInfo,
-                        navError: 'NO_DATE_MATCH'
+                        navError: 'NO_DATE_MATCH',
+                        navSource: 'API'
                     };
                     navCache.current[cacheKey] = result;
                     setNavError(result.navError);
@@ -301,16 +357,22 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                     nav: entry.nav,
                     navDate: entry.date,
                     latestNavInfo: latestInfo,
-                    navError: ''
+                    navError: '',
+                    navSource: 'API'
                 };
                 navCache.current[cacheKey] = result;
                 setFormData(p => ({ ...p, nav: entry.nav }));
                 setNavDate(entry.date);
                 setNavError('');
+            setUsingFallbackNav(false);
 
             } catch (err) {
                 if (cancelled) return;
                 console.error('[AddInvestment] NAV fetch error:', err);
+                if (applyFallbackNav()) {
+                    setLoadingNav(false);
+                    return;
+                }
                 setNavError('FETCH_ERROR');
             } finally {
                 if (!cancelled) setLoadingNav(false);
@@ -342,6 +404,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
             setFormData(p => ({ ...p, fundName: value, fund_id: '', nav: '' }));
             setNavDate('');
             setNavError('');
+            setUsingFallbackNav(false);
             setLatestNavInfo({ nav: '', date: '' });
             setShowSuggestions(true);
         } else {
@@ -354,6 +417,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         setShowSuggestions(false);
         setNavDate('');
         setNavError('');
+        setUsingFallbackNav(false);
         setLatestNavInfo({ nav: '', date: '' });
     };
 
@@ -409,6 +473,13 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const NavStatusMessage = () => {
         if (isNavFetching) return null;
 
+        if (usingFallbackNav) return (
+            <span className="nav-warning-msg">
+                <FiAlertTriangle className="msg-icon" />
+                Using fallback NAV because external API is currently unavailable.
+            </span>
+        );
+
         if (navError === 'NO_FUND_DATA') return (
             <span className="nav-error-msg">
                 <FiAlertCircle className="msg-icon" />
@@ -439,7 +510,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
         if (isNavValid && latestNavInfo.date) return (
             <span className="nav-metadata">
-                NAV on {navDate || formData.startDate}: ₹{formData.nav}
+                NAV on {navDate || formData.startDate}: {currencySymbols[currency] || '₹'}{formData.nav}
                 &nbsp;·&nbsp;Last updated: {latestNavInfo.date}
             </span>
         );
@@ -499,7 +570,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 <div className="form-group dropdown-container" ref={suggestionRef}>
                                     <label>
                                         Fund Name
-                                        <FiInfo className="info-icon" title="Search from full AMFI fund list" />
+                                        <InfoHint text="Type scheme name or code and select one from suggestions. This links the correct NAV history." />
                                     </label>
                                     <div className="input-wrapper">
                                         <FiSearch className="input-icon" />
@@ -510,16 +581,14 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                             placeholder={
                                                 loadingFunds
                                                     ? 'Loading fund list…'
-                                                    : fundsError
-                                                        ? 'Fund list unavailable'
-                                                        : `Search from ${allFunds.length.toLocaleString()} funds…`
+                                                    : `Search from ${allFunds.length.toLocaleString()} funds…`
                                             }
                                             value={formData.fundName}
                                             onChange={handleChange}
                                             onFocus={() => setShowSuggestions(true)}
                                             autoComplete="off"
                                             required
-                                            disabled={loadingFunds || !!fundsError}
+                                            disabled={loadingFunds}
                                         />
                                         {loadingFunds && <div className="inline-spinner" />}
 
@@ -568,12 +637,13 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     <div className="form-group">
                                         <label>
                                             Amount ({currencySymbols[currency] || "$"})
+                                            <InfoHint text="Enter the amount invested in one installment (for SIP) or full amount (for lumpsum)." />
                                         </label>
 
                                         <div className="input-wrapper">
                                             <CurrencyIcon className="input-icon" />
 
-                                            <span className="currency-prefix">{currencySymbols[currency] || '₹'}</span>
+                                            <span className="currency-prefix">₹</span>
                                             <input
                                                 id="amount"
                                                 type="number"
@@ -589,7 +659,10 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     </div>
 
                                     <div className="form-group">
-                                        <label>NAV at Purchase Date</label>
+                                        <label>
+                                            NAV at Purchase Date
+                                            <InfoHint text="This is auto-fetched based on selected fund and date. It is used to compute units." />
+                                        </label>
                                         <div className="input-wrapper">
                                             <FiTrendingUp className="input-icon" />
                                             <input
@@ -642,6 +715,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     <div className="form-group">
                                         <label>
                                             {type === 'SIP' ? 'SIP Start Date' : 'Purchase Date'}
+                                            <InfoHint text="Choose the actual first investment date. NAV will be resolved from this date." />
                                         </label>
                                         <div className="input-wrapper">
                                             <FiCalendar className="input-icon" />
@@ -783,3 +857,8 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         </div>
     );
 }
+
+
+
+
+

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FiEdit2, FiTrash2, FiTarget, FiPlus, FiX } from 'react-icons/fi';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { FiEdit2, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
 import axios from 'axios';
+import InfoHint from '../components/InfoHint';
 import '../styles/GoalPlanning.css';
 
 export default function GoalPlanning({ user, investments, getCurrentValue, currency = 'INR' }) {
@@ -15,6 +16,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     });
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const [linkError, setLinkError] = useState('');
 
     // Edit Modal States
     const [editModalData, setEditModalData] = useState(null);
@@ -40,7 +42,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
 
 
-    const fetchGoals = React.useCallback(async () => {
+    const fetchGoals = useCallback(async () => {
         if (!user) return;
         const userId = user.userId || user.id;
         const token = localStorage.getItem('jwt_token');
@@ -55,8 +57,49 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     }, [user, API_BASE]);
 
     useEffect(() => {
-        fetchGoals();
+        const timer = setTimeout(() => {
+            fetchGoals();
+        }, 0);
+        return () => clearTimeout(timer);
     }, [fetchGoals]);
+
+    const investmentIdOf = (inv) => String(inv?.investment_id || inv?.id || inv?.investmentId);
+
+    const linkedInvestmentGoalMap = useMemo(() => {
+        const map = {};
+        (goals || []).forEach(g => {
+            const gid = String(g.goal_id || g.id);
+            (g.linkedInvestments || []).forEach(li => {
+                const iid = String(li?.investment_id || li);
+                if (iid) map[iid] = gid;
+            });
+        });
+        return map;
+    }, [goals]);
+
+    const activeInvestments = useMemo(() => {
+        return (investments || []).filter(inv => {
+            if (inv.end_date || inv.endDate) return false;
+            const status = String(inv.status || '').toUpperCase();
+            return status !== 'SOLD' && status !== 'CLOSED';
+        });
+    }, [investments]);
+
+    const getSelectableInvestments = (currentGoalId = null) => {
+        const gid = currentGoalId != null ? String(currentGoalId) : null;
+        return activeInvestments.filter(inv => {
+            const iid = investmentIdOf(inv);
+            const owner = linkedInvestmentGoalMap[iid];
+            return !owner || (gid && owner === gid);
+        });
+    };
+
+    const isLinkedToAnotherGoal = (investmentId, currentGoalId = null) => {
+        const owner = linkedInvestmentGoalMap[String(investmentId)];
+        if (!owner) return false;
+        if (currentGoalId == null) return true;
+        return owner !== String(currentGoalId);
+    };
 
     // Format currency
     // Format currency
@@ -105,6 +148,13 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     const handleSave = async () => {
         if (!form.name || !form.amount || !user) return;
+        setLinkError('');
+
+        const conflictingIds = form.linkedInvestments.filter(id => isLinkedToAnotherGoal(id, null));
+        if (conflictingIds.length > 0) {
+            setLinkError('One or more selected investments are already linked to another goal.');
+            return;
+        }
 
         const currentProgress = calculateProgress(form.linkedInvestments);
         const goalData = {
@@ -135,13 +185,20 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                 year: new Date().getFullYear() + 5,
                 linkedInvestments: []
             });
+            setLinkError('');
             setDropdownOpen(false);
         } catch (error) {
             console.error("Failed to save goal", error);
+            setLinkError(error?.response?.data?.message || 'Failed to save goal. Please try again.');
         }
     };
 
     const toggleScheme = (investmentId) => {
+        if (isLinkedToAnotherGoal(investmentId, null)) {
+            setLinkError('This investment is already linked to another goal.');
+            return;
+        }
+        setLinkError('');
         const isSelected = form.linkedInvestments.includes(investmentId);
         if (isSelected) {
             setForm({ ...form, linkedInvestments: form.linkedInvestments.filter(id => id !== investmentId) });
@@ -152,6 +209,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     };
 
     const handleEdit = (goal) => {
+        setLinkError('');
         setEditModalData({
             id: goal.goal_id,
             name: goal.goal_name,
@@ -174,6 +232,11 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     };
 
     const toggleModalScheme = (investmentId) => {
+        if (isLinkedToAnotherGoal(investmentId, editModalData?.id)) {
+            setLinkError('This investment is already linked to another goal.');
+            return;
+        }
+        setLinkError('');
         const isSelected = editModalData.linkedInvestments.includes(investmentId);
         if (isSelected) {
             setEditModalData({ ...editModalData, linkedInvestments: editModalData.linkedInvestments.filter(id => id !== investmentId) });
@@ -185,6 +248,13 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     const handleModalSave = async () => {
         if (!editModalData.name || !editModalData.amount || !user) return;
+        setLinkError('');
+
+        const conflictingIds = editModalData.linkedInvestments.filter(id => isLinkedToAnotherGoal(id, editModalData.id));
+        if (conflictingIds.length > 0) {
+            setLinkError('One or more selected investments are already linked to another goal.');
+            return;
+        }
 
         const currentProgress = calculateProgress(editModalData.linkedInvestments);
         const updatedGoal = {
@@ -206,9 +276,11 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
             await axios.put(`${API_BASE}/${editModalData.id}`, updatedGoal, { headers });
             fetchGoals();
             setEditModalData(null);
+            setLinkError('');
             setModalDropdownOpen(false);
         } catch (error) {
             console.error("Failed to update goal", error);
+            setLinkError(error?.response?.data?.message || 'Failed to update goal. Please try again.');
         }
     };
 
@@ -255,27 +327,33 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     return (
         <div className="goal-planning-container">
-            <h1 className="goal-planning-title">Goal Planning Page</h1>
+            <h1 className="goal-planning-title">
+                Goal Planning Page
+                <InfoHint text="Create goals, set target amount/year, and link investments to track progress automatically." />
+            </h1>
 
             {/* Form Section */}
             <div className="goal-card" style={{ position: 'relative', zIndex: 10 }}>
                 <div className="goal-form">
                     <div className="goal-input-group">
-                        <label>Goal Name</label>
+                        <label>Goal Name <InfoHint text="Example: Emergency Fund, Dream Home, Retirement." /></label>
                         <input type="text" className="goal-input" name="name"
                             placeholder="e.g. Dream Home, Retirement"
                             value={form.name} onChange={handleInput} />
                     </div>
 
                     <div className="goal-input-group">
-                        <label>Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})</label>
+                        <label>
+                            Target Amount ({currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'})
+                            <InfoHint text="Set how much you want to accumulate by the target year." />
+                        </label>
                         <input type="text" className="goal-input" name="amount"
                             placeholder="e.g. 5,00,000"
                             value={formatIndian(form.amount)} onChange={handleInput} />
                     </div>
 
                     <div className="goal-input-group">
-                        <label>Target Year</label>
+                        <label>Target Year <InfoHint text="Choose your expected completion year for this goal." /></label>
                         <select className="goal-select" name="year"
                             value={form.year} onChange={handleInput}>
                             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -283,7 +361,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                     </div>
 
                     <div className="goal-input-group" style={{ position: 'relative' }} ref={dropdownRef}>
-                        <label>Link Investments</label>
+                        <label>Link Investments <InfoHint text="Only active investments are shown. Linked assets count toward goal progress." /></label>
                         <div className="custom-multiselect" onClick={() => setDropdownOpen(!dropdownOpen)}>
                             <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
                                 {form.linkedInvestments.length === 0
@@ -298,7 +376,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
                         {dropdownOpen && (
                             <div className="custom-multiselect-popup">
-                                {investments?.map(inv => {
+                                {getSelectableInvestments().map(inv => {
                                     const invId = String(inv.investment_id || inv.id || inv.investmentId);
                                     const invName = inv.scheme_name || inv.name || inv.schemeName;
                                     const invType = inv.investment_type || 'Unknown';
@@ -320,9 +398,9 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                         </div>
                                     );
                                 })}
-                                {(investments?.length === 0 || !investments) && (
-                                    <div style={{ padding: '12px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>
-                                        No investments available to link.
+                                {getSelectableInvestments().length === 0 && (
+                                    <div className="multiselect-option" style={{ color: '#94a3b8' }}>
+                                        No eligible active investments available
                                     </div>
                                 )}
                             </div>
@@ -334,6 +412,12 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                             <FiPlus style={{ marginRight: '8px' }} /> Add Goal
                         </button>
                     </div>
+
+                    {linkError && (
+                        <div style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>
+                            {linkError}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -488,7 +572,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                 <div className="goal-modal-content">
                     <div className="goal-modal-header">
                         <h2><FiEdit2 /> Edit Goal</h2>
-                        <button className="goal-modal-close" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); }}><FiX /></button>
+                        <button className="goal-modal-close" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); setLinkError(''); }}><FiX /></button>
                     </div>
 
                     <div className="goal-input-group" style={{ marginBottom: '16px' }}>
@@ -528,7 +612,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
                         {modalDropdownOpen && (
                             <div className="custom-multiselect-popup">
-                                {investments?.map(inv => {
+                                {getSelectableInvestments(editModalData?.id).map(inv => {
                                     const invId = String(inv.investment_id || inv.id || inv.investmentId);
                                     const invName = inv.scheme_name || inv.name || inv.schemeName;
                                     const invType = inv.investment_type || 'Unknown';
@@ -550,14 +634,24 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                                         </div>
                                     );
                                 })}
+                                {getSelectableInvestments(editModalData?.id).length === 0 && (
+                                    <div className="multiselect-option" style={{ color: '#94a3b8' }}>
+                                        No eligible active investments available
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
 
                     <div className="goal-modal-actions">
-                        <button className="goal-btn-cancel" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); }}>Cancel</button>
+                        <button className="goal-btn-cancel" onClick={() => { setEditModalData(null); setModalDropdownOpen(false); setLinkError(''); }}>Cancel</button>
                         <button className="goal-btn-save" onClick={handleModalSave}>Save Changes</button>
                     </div>
+                    {linkError && (
+                        <div style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>
+                            {linkError}
+                        </div>
+                    )}
                 </div>
             </div>
         )

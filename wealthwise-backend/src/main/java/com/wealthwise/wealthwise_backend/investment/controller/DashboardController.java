@@ -18,13 +18,13 @@ import java.util.stream.Collectors;
 public class DashboardController {
 
     @Autowired
-    private PortfolioService portfolioService;
+    private InvestmentService investmentService;
 
     @Autowired
     private InvestmentValuationService investmentValuationService;
 
     @Autowired
-    private InvestmentService investmentService;
+    private PortfolioService portfolioService;
 
     @GetMapping("/{userId}")
     public Map<String, Object> getDashboardData(@PathVariable Long userId) {
@@ -68,11 +68,16 @@ public class DashboardController {
         response.put("profitLoss", profitLoss);
         response.put("returnPercentage", returnPercentage);
         response.put("assetAllocation", assetAllocation);
+
         return response;
     }
 
     @GetMapping("/{userId}/history")
-    public List<Map<String, Object>> getPortfolioHistory(@PathVariable Long userId, @RequestParam(defaultValue = "30") int days) {
-        return portfolioService.computePortfolioHistory(userId, days);
+    public List<Map<String, Object>> getDashboardHistory(
+            @PathVariable Long userId,
+            @RequestParam(name = "days", defaultValue = "30") int days
+    ) {
+        int boundedDays = days <= 0 ? 30 : Math.min(days, 36500);
+        return portfolioService.computePortfolioHistory(userId, boundedDays);
     }
 }

@@ -16,8 +16,11 @@ public interface InvestmentRepository extends JpaRepository<Investment, Long> {
     
     void deleteByUserId(Long userId);
 
-    @Query("SELECT i FROM Investment i WHERE i.userId = :userId AND (i.endDate IS NULL OR i.endDate >= :today)")
-    List<Investment> findActiveByUserId(@Param("userId") Long userId, @Param("today") LocalDate today);
+    @Query("SELECT i FROM Investment i WHERE i.userId = :userId AND i.endDate IS NULL AND (i.status IS NULL OR UPPER(i.status) NOT IN ('SOLD','CLOSED'))")
+    List<Investment> findActiveByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT i.investmentId FROM Investment i WHERE i.userId = :userId AND i.investmentId IN :ids AND i.endDate IS NULL AND (i.status IS NULL OR UPPER(i.status) NOT IN ('SOLD','CLOSED'))")
+    List<Long> findActiveIdsByUserIdAndIds(@Param("userId") Long userId, @Param("ids") List<Long> ids);
 
     List<Investment> findByEndDate(LocalDate endDate);
 

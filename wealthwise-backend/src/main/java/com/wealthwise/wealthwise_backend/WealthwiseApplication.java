@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableCaching
 @EnableJpaRepositories(basePackages = "com.wealthwise.wealthwise_backend")
 public class WealthwiseApplication {
-
+  
     public static void main(String[] args) {
         SpringApplication.run(WealthwiseApplication.class, args);
     }
