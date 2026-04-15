@@ -1,15 +1,15 @@
 /* ── Variables (shared with AddInvestment) ── */
 :root {
-    --fintech-blue: #0b1120;
-    --fintech-blue-light: #1e293b;
+    --fintech-blue: var(--bg-primary);
+    --fintech-blue-light: var(--card-bg);
     --fintech-green: #22c55e;
     --fintech-green-hover: #16a34a;
     --fintech-red: #ef4444;
     --fintech-red-hover: #dc2626;
-    --text-white: #f8fafc;
-    --text-gray: #94a3b8;
-    --input-bg: rgba(11, 17, 32, 0.6);
-    --border-color: rgba(255, 255, 255, 0.1);
+    --text-white: var(--text-primary);
+    --text-gray: var(--text-secondary);
+    --input-bg: var(--input-bg);
+    --border-color: var(--border-color);
     --transition: all 0.3s ease;
 }
 
@@ -168,7 +168,7 @@
 }
 
 .highlight-text {
-    color: #f8fafc;
+    color: var(--text-primary);
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
@@ -178,7 +178,9 @@
     font-weight: 500;
 }
 
-.p-sub.green { color: var(--fintech-green); }
+.p-sub.green {
+    color: var(--fintech-green);
+}
 
 .p-summary-card.span-2 {
     grid-column: span 2;
@@ -210,9 +212,17 @@
     transition: width 1s ease;
 }
 
-.health-bar-fill.green  { background: linear-gradient(90deg, #16a34a, #22c55e); }
-.health-bar-fill.blue   { background: linear-gradient(90deg, #2563eb, #3b82f6); }
-.health-bar-fill.red    { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.health-bar-fill.green {
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.health-bar-fill.blue {
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+}
+
+.health-bar-fill.red {
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+}
 
 /* ── Chart Header Row (title + P&L badge) ── */
 .chart-header-row {
@@ -1208,8 +1218,13 @@
     white-space: nowrap;
 }
 
-.intel-val.green { color: #22c55e; }
-.intel-val.red   { color: #ef4444; }
+.intel-val.green {
+    color: #22c55e;
+}
+
+.intel-val.red {
+    color: #ef4444;
+}
 
 .intel-divider {
     width: 1px;
@@ -1258,10 +1273,21 @@
     letter-spacing: 0.06em;
 }
 
-.title-icon { font-size: 0.95rem; }
-.green-icon { color: #22c55e; }
-.red-icon   { color: #ef4444; }
-.blue-icon  { color: #3b82f6; }
+.title-icon {
+    font-size: 0.95rem;
+}
+
+.green-icon {
+    color: #22c55e;
+}
+
+.red-icon {
+    color: #ef4444;
+}
+
+.blue-icon {
+    color: #3b82f6;
+}
 
 /* ── Movers List ── */
 .movers-list {
@@ -1329,8 +1355,13 @@
     flex-shrink: 0;
 }
 
-.mover-ret.positive { color: #22c55e; }
-.mover-ret.negative { color: #ef4444; }
+.mover-ret.positive {
+    color: #22c55e;
+}
+
+.mover-ret.negative {
+    color: #ef4444;
+}
 
 /* ── Risk Exposure ── */
 .risk-level-badge {
@@ -1370,9 +1401,17 @@
     height: 100%;
 }
 
-.risk-zone.low  { background: rgba(34, 197, 94, 0.08); }
-.risk-zone.med  { background: rgba(245, 158, 11, 0.08); }
-.risk-zone.high { background: rgba(239, 68, 68, 0.08);  }
+.risk-zone.low {
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.risk-zone.med {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.risk-zone.high {
+    background: rgba(239, 68, 68, 0.08);
+}
 
 .risk-labels {
     display: flex;
@@ -1428,4 +1467,194 @@
     width: 32px;
     text-align: right;
     flex-shrink: 0;
+}
+
+/* ── Light Theme Overrides ── */
+:root.theme-light .portfolio-container {
+    --text-white: #1e293b;
+    --text-gray: #475569;
+    --border-color: #cbd5e1;
+}
+
+:root.theme-light .portfolio-chart-wrapper,
+:root.theme-light .p-summary-card,
+:root.theme-light .sidebar-bar-chart-card,
+:root.theme-light .portfolio-table-wrapper,
+:root.theme-light .modal-card {
+    background-color: #FFFFFF;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+:root.theme-light .portfolio-table thead {
+    background-color: #f8fafc;
+}
+
+:root.theme-light .portfolio-row:hover {
+    background-color: #f1f5f9;
+}
+
+:root.theme-light .health-bar-track {
+    background: #e2e8f0;
+}
+
+:root.theme-light .detail-item {
+    background-color: #f8fafc;
+}
+
+:root.theme-light .modal-overlay {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+:root.theme-light .portfolio-empty h3 {
+    color: #1e293b;
+}
+
+:root.theme-light .chart-title {
+    color: #1e293b;
+}
+
+:root.theme-light .p-value {
+    color: #1e293b;
+}
+
+:root.theme-light .p-value.green {
+    color: #059669;
+}
+
+:root.theme-light .p-value.red {
+    color: #dc2626;
+}
+
+:root.theme-light .p-value.blue {
+    color: #2563eb;
+}
+
+/* ── Light Theme: Market Intel Strip (match sidebar blue) ── */
+:root.theme-light .market-intel-strip {
+    background: #8494FF;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+:root.theme-light .intel-label {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+:root.theme-light .intel-val {
+    color: #000000 !important;
+}
+
+:root.theme-light .intel-val.green {
+    color: #059669 !important;
+}
+
+:root.theme-light .intel-val.red {
+    color: #dc2626 !important;
+}
+
+:root.theme-light .intel-divider {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Light Theme: Pro Cards (Top Winners, Underperformers, Risk) ── */
+:root.theme-light .pro-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+:root.theme-light .pro-card-title {
+    color: #1e293b;
+}
+
+:root.theme-light .mover-row {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+:root.theme-light .mover-row:hover {
+    background: #f1f5f9;
+}
+
+:root.theme-light .mover-rank {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+:root.theme-light .mover-name {
+    color: #1e293b;
+}
+
+:root.theme-light .mover-type {
+    color: #64748b;
+}
+
+:root.theme-light .mover-ret.positive {
+    color: #059669;
+}
+
+:root.theme-light .mover-ret.negative {
+    color: #dc2626;
+}
+
+/* ── Light Theme: Risk Exposure Card ── */
+:root.theme-light .risk-labels {
+    color: #475569;
+}
+
+:root.theme-light .risk-name {
+    color: #334155;
+}
+
+:root.theme-light .risk-pct {
+    color: #475569;
+}
+
+:root.theme-light .risk-meter-track {
+    background: #e2e8f0;
+}
+
+:root.theme-light .risk-bar-mini {
+    background: #e2e8f0;
+}
+
+:root.theme-light .risk-zone.low {
+    background: rgba(34, 197, 94, 0.12);
+}
+
+:root.theme-light .risk-zone.med {
+    background: rgba(245, 158, 11, 0.12);
+}
+
+:root.theme-light .risk-zone.high {
+    background: rgba(239, 68, 68, 0.12);
+}
+
+/* ── Light Theme: Table text improvements ── */
+:root.theme-light .portfolio-row {
+    border-bottom-color: #e2e8f0;
+}
+
+:root.theme-light .portfolio-table td {
+    color: #1e293b;
+}
+
+:root.theme-light .td-sl {
+    color: #64748b;
+}
+
+:root.theme-light .td-date {
+    color: #64748b;
+}
+
+:root.theme-light .fund-name {
+    color: #1e293b;
+}
+
+:root.theme-light .table-footer {
+    background-color: #f8fafc;
+    color: #64748b;
+}
+
+:root.theme-light .table-footer strong {
+    color: #1e293b;
 }

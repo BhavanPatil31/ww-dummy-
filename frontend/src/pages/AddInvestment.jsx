@@ -1,130 +1,67 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
     FiCalendar, FiSearch, FiTrendingUp, FiInfo,
     FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiDollarSign
 } from 'react-icons/fi';
+import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
 import InfoHint from '../components/InfoHint';
+import { getCurrencySymbol } from '../utils/currencyUtils';
 
-import '../styles/AddInvestment.css';
+// ── Module-level constants ──────────────────────────────────────────────
+const NAV_OUTDATED_DAYS = 30;
+const TODAY = new Date().toISOString().split('T')[0];
 
-import { FaRupeeSign, FaEuroSign, FaPoundSign } from "react-icons/fa";
+const currencySymbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
 
-const currencyIcons = {
-    INR: FaRupeeSign,
-    USD: FiDollarSign,
-    EUR: FaEuroSign,
-    GBP: FaPoundSign,
-};
-
-const currencySymbols = {
-    INR: "₹",
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-};
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
-    .toISOString()
-    .split('T')[0];
-
-const NAV_OUTDATED_DAYS = 10; // warn (not block) if latest NAV older than this
-
-// ─── Fallback Data ───────────────────────────────────────────────────────────
 const FALLBACK_FUNDS = [
-    { code: "125497", name: "HDFC Top 100 Fund - Direct Plan - Growth" },
-    { code: "118834", name: "SBI Bluechip Fund - Direct Plan - Growth" },
-    { code: "118825", name: "Mirae Asset Large Cap Fund - Direct Plan - Growth" },
-    { code: "120465", name: "Axis Bluechip Fund - Direct Plan - Growth" },
-    { code: "120716", name: "ICICI Prudential Bluechip Fund - Direct Plan - Growth" },
-    { code: "122639", name: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth" },
-    { code: "120468", name: "UTI Flexi Cap Fund - Direct Plan - Growth" },
-    { code: "120199", name: "Aditya Birla Sun Life Frontline Equity Fund - Direct Plan - Growth" },
-    { code: "125354", name: "SBI Small Cap Fund - Direct Plan - Growth" },
-    { code: "120847", name: "Quant Small Cap Fund - Direct Plan - Growth" },
-    { code: "120822", name: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth" },
-    { code: "130321", name: "Kotak Emerging Equity Fund - Direct Plan - Growth" },
-    { code: "129457", name: "ICICI Prudential Flexi Cap Fund - Direct Plan - Growth" },
-    { code: "130115", name: "Axis Flexi Cap Fund - Direct Plan - Growth" },
-    { code: "128051", name: "HDFC Flexi Cap Fund - Direct Plan - Growth" },
-    { code: "132010", name: "DSP Flexi Cap Fund - Direct Plan - Growth" },
-    { code: "130323", name: "Kotak Equity Opportunities Fund - Direct Plan - Growth" },
-    { code: "131201", name: "SBI Focused Equity Fund - Direct Plan - Growth" },
-    { code: "130112", name: "Axis Focused 25 Fund - Direct Plan - Growth" },
-    { code: "130114", name: "Axis Small Cap Fund - Direct Plan - Growth" },
-    { code: "100148", name: "Franklin India Prima Fund - Growth" },
-    { code: "100251", name: "Franklin India Bluechip Fund - Growth" },
-    { code: "100305", name: "Franklin India Taxshield - Growth" },
-    { code: "131203", name: "SBI Contra Fund - Direct Plan - Growth" },
-    { code: "131202", name: "SBI Magnum Midcap Fund - Direct Plan - Growth" },
-    { code: "131205", name: "SBI Long Term Equity Fund - Direct Plan - Growth" },
-    { code: "132011", name: "DSP Small Cap Fund - Direct Plan - Growth" },
-    { code: "132012", name: "DSP Equity Opportunities Fund - Direct Plan - Growth" },
-    { code: "132013", name: "DSP Tax Saver Fund - Direct Plan - Growth" },
-    { code: "129456", name: "ICICI Prudential Value Discovery Fund - Direct Plan - Growth" },
-    { code: "128052", name: "HDFC Balanced Advantage Fund - Direct Plan - Growth" },
-    { code: "128053", name: "HDFC Hybrid Equity Fund - Direct Plan - Growth" },
-    { code: "128054", name: "HDFC Large and Mid Cap Fund - Direct Plan - Growth" },
-    { code: "128055", name: "HDFC Small Cap Fund - Direct Plan - Growth" },
-    { code: "127042", name: "DSP Midcap Fund - Direct Plan - Growth" },
-    { code: "126503", name: "Axis Midcap Fund - Direct Plan - Growth" },
-    { code: "130322", name: "Kotak Small Cap Fund - Direct Plan - Growth" },
-    { code: "130324", name: "Kotak Bluechip Fund - Direct Plan - Growth" },
-    { code: "119551", name: "Tata Digital India Fund - Direct Plan - Growth" },
-    { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
+    { code: '119551', name: 'Axis Bluechip Fund - Direct Plan - Growth' },
+    { code: '120503', name: 'Mirae Asset Large Cap Fund - Direct Plan - Growth' },
+    { code: '122639', name: 'SBI Small Cap Fund - Direct Plan - Growth' },
+    { code: '120505', name: 'Parag Parikh Flexi Cap Fund - Direct Plan - Growth' },
+    { code: '118989', name: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth' },
 ];
 
-// Hardcoded NAV for the same fallback 40 schemes.
-// Used only when external API is unavailable/busy.
 const FALLBACK_NAV_BY_CODE = {
-    "125497": 19.84, "118834": 76.15, "118825": 112.42, "120465": 64.31, "120716": 89.76,
-    "122639": 71.28, "120468": 226.51, "120199": 412.37, "125354": 158.94, "120847": 248.63,
-    "120822": 189.27, "130321": 102.88, "129457": 92.74, "130115": 37.56, "128051": 96.21,
-    "132010": 45.73, "130323": 121.34, "131201": 83.22, "130112": 58.14, "130114": 87.69,
-    "100148": 57.48, "100251": 104.92, "100305": 92.31, "131203": 68.55, "131202": 94.17,
-    "131205": 126.44, "132011": 33.28, "132012": 61.77, "132013": 49.65, "129456": 278.39,
-    "128052": 39.74, "128053": 111.52, "128054": 84.37, "128055": 77.93, "127042": 214.88,
-    "126503": 104.63, "130322": 144.21, "130324": 72.19, "119551": 31.42, "120318": 73.58
+    '119551': 52.34,
+    '120503': 98.12,
+    '122639': 155.67,
+    '120505': 72.45,
+    '118989': 134.89,
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
-    // pick icon dynamically
-    const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
-
-    // ── Fund list ──────────────────────────────────────────────────────────
-    const [allFunds,     setAllFunds]     = useState([]);
+export default function AddInvestment({ user, onBackToDashboard, currency }) {
+    const [allFunds, setAllFunds] = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
-    const [fundsError,   setFundsError]   = useState('');
+    const [fundsError, setFundsError] = useState('');
 
     // ── Investment type ────────────────────────────────────────────────────
     const [type, setType] = useState('SIP');
 
     // ── Form ───────────────────────────────────────────────────────────────
     const [formData, setFormData] = useState({
-        fundName:  '',
-        fund_id:   '',
-        nav:       '',
-        amount:    '',
+        fundName: '',
+        fund_id: '',
+        nav: '',
+        amount: '',
         frequency: 'Monthly',
         startDate: '',
-        endDate:   ''
+        endDate: ''
     });
 
     // ── Dropdown / search ──────────────────────────────────────────────────
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [filteredFunds,   setFilteredFunds]   = useState([]);
-    const [visibleLimit,    setVisibleLimit]    = useState(100);
+    const [filteredFunds, setFilteredFunds] = useState([]);
+    const [visibleLimit, setVisibleLimit] = useState(100);
     const suggestionRef = useRef(null);
 
 
     // ── NAV state ──────────────────────────────────────────────────────────
-    const [loadingNav,    setLoadingNav]    = useState(false);
-    const [navDate,       setNavDate]       = useState('');   // actual date of the NAV shown
+    const [loadingNav, setLoadingNav] = useState(false);
+    const [navDate, setNavDate] = useState('');   // actual date of the NAV shown
     const [latestNavInfo, setLatestNavInfo] = useState({ nav: '', date: '' });
-    const [navError,      setNavError]      = useState('');   // '' | 'NO_FUND_DATA' | 'NO_DATE_MATCH' | 'FETCH_ERROR'
+    const [navError, setNavError] = useState('');   // '' | 'NO_FUND_DATA' | 'NO_DATE_MATCH' | 'FETCH_ERROR'
     const [usingFallbackNav, setUsingFallbackNav] = useState(false);
 
     /**
@@ -135,23 +72,29 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const navCache = useRef({});
 
     // ── Submission ─────────────────────────────────────────────────────────
-    const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
+    const [status, setStatus] = useState({ loading: false, success: false, error: '' });
     const [toastMsg] = useState('');
 
+    // ── Generic form handler ────────────────────────────────────────────
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(p => ({ ...p, [name]: value }));
+    };
+
     // ── Derived ────────────────────────────────────────────────────────────
-    const navValue      = parseFloat(formData.nav);
+    const navValue = parseFloat(formData.nav);
     const isNavFetching = loadingNav;
-    const isNavValid    = !isNaN(navValue) && navValue > 0;
+    const isNavValid = !isNaN(navValue) && navValue > 0;
     const isNavOutdated = isNavValid && latestNavInfo.date
-                          && daysSince(latestNavInfo.date) > NAV_OUTDATED_DAYS;
-    const isNavUnavail  = navError !== '';
+        && daysSince(latestNavInfo.date) > NAV_OUTDATED_DAYS;
+    const isNavUnavail = navError !== '';
 
     // Disable submit if: loading / nav fetching / nav invalid or unavailable / no fund selected
     const canSubmit =
         !status.loading &&
-        !isNavFetching  &&
-        isNavValid      &&
-        !isNavUnavail   &&
+        !isNavFetching &&
+        isNavValid &&
+        !isNavUnavail &&
         !!formData.fund_id &&
         !!formData.amount;
 
@@ -356,7 +299,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                 setFormData(p => ({ ...p, nav: entry.nav }));
                 setNavDate(entry.date);
                 setNavError('');
-            setUsingFallbackNav(false);
+                setUsingFallbackNav(false);
 
             } catch (err) {
                 if (cancelled) return;
@@ -379,29 +322,11 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
 
     const formatCurrency = (val) => {
-        return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+        return new Intl.NumberFormat('en-IN', {
             style: 'currency',
-            currency: currency,
+            currency: 'INR',
             maximumFractionDigits: 0
         }).format(val || 0);
-    };
-    // ─────────────────────────────────────────────────────────────────────
-    // 5. HANDLERS
-    // ─────────────────────────────────────────────────────────────────────
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        if (name === 'fundName') {
-            // Typing in the search box — clear fund selection
-            setFormData(p => ({ ...p, fundName: value, fund_id: '', nav: '' }));
-            setNavDate('');
-            setNavError('');
-            setUsingFallbackNav(false);
-            setLatestNavInfo({ nav: '', date: '' });
-            setShowSuggestions(true);
-        } else {
-            setFormData(p => ({ ...p, [name]: value }));
-        }
     };
 
     const handleSelectFund = (fund) => {
@@ -417,22 +342,28 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         e.preventDefault();
         if (!canSubmit) return;
 
-        setStatus({ loading: true, success: false, error: '' });
+        const userId = user?.userId || user?.user_id || user?.id || (user?.user && (user.user.userId || user.user.user_id || user.user.id));
+        if (!userId) {
+            setStatus({ loading: false, success: false, error: 'User session not found. Please log in again.' });
+            return;
+        }
 
         const payload = {
-            user_id:         user?.userId || user?.id,
-            fund_id:         parseInt(formData.fund_id),
-            investment_type: type === 'Lumpsum' ? 'BUY' : type,
-            amount:          parseFloat(formData.amount),
+            userId: user?.userId || user?.id,
+            user_id: user?.userId || user?.id,
+            fund_id: parseInt(formData.fund_id) || Math.floor(Math.random() * 1000) + 1,
+            investment_type: type,
+            amount: parseFloat(formData.amount),
+            nav_at_buy: parseFloat(formData.nav),
+            units: parseFloat(units),
+            buy_date: formData.startDate,
+            frequency: type === 'SIP' ? formData.frequency : null,
+            asset_category: type,
+            scheme_name: formData.fundName,
             amount_invested: parseFloat(formData.amount),
-            nav_at_buy:      parseFloat(formData.nav),
-            units:           parseFloat(units),
-            buy_date:        formData.startDate,
-            start_date:      formData.startDate,
-            end_date:        formData.endDate || null,
-            frequency:       type === 'SIP' ? formData.frequency : null,
-            scheme_name:     formData.fundName,
-            current_nav:     parseFloat(formData.nav)
+            current_nav: parseFloat(formData.nav),
+            start_date: formData.startDate,
+            end_date: formData.endDate || null
         };
 
         try {
@@ -587,7 +518,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                                         {/* Dropdown */}
                                         {showSuggestions && !loadingFunds && (
-                                            <div 
+                                            <div
                                                 className="suggestions-dropdown nice-scroll"
                                                 onScroll={(e) => {
                                                     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -628,11 +559,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 {/* ── Amount + NAV Row ── */}
                                 <div className="form-row">
                                     <div className="form-group">
-                                        <label>
-                                            Amount ({currencySymbols[currency] || "$"})
-                                            <InfoHint text="Enter the amount invested in one installment (for SIP) or full amount (for lumpsum)." />
-                                        </label>
-
+                                        <label>Amount (₹)</label>
                                         <div className="input-wrapper">
                                             <span className="currency-prefix">{currencySymbols[currency] || '₹'}</span>
                                             <input
@@ -662,14 +589,14 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                                 name="nav"
                                                 className={[
                                                     'readonly-input',
-                                                    isNavFetching      ? 'nav-fetching' : '',
-                                                    isNavUnavail       ? 'nav-error'    : '',
+                                                    isNavFetching ? 'nav-fetching' : '',
+                                                    isNavUnavail ? 'nav-error' : '',
                                                     isNavOutdated && !isNavUnavail ? 'nav-outdated' : ''
                                                 ].join(' ')}
                                                 value={
                                                     isNavFetching ? 'Fetching…'
-                                                    : isNavUnavail ? ''
-                                                    : formData.nav
+                                                        : isNavUnavail ? ''
+                                                            : formData.nav
                                                 }
                                                 readOnly
                                                 required
@@ -724,7 +651,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                                     <div className="form-group">
                                         <label>
-                                            {type === 'SIP' ? 'SIP End Date' : 'Sale/End Date'} 
+                                            {type === 'SIP' ? 'SIP End Date' : 'Sale/End Date'}
                                             <span className="optional-tag">(optional)</span>
                                         </label>
                                         <div className="input-wrapper">
@@ -800,18 +727,11 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                             <div className="summary-row">
                                 <span>Amount</span>
-                                <strong>{formData.amount ? formatCurrency(formData.amount) : '—'}</strong>
+                                <strong>{formatCurrency(formData.amount)}</strong>
                             </div>
-
-                            <div className="summary-row">
-                                <span>NAV (at Purchase)</span>
-                                <strong>
-                                    {isNavFetching ? (
-                                        <span className="fetching-text">Fetching…</span>
-                                    ) : isNavValid ? (
-                                        `${currencySymbols[currency] || '₹'}${parseFloat(formData.nav).toFixed(4)}`
-                                    ) : '—'}
-                                </strong>
+                            <div className="summary-item">
+                                <span>NAV (Live)</span>
+                                <strong>{formData.nav && !isNaN(parseFloat(formData.nav)) ? `₹${formData.nav}` : '-'}</strong>
                             </div>
 
                             {latestNavInfo.nav && !isNavUnavail && (
@@ -829,15 +749,9 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 <span className="label">Expected Units</span>
                                 <span className="value">{units}</span>
                             </div>
-
-                            <div className="highlight-panel value">
-                                <span className="label">
-                                    {type === 'SIP' ? 'Per Instalment' : 'Total Value'}
-                                </span>
-                                <span className="value">
-                                    {formData.amount ? formatCurrency(formData.amount) : '—'}
-                                    {type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}
-                                </span>
+                            <div className="summary-item highlight-box-secondary">
+                                <span>{type === 'SIP' ? 'Installment' : 'Total Value'}</span>
+                                <strong>{formatCurrency(formData.amount)}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
                             </div>
 
                         </div>

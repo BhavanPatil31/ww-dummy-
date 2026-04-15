@@ -11,6 +11,7 @@ import "./App.css";
 
 function App() {
     const THEME_STORAGE_KEY = "wealthwise_theme";
+    const CURRENCY_STORAGE_KEY = "wealthwise_currency";
 
     // ✅ 1. Initialize from localStorage
     const [currentUser, setCurrentUser] = useState(() => {
@@ -26,7 +27,7 @@ function App() {
     const [theme, setTheme] = useState("dark");
 
     const [currency, setCurrency] = useState(() => {
-        const saved = localStorage.getItem("wealthwise_currency");
+        const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
         return saved ? saved : "INR";
     });
 
@@ -58,8 +59,9 @@ function App() {
         localStorage.setItem("wealthwise_current_page", currentPage);
     }, [currentPage]);
 
+    // ✅ Currency persistence
     useEffect(() => {
-        localStorage.setItem("wealthwise_currency", currency);
+        localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
     }, [currency]);
 
     // ✅ 3. Logout logic

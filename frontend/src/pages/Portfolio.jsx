@@ -11,6 +11,7 @@ import {
     ResponsiveContainer, ReferenceLine, Legend,
     AreaChart, Area, BarChart, Line
 } from 'recharts';
+import { formatCurrency, convertValue, getCurrencySymbol } from '../utils/currencyUtils';
 import '../styles/Portfolio.css';
 
 const MOCK_FUNDS = [
@@ -90,11 +91,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
 
     // ── Helpers ────────────────────────────────────────────────
     const formatCurrency = (val) =>
-        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
-            style: 'currency',
-            currency: currency,
-            maximumFractionDigits: 0
-        }).format(val || 0);
+        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
 
     const getCurrentNav = (inv) => {
         const currentNav = Number(inv.current_nav || inv.currentNav || 0);
@@ -269,46 +266,11 @@ export default function Portfolio({ user, currency = 'INR' }) {
             const pnlColor = isProfit ? '#10b981' : '#f43f5e';
 
             return (
-                <div className={`premium-glass-tooltip ${isProfit ? 'profit' : 'loss'}`}>
-                    <div className="tooltip-header">
-                        <span className="tooltip-type">{d.type}</span>
-                        <div className="tooltip-status-pill">
-                            {isProfit ? <FiTrendingUp className="status-icon green" /> : <FiTrendingDown className="status-icon red" />}
-                            <span className={isProfit ? 'green' : 'red'}>
-                                {isProfit ? '+' : ''}{((d.pct || 0)).toFixed(2)}%
-                            </span>
-                        </div>
-                    </div>
-
-                    <h4 className="tooltip-title">{d.fullName}</h4>
-
-                    <div className="tooltip-stats-vertical">
-                        <div className="t-stat-row">
-                            <div className="t-stat-info">
-                                <span className="t-label">Invested Amount</span>
-                                <span className="t-val">{formatCurrency(d.invested)}</span>
-                            </div>
-                            <div className="t-marker-square invested" />
-                        </div>
-
-                        <div className="t-stat-row">
-                            <div className="t-stat-info">
-                                <span className="t-label">Current Value</span>
-                                <span className="t-val current">{formatCurrency(d.current)}</span>
-                            </div>
-                            <div className="t-marker-circle current" />
-                        </div>
-
-                        <div className={`t-stat-row pnl-highlight ${isProfit ? 'profit' : 'loss'}`}>
-                            <div className="t-stat-info">
-                                <span className="t-label">{isProfit ? 'Absolute Gain' : 'Absolute Loss'}</span>
-                                <span className="t-val pnl-val">
-                                    {isProfit ? '+' : ''}{formatCurrency(d.pnl)}
-                                </span>
-                            </div>
-                            <div className="t-stat-trend-bar" style={{ background: pnlColor }} />
-                        </div>
-                    </div>
+                <div style={{ background: 'rgba(10,15,30,0.97)', padding: '12px 16px', border: `1px solid ${isProfit ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: '180px' }}>
+                    <p style={{ margin: '0 0 8px', color: '#94a3b8', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{d.fullName}</p>
+                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Invested: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.invested)}</span></p>
+                    <p style={{ margin: '2px 0', color: '#64748b', fontSize: '0.8rem' }}>Current: <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{formatCurrency(d.current)}</span></p>
+                    <p style={{ margin: '6px 0 0', fontSize: '1rem', fontWeight: 800, color: isProfit ? '#22c55e' : '#ef4444' }}>{isProfit ? '+' : ''}{formatCurrency(d.pnl)} ({isProfit ? '+' : ''}{d.pct}%)</p>
                 </div>
             );
         }
@@ -557,23 +519,16 @@ export default function Portfolio({ user, currency = 'INR' }) {
                     {investments.length > 0 ? (
                         <div className="portfolio-chart-wrapper premium-chart-card">
                             <div className="chart-header-row">
-                                <div className="c-title-group">
-                                    <h3 className="chart-title">Performance Analytics</h3>
-                                    <div className="chart-toggle-pill">
-                                        <button className={chartMode === 'absolute' ? 'active' : ''} onClick={() => setChartMode('absolute')}>Absolute P&L</button>
-                                        <button className={chartMode === 'percentage' ? 'active' : ''} onClick={() => setChartMode('percentage')}>% Returns</button>
-                                    </div>
-                                </div>
-                                <div className="c-legend">
-                                    <div className="l-item"><span className="l-dot marker-square" /> Invested</div>
-                                    <div className="l-item"><span className="l-dot marker-circle" /> Current</div>
-                                    <div className="l-item"><span className="l-dot pnl-area" /> Difference (P&L)</div>
-                                </div>
+                                <h3 className="chart-title">P&amp;L Per Investment</h3>
+                                <span className={`pnl-live-badge ${totalPnL >= 0 ? 'positive' : 'negative'}`}>
+                                    {totalPnL >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
+                                    {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
+                                    <span className="pnl-pct">({totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(2)}%)</span>
+                                </span>
                             </div>
-
-                            <div className="chart-container-main">
-                                <ResponsiveContainer width="100%" height={400}>
-                                    <ComposedChart data={finalChartData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
+                            <div className="chart-container">
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
                                         <defs>
                                             {/* Invested - Minimal Bar Gradient */}
                                             <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
@@ -638,7 +593,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             tick={{ fill: '#64748b', fontSize: 10 }}
                                             axisLine={false}
                                             tickLine={false}
-                                            tickFormatter={(val) => `${val >= 0 ? '+' : ''}₹${Math.abs(val / 1000).toFixed(0)}k`}
+                                            tickFormatter={(val) => `${val >= 0 ? '+' : '-'}${getCurrencySymbol(currency)}${Math.abs(convertValue(val, currency) / 1000).toFixed(0)}k`}
                                             dx={-6}
                                         />
 
@@ -756,16 +711,16 @@ export default function Portfolio({ user, currency = 'INR' }) {
                     <div className="portfolio-summary-grid">
                         <div className="p-summary-card">
                             <span className="p-label">Current Value</span>
-                            <span className="p-value highlight-text">{formatCurrency(totalCurrentValue)}</span>
+                            <span className="p-value highlight-text">{fmt(totalCurrentValue)}</span>
                         </div>
                         <div className="p-summary-card">
                             <span className="p-label">Total Invested</span>
-                            <span className="p-value">{formatCurrency(totalInvested)}</span>
+                            <span className="p-value">{fmt(totalInvested)}</span>
                         </div>
                         <div className={`p-summary-card ${totalPnL >= 0 ? 'highlight-green' : 'highlight-red'}`}>
                             <span className="p-label">Total P&amp;L</span>
                             <span className={`p-value ${totalPnL >= 0 ? 'green' : 'red'}`}>
-                                {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
+                                {totalPnL >= 0 ? '+' : ''}{fmt(totalPnL)}
                             </span>
                         </div>
                         <div className={`p-summary-card ${totalReturn >= 0 ? 'highlight-green' : 'highlight-red'}`}>
@@ -819,7 +774,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                         <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '0.85rem' }}>{d.name}</span>
                                     </div>
                                     <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
-                                        Value: <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '0.88rem' }}>{formatCurrency(d.value)}</span>
+                                        Value: <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '0.88rem' }}>{fmt(d.value)}</span>
                                     </div>
                                     <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '2px' }}>
                                         Share: <span style={{ color, fontWeight: 700 }}>{d.pct}%</span>
@@ -880,7 +835,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 <div className="intel-divider" />
                                 <div className="intel-item"><span className="intel-label">Concentration Risk</span><span className="intel-val" style={{ color: riskColor }}>{riskLevel} ({maxConc.toFixed(0)}%)</span></div>
                                 <div className="intel-divider" />
-                                <div className="intel-item"><span className="intel-label">Portfolio Value</span><span className="intel-val">{formatCurrency(totalCurrentValue)}</span></div>
+                                <div className="intel-item"><span className="intel-label">Portfolio Value</span><span className="intel-val">{fmt(totalCurrentValue)}</span></div>
                             </div>
                         </div>
 
@@ -1015,7 +970,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                             </div>
                                         </td>
                                         <td className="td-date">{formatDate(inv.buy_date || inv.start_date)}</td>
-                                        <td className="td-amount">{formatCurrency(getInvestedAmount(inv))}</td>
+                                        <td className="td-amount">{formatCurrency(inv.amount)}</td>
                                         <td className={`td-return ${isPositive ? 'positive' : 'negative'}`}>
                                             <span className="return-badge">
                                                 {isPositive ? <FiTrendingUp /> : <FiTrendingDown />}
@@ -1084,11 +1039,11 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 )}
                                 <div className="detail-item">
                                     <span className="detail-label"><FiDollarSign /> Amount Invested</span>
-                                    <span className="detail-value">{formatCurrency(getInvestedAmount(selectedInvestment))}</span>
+                                    <span className="detail-value">{formatCurrency(selectedInvestment.amount)}</span>
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> NAV at Buy</span>
-                                    <span className="detail-value">₹{parseFloat(selectedInvestment.nav_at_buy || 0).toFixed(2)}</span>
+                                    <span className="detail-value">{getCurrencySymbol(currency)}{(parseFloat(selectedInvestment.nav_at_buy || 0) * (CURRENCIES[currency]?.rate || 1)).toFixed(2)}</span>
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Units Held</span>
@@ -1096,7 +1051,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 </div>
                                 <div className="detail-item">
                                     <span className="detail-label"><FiActivity /> Current NAV (Est.)</span>
-                                    <span className="detail-value">₹{getCurrentNav(selectedInvestment).toFixed(2)}</span>
+                                    <span className="detail-value">{getCurrencySymbol(currency)}{(getCurrentNav(selectedInvestment) * (CURRENCIES[currency]?.rate || 1)).toFixed(2)}</span>
                                 </div>
                                 {selectedInvestment.frequency && selectedInvestment.investment_type === 'SIP' && (
                                     <div className="detail-item">
@@ -1111,7 +1066,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                     <span>Profit / Loss</span>
                                     <strong>
                                         {getReturnPct(selectedInvestment) >= 0 ? '+' : ''}
-                                        {formatCurrency(getCurrentValue(selectedInvestment) - getInvestedAmount(selectedInvestment))}
+                                        {formatCurrency(getCurrentValue(selectedInvestment) - parseFloat(selectedInvestment.amount || 0))}
                                     </strong>
                                 </div>
                             </div>

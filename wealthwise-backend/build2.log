@@ -1,0 +1,72 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< com.wealthwise:wealthwise-backend >------------------
+[INFO] Building wealthwise 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ wealthwise-backend ---
+[INFO] Deleting D:\ww2\ww-dummy-\wealthwise-backend\target
+[INFO] 
+[INFO] --- resources:3.2.0:resources (default-resources) @ wealthwise-backend ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Using 'UTF-8' encoding to copy filtered properties files.
+[INFO] Copying 1 resource
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- compiler:3.10.1:compile (default-compile) @ wealthwise-backend ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 61 source files to D:\ww2\ww-dummy-\wealthwise-backend\target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[6,2] cannot find symbol
+  symbol: class Entity
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[7,2] cannot find symbol
+  symbol: class Table
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[3,15] package jakarta.persistence does not exist
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[9,6] cannot find symbol
+  symbol:   class Id
+  location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[10,6] cannot find symbol
+  symbol:   class GeneratedValue
+  location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[10,32] cannot find symbol
+  symbol:   variable GenerationType
+  location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[17,6] cannot find symbol
+  symbol:   class Column
+  location: class com.wealthwise.wealthwise_backend.support.Feedback
+[INFO] 7 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.071 s
+[INFO] Finished at: 2026-04-01T10:13:48+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.10.1:compile (default-compile) on project wealthwise-backend: Compilation failure: Compilation failure: 
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[6,2] cannot find symbol
+[ERROR]   symbol: class Entity
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[7,2] cannot find symbol
+[ERROR]   symbol: class Table
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[3,15] package jakarta.persistence does not exist
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[9,6] cannot find symbol
+[ERROR]   symbol:   class Id
+[ERROR]   location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[10,6] cannot find symbol
+[ERROR]   symbol:   class GeneratedValue
+[ERROR]   location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[10,32] cannot find symbol
+[ERROR]   symbol:   variable GenerationType
+[ERROR]   location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/support/Feedback.java:[17,6] cannot find symbol
+[ERROR]   symbol:   class Column
+[ERROR]   location: class com.wealthwise.wealthwise_backend.support.Feedback
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

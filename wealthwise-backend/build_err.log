@@ -1,0 +1,40 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< com.wealthwise:wealthwise-backend >------------------
+[INFO] Building wealthwise 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ wealthwise-backend ---
+[INFO] Deleting D:\ww2\ww-dummy-\wealthwise-backend\target
+[INFO] 
+[INFO] --- resources:3.2.0:resources (default-resources) @ wealthwise-backend ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Using 'UTF-8' encoding to copy filtered properties files.
+[INFO] Copying 1 resource
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- compiler:3.10.1:compile (default-compile) @ wealthwise-backend ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 61 source files to D:\ww2\ww-dummy-\wealthwise-backend\target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/auth/service/EmailService.java:[24,5] illegal start of expression
+[INFO] 1 error
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.764 s
+[INFO] Finished at: 2026-04-01T10:44:34+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.10.1:compile (default-compile) on project wealthwise-backend: Compilation failure
+[ERROR] /D:/ww2/ww-dummy-/wealthwise-backend/src/main/java/com/wealthwise/wealthwise_backend/auth/service/EmailService.java:[24,5] illegal start of expression
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

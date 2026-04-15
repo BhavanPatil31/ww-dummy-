@@ -3,6 +3,7 @@ package com.wealthwise.wealthwise_backend.investment.entity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 @Entity
 @Table(name = "investments")
@@ -16,6 +17,7 @@ public class Investment {
 
     @Column(name = "user_id")
     @JsonProperty("user_id")
+    @JsonAlias({"userId", "id"})
     private Long userId;
 
     @Column(name = "fund_id")

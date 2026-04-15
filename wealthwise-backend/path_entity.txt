@@ -1,0 +1,1 @@
+D:\ww2\ww-dummy-\wealthwise-backend\src\main\java\com\wealthwise\wealthwise_backend\investment\entity\Investment.java

@@ -18,7 +18,6 @@ import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
 import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
-import InfoHint from '../components/InfoHint';
 import '../styles/Dashboard.css';
 
 GlobalWorkerOptions.workerSrc = workerSrc;
@@ -31,25 +30,18 @@ const normalizeCurrency = (value) => {
     return ['INR', 'USD', 'EUR', 'GBP'].includes(code) ? code : 'INR';
 };
 
-const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
+const ChartTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
-    const safeCurrency = normalizeCurrency(currency);
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
-            style: 'currency',
-            currency: safeCurrency,
-            maximumFractionDigits: 0
-        }).format(val || 0);
+    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
     return (
         <div className="chart-tooltip">
             <div className="ct-date">{label}</div>
-            <div className="ct-val">{formatCurrency(payload[0].value)}</div>
+            <div className="ct-val">₹{fmt(payload[0].value)}</div>
         </div>
     );
 };
 
-export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency = 'INR', setCurrency }) {
-    const safeCurrency = normalizeCurrency(currency);
+export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme }) {
     const [investments, setInvestments] = useState([]);
     const [dashboardData, setDashboardData] = useState(null);
     const [goals, setGoals] = useState([]);
@@ -94,26 +86,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         localStorage.setItem('activeView', safeView);
     }, [activeView]);
 
-    const formatCurrency = useCallback((val) =>
-        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
-            style: 'currency',
-            currency: safeCurrency,
-            maximumFractionDigits: 0
-        }).format(val || 0), [safeCurrency]);
-
-    const fmt = (val) =>
-        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
-            maximumFractionDigits: 0
-        }).format(Number(val) || 0);
-
-    const fmtShort = useCallback((val) => {
-        const symbol = safeCurrency === 'INR' ? '₹' : safeCurrency === 'USD' ? '$' : safeCurrency === 'EUR' ? '€' : '£';
-        if (safeCurrency === 'INR') {
-            if (val >= 10000000) return `${symbol}${(val / 10000000).toFixed(2)}Cr`;
-            if (val >= 100000) return `${symbol}${(val / 100000).toFixed(2)}L`;
-        }
-        return formatCurrency(val);
-    }, [safeCurrency, formatCurrency]);
+    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
+    const fmtShort = (val) => {
+        if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
+        if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+        return `₹${fmt(val)}`;
+    };
     const formatDate = (d) => {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
@@ -121,27 +99,31 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Value helpers ────────────────────────────────────────────
     const getCurrentValue = useCallback((inv) => {
-        const storedUnits = Number(inv.units || 0);
-        const currentNav = Number(inv.current_nav || inv.currentNav || 0);
-        const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
-        const invested = Number(inv.amount_invested || inv.amountInvested || inv.amount || 0);
-        const healedUnits = (storedUnits > 0 && navAtBuy > 1.5 && invested > 0 && Math.abs(storedUnits - invested) < 0.0001)
-            ? (invested / navAtBuy)
-            : storedUnits;
-        const units = healedUnits > 0
-            ? healedUnits
-            : (invested > 0 && navAtBuy > 0 ? invested / navAtBuy : 0);
-        const usableCurrentNav = (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5))
-            ? currentNav
-            : 0;
+        const nav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
+            : inv.nav_at_buy > 0 ? inv.nav_at_buy * (1 + 0.05 + ((inv.investment_id || 1) % 10) / 100)
+                : 0;
+        if (inv.units > 0 && nav > 0) return inv.units * nav;
+        const pct = 0.05 + ((inv.investment_id || 1) % 10) / 100;
+        return parseFloat(inv.amount || 0) * (1 + pct);
+    }, []);
 
-        if (units > 0 && usableCurrentNav > 0) {
-            return units * usableCurrentNav;
+    // ── Generate chart history ────────────────────────────────────
+    const generateHistory = useCallback((baseVal, tf) => {
+        const points = tf === '1W' ? 7 : tf === '1M' ? 30 : tf === '6M' ? 180 : tf === '1Y' ? 365 : 730;
+        const data = [];
+        let base = baseVal * 0.78;
+        const now = new Date();
+        for (let i = points; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(now.getDate() - i);
+            base = Math.max(base + (Math.random() - 0.44) * (baseVal * 0.014), baseVal * 0.5);
+            data.push({
+                date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                value: parseFloat(base.toFixed(2))
+            });
         }
-        if (units > 0 && navAtBuy > 0) {
-            return units * navAtBuy;
-        }
-        return invested;
+        if (data.length > 0) data[data.length - 1].value = baseVal;
+        return data;
     }, []);
 
 
@@ -149,94 +131,101 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const fetchAllData = useCallback(async () => {
         if (!user) return;
         const token = localStorage.getItem('jwt_token');
-        const userId = user?.userId || user?.id;
+
+        // Robust userId extraction - handle camelCase, snake_case, or generic id keys
+        const userId = user?.userId || user?.user_id || user?.id || (user?.user && (user.user.userId || user.user.user_id || user.user.id));
+
+        if (!userId) {
+            console.error("Dashboard: missing userId in user object", user);
+            setLoading(false);
+            return;
+        }
+
         const headers = { Authorization: `Bearer ${token}` };
         let invData = [];
-            try {
-                const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
-                invData = r.data || [];
-            } catch {
-                // optional source endpoint
-            }
+        try {
+            const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
+            invData = r.data || [];
+        } catch { }
 
-            let dbData = null;
-            try {
-                const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, { headers });
-                dbData = r.data;
-                if (dbData && dbData.profitLoss === undefined)
-                    dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
-            } catch {
-                // optional source endpoint
-            }
+        let dbData = null;
+        try {
+            const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, { headers });
+            dbData = r.data;
+            if (dbData && dbData.profitLoss === undefined)
+                dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
+        } catch {
+            // optional source endpoint
+        }
 
-            let histData = [];
-            try {
-                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
-                const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
-                histData = r.data || [];
-            } catch {
-                // optional source endpoint
-            }
+        let histData = [];
+        try {
+            const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
+            const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
+            histData = r.data || [];
+        } catch {
+            // optional source endpoint
+        }
 
-            let goalsData = [];
-            try {
-                const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
-                goalsData = r.data || [];
-            } catch {
-                // optional source endpoint
-            }
+        let goalsData = [];
+        try {
+            const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
+            goalsData = r.data || [];
+        } catch {
+            // optional source endpoint
+        }
 
-            // Strict separation: If no investments pass the active filter, force graph to zero
-            const hasActive = (invData || []).some(inv => {
+        // Strict separation: If no investments pass the active filter, force graph to zero
+        const hasActive = (invData || []).some(inv => {
+            if (inv.end_date || inv.endDate) return false;
+            const s = (inv.status || "").toUpperCase();
+            return s !== "SOLD" && s !== "CLOSED";
+        });
+
+        const livePortfolioValue = (invData || [])
+            .filter(inv => {
+                if (inv.end_date || inv.endDate) return false;
+                const s = (inv.status || "").toUpperCase();
+                return s !== "SOLD" && s !== "CLOSED";
+            })
+            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+
+        let resolvedHistory = hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 }));
+        const historyAllZero = !resolvedHistory.length || resolvedHistory.every(pt => Number(pt?.value || 0) <= 0);
+        if (hasActive && livePortfolioValue > 0 && historyAllZero) {
+            const activeInv = (invData || []).filter(inv => {
                 if (inv.end_date || inv.endDate) return false;
                 const s = (inv.status || "").toUpperCase();
                 return s !== "SOLD" && s !== "CLOSED";
             });
 
-            const livePortfolioValue = (invData || [])
-                .filter(inv => {
-                    if (inv.end_date || inv.endDate) return false;
-                    const s = (inv.status || "").toUpperCase();
-                    return s !== "SOLD" && s !== "CLOSED";
-                })
-                .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+            const liveInvested = activeInv.reduce(
+                (sum, inv) => sum + Number(inv.amount_invested || inv.amountInvested || inv.amount || 0),
+                0
+            );
+            const earliestDate = activeInv
+                .map(inv => new Date(inv.buy_date || inv.buyDate || inv.start_date || inv.startDate || new Date()))
+                .sort((a, b) => a - b)[0] || new Date();
+            const today = new Date();
+            const totalDays = Math.max(1, Math.floor((today - earliestDate) / (1000 * 60 * 60 * 24)));
+            const points = resolvedHistory.length ? resolvedHistory : [{ date: today.toISOString().slice(0, 10), value: liveInvested }];
 
-            let resolvedHistory = hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 }));
-            const historyAllZero = !resolvedHistory.length || resolvedHistory.every(pt => Number(pt?.value || 0) <= 0);
-            if (hasActive && livePortfolioValue > 0 && historyAllZero) {
-                const activeInv = (invData || []).filter(inv => {
-                    if (inv.end_date || inv.endDate) return false;
-                    const s = (inv.status || "").toUpperCase();
-                    return s !== "SOLD" && s !== "CLOSED";
-                });
+            resolvedHistory = points.map(pt => {
+                const d = new Date(pt.date);
+                if (isNaN(d.getTime()) || d <= earliestDate) {
+                    return { ...pt, value: liveInvested };
+                }
+                const elapsed = Math.max(0, Math.floor((d - earliestDate) / (1000 * 60 * 60 * 24)));
+                const progress = Math.min(1, elapsed / totalDays);
+                const synthetic = liveInvested + (livePortfolioValue - liveInvested) * progress;
+                return { ...pt, value: Number(synthetic.toFixed(2)) };
+            });
+        }
 
-                const liveInvested = activeInv.reduce(
-                    (sum, inv) => sum + Number(inv.amount_invested || inv.amountInvested || inv.amount || 0),
-                    0
-                );
-                const earliestDate = activeInv
-                    .map(inv => new Date(inv.buy_date || inv.buyDate || inv.start_date || inv.startDate || new Date()))
-                    .sort((a, b) => a - b)[0] || new Date();
-                const today = new Date();
-                const totalDays = Math.max(1, Math.floor((today - earliestDate) / (1000 * 60 * 60 * 24)));
-                const points = resolvedHistory.length ? resolvedHistory : [{ date: today.toISOString().slice(0, 10), value: liveInvested }];
-
-                resolvedHistory = points.map(pt => {
-                    const d = new Date(pt.date);
-                    if (isNaN(d.getTime()) || d <= earliestDate) {
-                        return { ...pt, value: liveInvested };
-                    }
-                    const elapsed = Math.max(0, Math.floor((d - earliestDate) / (1000 * 60 * 60 * 24)));
-                    const progress = Math.min(1, elapsed / totalDays);
-                    const synthetic = liveInvested + (livePortfolioValue - liveInvested) * progress;
-                    return { ...pt, value: Number(synthetic.toFixed(2)) };
-                });
-            }
-
-            setInvestments(invData);
-            setDashboardData(dbData);
-            setGoals(goalsData);
-            setHistoryData(resolvedHistory);
+        setInvestments(invData);
+        setDashboardData(dbData);
+        setGoals(goalsData);
+        setHistoryData(resolvedHistory);
     }, [user, timeFrame, getCurrentValue]);
 
     const activeInvestments = useMemo(() => {
@@ -517,52 +506,29 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Derived metrics ──────────────────────────────────────────
     const metrics = useMemo(() => {
-        const totalInvested = activeInvestments.reduce(
-            (sum, inv) => sum + Number(inv.amount_invested || inv.amount || 0),
-            0
-        );
-        const portfolioValue = activeInvestments.reduce(
-            (sum, inv) => sum + getCurrentValue(inv),
-            0
-        );
+        if (dashboardData) return {
+            totalInvested: dashboardData.totalInvested || 0,
+            portfolioValue: dashboardData.portfolioValue || 0,
+            profitLoss: dashboardData.profitLoss || 0,
+            returnPct: dashboardData.returnPercentage || 0,
+        };
+        const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+        const portfolioValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
         const profitLoss = portfolioValue - totalInvested;
         const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
-
-        return {
-            totalInvested,
-            portfolioValue,
-            profitLoss,
-            returnPct,
-            realizedPnL: dashboardData?.realizedProfitLoss || 0,
-        };
-    }, [activeInvestments, getCurrentValue, dashboardData]);
+        return { totalInvested, portfolioValue, profitLoss, returnPct };
+    }, [dashboardData, investments, getCurrentValue]);
 
     const assetAllocation = useMemo(() => {
-        if (!activeInvestments.length) return [];
-
-        const sipValue = activeInvestments
-            .filter(inv => (inv.investment_type || '').toUpperCase() === 'SIP')
-            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
-
-        const lumpsumValue = activeInvestments
-            .filter(inv => {
-                const type = (inv.investment_type || '').toUpperCase();
-                return type === 'LUMPSUM' || type === 'BUY' || type === '';
-            })
-            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
-
-        const data = [];
-        if (sipValue > 0) data.push({ name: 'SIP', value: sipValue });
-        if (lumpsumValue > 0) data.push({ name: 'Lumpsum', value: lumpsumValue });
-
-        // If no SIP/Lumpsum detected but investments exist (fallback)
-        if (data.length === 0 && activeInvestments.length > 0) {
-            const totalVal = activeInvestments.reduce((sum, inv) => sum + getCurrentValue(inv), 0);
-            data.push({ name: 'Mutual Funds', value: totalVal });
-        }
-
-        return data;
-    }, [activeInvestments, getCurrentValue]);
+        if (dashboardData?.assetAllocation?.length) return dashboardData.assetAllocation;
+        if (!investments.length) return [];
+        const groups = {};
+        investments.forEach(inv => {
+            const t = inv.investment_type || 'Other';
+            groups[t] = (groups[t] || 0) + getCurrentValue(inv);
+        });
+        return Object.entries(groups).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
+    }, [dashboardData, investments, getCurrentValue]);
 
     const topPerformers = useMemo(() => {
         if (!investments.length) return { best: null, worst: null };
@@ -640,7 +606,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return (
             <div className={`profit-pill ${isPos ? 'pos' : 'neg'}`}>
                 {isPos ? <FiArrowUpRight /> : <FiArrowDownRight />}
-                {isPos ? '+' : ''}{formatCurrency(Math.abs(profitLoss))}
+                {isPos ? '+' : ''}₹{fmt(Math.abs(profitLoss))}
                 <span>({isPos ? '+' : ''}{returnPct.toFixed(2)}%)</span>
             </div>
         );
@@ -656,12 +622,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
             {/* ── SIDEBAR ── */}
             <aside className="dashboard-sidebar">
-                <div className="brand">
-                    <div className="logo-wrapper">
-                        <img src="/logo.svg" alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
-                    </div>
-                    <h2>WealthWise</h2>
-                </div>
+                <div className="brand"><h2>WealthWise</h2></div>
                 <nav className="sidebar-nav">
                     {[
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
@@ -687,7 +648,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     <div className="welcome-section">
                         <h1>
                             {activeView === 'dashboard'
-                                ? `Welcome back, ${dashboardData?.userName || user?.name || 'Investor'} 👋`
+                                ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
                                 : activeView === 'profile' ? 'Account Overview'
                                     : activeView === 'addInvestment' ? 'Add Investment'
                                         : activeView === 'portfolio' ? 'My Portfolio'
@@ -706,11 +667,10 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                 : activeView === 'settings' ? 'Configure application preferences and security'
                                                     : activeView === 'goals' ? 'Set and track your financial milestones'
                                                         : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                            <InfoHint text="Use the left menu to switch modules. Hover or click info icons on pages to see short guidance." />
                         </p>
                     </div>
                     <div className="header-actions">
-                        <div className="notification-wrapper" ref={notifRef}>
+                        <div className="notification-wrapper">
                             <button className={`icon-btn ${showNotifications ? 'active' : ''}`}
                                 onClick={() => setShowNotifications(!showNotifications)}>
                                 <FiBell />
@@ -764,9 +724,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             <section className="growth-hero-card">
                                 <div className="hero-top">
                                     <div className="hero-left">
-                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE</span>
+                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE ({currency})</span>
                                         <div className="hero-value-row">
-                                            <span className="big-price">{formatCurrency(metrics.portfolioValue)}</span>
+                                            <span className="big-price">₹{fmt(metrics.portfolioValue)}</span>
                                             {profitPill()}
                                         </div>
                                         <div className="timeframe-filters">
@@ -778,7 +738,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                     <div className="hero-right">
                                         <div className="hero-mini-stat">
                                             <span>Invested</span>
-                                            <strong>{formatCurrency(metrics.totalInvested)}</strong>
+                                            <strong>₹{fmt(metrics.totalInvested)}</strong>
                                         </div>
                                         <div className="hero-mini-stat">
                                             <span>Holdings</span>
@@ -816,33 +776,10 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                 padding={{ left: 10, right: 10 }}
                                             />
                                             <YAxis hide domain={['auto', 'auto']} />
-                                            <Tooltip
-                                                content={<ChartTooltip currency={currency} />}
-                                                cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1 }}
-                                            />
-                                            {/* Glow Layer */}
-                                            <Area
-                                                type="natural"
-                                                dataKey="value"
-                                                stroke="#3b82f6"
-                                                strokeWidth={4}
-                                                fill="transparent"
-                                                strokeOpacity={0.4}
-                                                style={{ filter: 'url(#glow)' }}
-                                                activeDot={false}
-                                                animationDuration={2000}
-                                            />
-                                            {/* Main Line & Gradient */}
-                                            <Area
-                                                type="natural"
-                                                dataKey="value"
-                                                stroke="#3b82f6"
-                                                strokeWidth={2.5}
-                                                fill="url(#areaGrad)"
-                                                dot={false}
-                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                                                animationDuration={1500}
-                                            />
+                                            <Tooltip content={<ChartTooltip />} />
+                                            <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5}
+                                                fill="url(#areaGrad)" dot={false}
+                                                activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -851,12 +788,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 2. KPI CARDS ── */}
                             <div className="kpi-grid">
                                 {[
-                                    { label: 'Total Invested', value: `₹${fmt(metrics.totalInvested)}`, icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
-                                    { label: 'Portfolio Value', value: `₹${fmt(metrics.portfolioValue)}`, icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
+                                    { label: 'Total Invested', value: fmt(metrics.totalInvested), icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
+                                    { label: 'Portfolio Value', value: fmt(metrics.portfolioValue), icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
                                     {
                                         label: 'Total Gain / Loss',
                                         value: metrics.profitLoss === 0 ? 'Break-even'
-                                            : `${metrics.profitLoss > 0 ? '+' : ''}${formatCurrency(Math.abs(metrics.profitLoss))}`,
+                                            : `${metrics.profitLoss > 0 ? '+' : ''}₹${fmt(Math.abs(metrics.profitLoss))}`,
                                         icon: metrics.profitLoss >= 0 ? <FiTrendingUp /> : <FiTrendingDown />,
                                         cls: metrics.profitLoss > 0 ? 'i-green' : metrics.profitLoss < 0 ? 'i-red' : 'i-muted',
                                         sub: metrics.realizedPnL !== 0 ? `Incl. ${fmtShort(metrics.realizedPnL)} realized` : `${(metrics.returnPct || 0).toFixed(2)}% overall`,
@@ -904,7 +841,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         >
                                                             {assetAllocation.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => [`₹${fmt(v)}`, '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        <Tooltip formatter={(v) => [fmt(v), '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                                 <div className="donut-center">
@@ -918,7 +855,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
                                                         <span className="legend-name">{item.name}</span>
                                                         <span className="legend-pct">{metrics.portfolioValue > 0 ? ((item.value / metrics.portfolioValue) * 100).toFixed(0) : 0}%</span>
-                                                        <span className="legend-val">{formatCurrency(item.value)}</span>
+                                                        <span className="legend-val">₹{fmt(item.value)}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -996,7 +933,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <strong>{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 24)}{(inv.scheme_name?.length > 24) ? '…' : ''}</strong>
                                                         <span>{inv.investment_type === 'Lumpsum' ? 'BUY' : inv.investment_type} · {formatDate(inv.buy_date || inv.start_date)}</span>
                                                     </div>
-                                                    <div className="activity-amount">{inv.investment_type === 'SELL' ? '-' : '+'}{formatCurrency(inv.amount)}</div>
+                                                    <div className="activity-amount">+₹{fmt(inv.amount)}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -1007,41 +944,26 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 5. GOALS PREVIEW ── */}
                             <div className="goals-preview-card">
                                 <div className="card-top"><h3>Financial Goals</h3><FiTarget /></div>
-                                {goalsPreview.length === 0 ? (
-                                    <div className="empty-state-sm"><FiTarget /><p>No goals created yet</p></div>
-                                ) : (
-                                    <div className="goals-grid">
-                                        {goalsPreview.map((g) => (
-                                            <div key={g.key} className="goal-card">
-                                                <div className="goal-header">
-                                                    <span>{g.name}</span>
-                                                    <span className="goal-pct">{g.pct}%</span>
-                                                </div>
-                                                <div className="goal-bar">
-                                                    <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
-                                                </div>
-                                                <div className="goal-footer">
-                                                    <span>{g.cur} of {g.total}</span>
-                                                    <span className="goal-rem">{g.rem} to go</span>
-                                                </div>
+                                <div className="goals-grid">
+                                    {[
+                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: '₹6.5L', total: '₹10L', rem: '₹3.5L', color: '' },
+                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: '₹80K', total: '₹2L', rem: '₹1.2L', color: 'blue' },
+                                    ].map((g, i) => (
+                                        <div key={i} className="goal-card">
+                                            <div className="goal-header">
+                                                <span>{g.emoji} {g.name}</span>
+                                                <span className="goal-pct">{g.pct}%</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* ── 6. CAS UPLOAD SECTION ── */}
-                            <div className="cas-section">
-                                <button className="cas-button" onClick={openCASFilePicker}>
-                                    📄 Upload CAS (.pdf)
-                                </button>
-                                <input
-                                    ref={casFileInputRef}
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleCASFileSelect}
-                                    hidden
-                                />
+                                            <div className="goal-bar">
+                                                <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
+                                            </div>
+                                            <div className="goal-footer">
+                                                <span>{g.cur} of {g.total}</span>
+                                                <span className="goal-rem">{g.rem} to go</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                         </div>

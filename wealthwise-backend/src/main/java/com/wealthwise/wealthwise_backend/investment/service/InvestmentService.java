@@ -32,9 +32,18 @@ public class InvestmentService {
 
     public Investment addInvestment(Investment investment) {
         Objects.requireNonNull(investment, "Investment cannot be null");
+        
+        // Ensure both amount fields are synchronized for consistent calculations
+        if (investment.getAmount() != null && investment.getAmountInvested() == null) {
+            investment.setAmountInvested(investment.getAmount());
+        } else if (investment.getAmountInvested() != null && investment.getAmount() == null) {
+            investment.setAmount(investment.getAmountInvested());
+        }
+
         Investment saved = Objects.requireNonNull(investmentRepository.save(investment), "Saved investment cannot be null");
         Long userId = saved.getUserId();
         if (userId != null) {
+
             // Create notification
             String msg = "New " + saved.getInvestmentType() + " investment of Rs." + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
             notificationService.createNotification(userId, msg, "INVESTMENT");
@@ -44,7 +53,7 @@ public class InvestmentService {
                 // Move to tax_transactions immediately
                 taxService.moveInvestmentToTaxTransaction(saved);
                 // Delete from investments table
-                investmentRepository.deleteById(saved.getInvestmentId());
+                investmentRepository.deleteById(Objects.requireNonNull(saved.getInvestmentId()));
                 notificationService.createNotification(userId, 
                         "Your investment in " + saved.getSchemeName() + " with an end date has been moved to tax transactions.", 
                         "INVESTMENT_CLOSED");

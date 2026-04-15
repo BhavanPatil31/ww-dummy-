@@ -1,14 +1,12 @@
 /* Premium User Profile Styling - Solid Theme */
 :root {
-    --primary-color: #4f46e5;
-    /* Solid Indigo instead of a gradient */
-    --primary-hover: #4338ca;
-    --bg-color: #0f172a;
-    /* Deep slate background */
-    --glass-bg: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
+    --primary-color: var(--accent-color, #4f46e5);
+    --primary-hover: var(--accent-hover, #4338ca);
+    --bg-color: var(--bg-primary);
+    --glass-bg: var(--glass-bg);
+    --glass-border: var(--glass-border);
+    --text-main: var(--text-primary);
+    --text-muted: var(--text-secondary);
 }
 
 .profile_premium_wrapper {
@@ -65,8 +63,8 @@
 .premium_cover_photo {
     height: 180px;
     background: radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(30, 41, 59, 1) 0%, transparent 50%),
-                #0f172a;
+                radial-gradient(at 100% 0%, var(--bg-secondary) 0%, transparent 50%),
+                var(--bg-color);
     position: relative;
     border-bottom: 1px solid var(--glass-border);
 }
@@ -284,7 +282,7 @@
 .premium_input_group textarea {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--glass-border);
-    color: white;
+    color: var(--text-main);
     padding: 12px 16px;
     border-radius: 10px;
     font-family: inherit;
@@ -349,13 +347,13 @@
 
 .btn_premium_cancel:hover {
     background: rgba(255, 255, 255, 0.05);
-    color: white;
+    color: var(--text-main);
 }
 
 .btn_premium_save {
     background: var(--primary-color);
     border: none;
-    color: white;
+    color: var(--text-main);
 }
 
 .btn_premium_save:hover {
@@ -422,4 +420,53 @@
     .full_width {
         grid-column: span 1;
     }
+}
+
+/* Light Theme Overrides */
+:root.theme-light .profile_premium_wrapper {
+    --bg-color: #F3F4F6;
+    --text-main: #1e293b;
+    --text-muted: #475569;
+    --glass-bg: #ffffff;
+    --glass-border: #cbd5e1;
+}
+
+:root.theme-light .premium_cover_photo {
+    background: radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.05) 0%, transparent 50%),
+                var(--bg-color);
+}
+
+:root.theme-light .premium_avatar_ring img,
+:root.theme-light .premium_initials {
+    background: #ffffff;
+}
+
+:root.theme-light .premium_input_group input,
+:root.theme-light .premium_input_group textarea,
+:root.theme-light .premium_radio_group button {
+    background: #ffffff;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+:root.theme-light .premium_input_group input:focus,
+:root.theme-light .premium_input_group textarea:focus {
+    background: #ffffff;
+    border-color: #4f46e5;
+}
+
+:root.theme-light .premium_btn_edit:hover {
+    background: #f1f5f9;
+}
+
+:root.theme-light .section_title {
+    color: #4f46e5;
+}
+
+:root.theme-light .premium_display_name {
+    color: #1e293b;
+}
+
+:root.theme-light .btn_premium_cancel {
+    background: #ffffff;
 }
