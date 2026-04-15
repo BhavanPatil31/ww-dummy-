@@ -2,6 +2,8 @@ package com.wealthwise.wealthwise_backend.investment.controller;
 
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
 import com.wealthwise.wealthwise_backend.investment.service.InvestmentService;
+import com.wealthwise.wealthwise_backend.portfolio.service.InvestmentValuationService;
+import com.wealthwise.wealthwise_backend.portfolio.service.PortfolioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,68 +20,35 @@ public class DashboardController {
     @Autowired
     private InvestmentService investmentService;
 
+    @Autowired
+    private InvestmentValuationService investmentValuationService;
+
+    @Autowired
+    private PortfolioService portfolioService;
+
     @GetMapping("/{userId}")
     public Map<String, Object> getDashboardData(@PathVariable Long userId) {
-        List<Investment> investments = investmentService.getUserInvestments(userId);
+        List<Investment> investments = investmentService.getUserActiveInvestments(userId);
 
         double totalInvested = 0.0;
         double portfolioValue = 0.0;
         Map<String, Double> assetAllocationMap = new HashMap<>();
 
         for (Investment inv : investments) {
-            // Check both amount and amount_invested for data robustness
-            double amount = 0.0;
-            if (inv.getAmount() != null) {
-                amount = inv.getAmount();
-            } else if (inv.getAmountInvested() != null) {
-                amount = inv.getAmountInvested();
-            }
-            
+
             String type = inv.getInvestmentType();
             if (type == null || type.trim().isEmpty()) {
                 type = "Other";
             }
-            
-            double currentInvested = amount;
-            double currentVal = currentInvested;
-            
-            if (inv.getBuyDate() != null) {
-                if ("SIP".equalsIgnoreCase(type)) {
-                    long monthsPassed = java.time.temporal.ChronoUnit.MONTHS.between(inv.getBuyDate(), java.time.LocalDate.now());
-                    if (monthsPassed < 0) monthsPassed = 0;
-                    long n = monthsPassed + 1; 
-                    currentInvested = amount * n;
-                    
-                    if (inv.getCurrentNav() != null && inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0) {
-                        currentVal = currentInvested * (inv.getCurrentNav() / inv.getNavAtBuy());
-                    } else {
-                        double i = 0.01; 
-                        currentVal = amount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
-                    }
-                } else {
-                    long days = java.time.temporal.ChronoUnit.DAYS.between(inv.getBuyDate(), java.time.LocalDate.now());
-                    if (days < 0) days = 0;
-                    currentInvested = amount;
-                    
-                    if (inv.getCurrentNav() != null && inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0) {
-                        currentVal = currentInvested * (inv.getCurrentNav() / inv.getNavAtBuy());
-                    } else {
-                        double years = days / 365.25;
-                        currentVal = currentInvested * Math.pow(1.12, years);
-                    }
-                }
-            } else {
-                if (inv.getCurrentNav() != null && inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0) {
-                    currentVal = currentInvested * (inv.getCurrentNav() / inv.getNavAtBuy());
-                } else {
-                    currentVal = currentInvested * 1.12;
-                }
-            }
-            
+
+            InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, java.time.LocalDate.now());
+            double currentInvested = valuation.getInvestedAmount().doubleValue();
+            double currentVal = valuation.getCurrentValue().doubleValue();
+
             totalInvested += currentInvested;
             portfolioValue += currentVal;
 
-            assetAllocationMap.put(type, assetAllocationMap.getOrDefault(type, 0.0) + currentInvested);
+            assetAllocationMap.put(type, assetAllocationMap.getOrDefault(type, 0.0) + currentVal);
         }
 
         double profitLoss = portfolioValue - totalInvested;
@@ -100,5 +69,14 @@ public class DashboardController {
         response.put("assetAllocation", assetAllocation);
 
         return response;
+    }
+
+    @GetMapping("/{userId}/history")
+    public List<Map<String, Object>> getDashboardHistory(
+            @PathVariable Long userId,
+            @RequestParam(name = "days", defaultValue = "30") int days
+    ) {
+        int boundedDays = days <= 0 ? 30 : Math.min(days, 36500);
+        return portfolioService.computePortfolioHistory(userId, boundedDays);
     }
 }

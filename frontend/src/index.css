@@ -62,7 +62,12 @@ body {
   overflow-x: hidden;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -87,8 +92,15 @@ button {
 
 /* Base fade-in animation for page load */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
@@ -99,8 +111,8 @@ button {
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-primary: #F3F4F6;
-    --bg-secondary: #FFFFFF;
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
 
@@ -134,8 +146,8 @@ button {
 }
 
 .theme-light {
-  --bg-primary: #F3F4F6;
-  --bg-secondary: #FFFFFF;
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
   --text-primary: #1e293b;
   --text-secondary: #64748b;
 

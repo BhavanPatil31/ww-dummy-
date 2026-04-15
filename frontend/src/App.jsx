@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-import UserProfile from "./pages/UserProfile";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 
@@ -25,10 +24,7 @@ function App() {
         }
     });
 
-    const [theme, setTheme] = useState(() => {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
-        return saved ? saved : "system";
-    });
+    const [theme, setTheme] = useState("dark");
 
     const [currency, setCurrency] = useState(() => {
         const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
@@ -40,7 +36,7 @@ function App() {
             const savedPage = localStorage.getItem("wealthwise_current_page");
             if (savedPage) return savedPage;
             return localStorage.getItem("jwt_token") ? "dashboard" : "home";
-        } catch (e) {
+        } catch {
             return "home";
         }
     });
@@ -50,26 +46,18 @@ function App() {
     const [showForgot, setShowForgot] = useState(false);
     const [loginEmail, setLoginEmail] = useState("");
 
-    // ✅ 2. Persist page changes
+    // ✅ Theme handling (Locked to dark mode)
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.remove("theme-light");
+        root.classList.add("theme-dark");
+        localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    }, []);
+
+    // ✅ Persist page changes
     useEffect(() => {
         localStorage.setItem("wealthwise_current_page", currentPage);
     }, [currentPage]);
-
-    // ✅ Theme handling (light / dark / system)
-    useEffect(() => {
-        const root = document.documentElement;
-
-        // Remove any explicit theme classes, then apply desired one
-        root.classList.remove("theme-light", "theme-dark");
-
-        if (theme === "light") {
-            root.classList.add("theme-light");
-        } else if (theme === "dark") {
-            root.classList.add("theme-dark");
-        }
-
-        localStorage.setItem("wealthwise_theme", theme);
-    }, [theme]);
 
     // ✅ Currency persistence
     useEffect(() => {
@@ -82,6 +70,7 @@ function App() {
         localStorage.removeItem("wealthwise_user");
         localStorage.removeItem("wealthwise_current_page");
         localStorage.removeItem("activeView");
+        localStorage.removeItem("wealthwise_currency"); // Optional: clear currency on logout? Maybe keep it.
         setCurrentUser(null);
         setCurrentPage("home");
     };
@@ -116,6 +105,7 @@ function App() {
                     onLogout={handleLogout}
                     theme={theme}
                     setTheme={setTheme}
+                    currency={currency}
                 />
             )}
 

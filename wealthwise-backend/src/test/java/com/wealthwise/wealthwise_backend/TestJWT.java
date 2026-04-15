@@ -1,3 +1,5 @@
+package com.wealthwise.wealthwise_backend;
+
 import com.wealthwise.wealthwise_backend.auth.util.JwtUtil;
 
 public class TestJWT {

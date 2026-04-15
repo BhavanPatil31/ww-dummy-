@@ -178,7 +178,9 @@
     font-weight: 500;
 }
 
-.p-sub.green { color: var(--fintech-green); }
+.p-sub.green {
+    color: var(--fintech-green);
+}
 
 .p-summary-card.span-2 {
     grid-column: span 2;
@@ -210,9 +212,17 @@
     transition: width 1s ease;
 }
 
-.health-bar-fill.green  { background: linear-gradient(90deg, #16a34a, #22c55e); }
-.health-bar-fill.blue   { background: linear-gradient(90deg, #2563eb, #3b82f6); }
-.health-bar-fill.red    { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.health-bar-fill.green {
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.health-bar-fill.blue {
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+}
+
+.health-bar-fill.red {
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+}
 
 /* ── Chart Header Row (title + P&L badge) ── */
 .chart-header-row {
@@ -1081,6 +1091,101 @@
     overflow: hidden;
 }
 
+/* Compatibility selectors for current Portfolio.jsx chart header */
+.premium-chart-card {
+    border: 1px solid var(--border-color);
+}
+
+.c-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.chart-toggle-pill {
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(11, 17, 32, 0.6);
+}
+
+.chart-toggle-pill button {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-gray);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.chart-toggle-pill button:hover {
+    color: var(--text-white);
+    background: rgba(59, 130, 246, 0.14);
+}
+
+.chart-toggle-pill button.active {
+    color: #eaf2ff;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
+.c-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    color: var(--text-gray);
+    font-size: 0.82rem;
+}
+
+.l-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.l-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.l-dot.marker-square {
+    border-radius: 2px;
+    background: #94a3b8;
+}
+
+.l-dot.marker-circle {
+    background: #3b82f6;
+}
+
+.l-dot.pnl-area {
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+}
+
+.chart-container-main {
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .chart-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .c-title-group {
+        flex-wrap: wrap;
+    }
+}
+
 .intel-ticker-inner {
     display: flex;
     align-items: center;
@@ -1113,8 +1218,13 @@
     white-space: nowrap;
 }
 
-.intel-val.green { color: #22c55e; }
-.intel-val.red   { color: #ef4444; }
+.intel-val.green {
+    color: #22c55e;
+}
+
+.intel-val.red {
+    color: #ef4444;
+}
 
 .intel-divider {
     width: 1px;
@@ -1163,10 +1273,21 @@
     letter-spacing: 0.06em;
 }
 
-.title-icon { font-size: 0.95rem; }
-.green-icon { color: #22c55e; }
-.red-icon   { color: #ef4444; }
-.blue-icon  { color: #3b82f6; }
+.title-icon {
+    font-size: 0.95rem;
+}
+
+.green-icon {
+    color: #22c55e;
+}
+
+.red-icon {
+    color: #ef4444;
+}
+
+.blue-icon {
+    color: #3b82f6;
+}
 
 /* ── Movers List ── */
 .movers-list {
@@ -1234,8 +1355,13 @@
     flex-shrink: 0;
 }
 
-.mover-ret.positive { color: #22c55e; }
-.mover-ret.negative { color: #ef4444; }
+.mover-ret.positive {
+    color: #22c55e;
+}
+
+.mover-ret.negative {
+    color: #ef4444;
+}
 
 /* ── Risk Exposure ── */
 .risk-level-badge {
@@ -1275,9 +1401,17 @@
     height: 100%;
 }
 
-.risk-zone.low  { background: rgba(34, 197, 94, 0.08); }
-.risk-zone.med  { background: rgba(245, 158, 11, 0.08); }
-.risk-zone.high { background: rgba(239, 68, 68, 0.08);  }
+.risk-zone.low {
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.risk-zone.med {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.risk-zone.high {
+    background: rgba(239, 68, 68, 0.08);
+}
 
 .risk-labels {
     display: flex;
@@ -1383,9 +1517,17 @@
     color: #1e293b;
 }
 
-:root.theme-light .p-value.green { color: #059669; }
-:root.theme-light .p-value.red { color: #dc2626; }
-:root.theme-light .p-value.blue { color: #2563eb; }
+:root.theme-light .p-value.green {
+    color: #059669;
+}
+
+:root.theme-light .p-value.red {
+    color: #dc2626;
+}
+
+:root.theme-light .p-value.blue {
+    color: #2563eb;
+}
 
 /* ── Light Theme: Market Intel Strip (match sidebar blue) ── */
 :root.theme-light .market-intel-strip {
@@ -1401,8 +1543,13 @@
     color: #000000 !important;
 }
 
-:root.theme-light .intel-val.green { color: #059669 !important; }
-:root.theme-light .intel-val.red   { color: #dc2626 !important; }
+:root.theme-light .intel-val.green {
+    color: #059669 !important;
+}
+
+:root.theme-light .intel-val.red {
+    color: #dc2626 !important;
+}
 
 :root.theme-light .intel-divider {
     background: rgba(255, 255, 255, 0.25);
@@ -1441,8 +1588,13 @@
     color: #64748b;
 }
 
-:root.theme-light .mover-ret.positive { color: #059669; }
-:root.theme-light .mover-ret.negative { color: #dc2626; }
+:root.theme-light .mover-ret.positive {
+    color: #059669;
+}
+
+:root.theme-light .mover-ret.negative {
+    color: #dc2626;
+}
 
 /* ── Light Theme: Risk Exposure Card ── */
 :root.theme-light .risk-labels {
@@ -1465,9 +1617,17 @@
     background: #e2e8f0;
 }
 
-:root.theme-light .risk-zone.low  { background: rgba(34, 197, 94, 0.12); }
-:root.theme-light .risk-zone.med  { background: rgba(245, 158, 11, 0.12); }
-:root.theme-light .risk-zone.high { background: rgba(239, 68, 68, 0.12); }
+:root.theme-light .risk-zone.low {
+    background: rgba(34, 197, 94, 0.12);
+}
+
+:root.theme-light .risk-zone.med {
+    background: rgba(245, 158, 11, 0.12);
+}
+
+:root.theme-light .risk-zone.high {
+    background: rgba(239, 68, 68, 0.12);
+}
 
 /* ── Light Theme: Table text improvements ── */
 :root.theme-light .portfolio-row {
@@ -1497,4 +1657,4 @@
 
 :root.theme-light .table-footer strong {
     color: #1e293b;
-}
+}

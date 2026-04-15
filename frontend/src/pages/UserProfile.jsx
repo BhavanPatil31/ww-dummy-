@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import {
-    FiUser, FiMail, FiPhone, FiMapPin, FiCamera,
+    FiUser, FiMail, FiCamera,
     FiTrash2, FiSave, FiEdit2, FiCheckCircle, FiAlertTriangle,
-    FiGlobe, FiTarget, FiInfo, FiX, FiShield, FiClock, FiBriefcase, FiCalendar
+    FiInfo, FiShield
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
+import InfoHint from "../components/InfoHint";
 import "../styles/UserProfile.css";
 
 const API_BASE = "http://localhost:8088/api/profiles";
 
-export default function UserProfile({ user, onBack, onLogout, onProfileUpdate }) {
+export default function UserProfile({ user }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: "", type: "" });
@@ -50,8 +51,18 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                 dob: profile.dob || "",
                 bio: profile.bio || ""
             });
+        } else if (user) {
+            const nameParts = (user.name || "").split(" ");
+            const fName = nameParts[0] || "";
+            const lName = nameParts.slice(1).join(" ") || "";
+            setEditForm((prev) => ({
+                ...prev,
+                firstName: fName,
+                lastName: lName,
+                email: user.email || ""
+            }));
         }
-    }, [profile]);
+    }, [profile, user]);
 
     const showMessage = (text, type) => {
         setMessage({ text, type });
@@ -62,7 +73,9 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
         try {
             const res = await fetch(`${API_BASE}/user/${userId}`);
             if (res.ok) setProfile(await res.json());
-        } catch (err) { console.log("No profile yet"); }
+        } catch {
+            console.log("No profile yet");
+        }
     };
 
     const handleAvatarUpload = (e) => {
@@ -93,15 +106,32 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
 
         try {
             if (!profile) {
+                const payload = {
+                    userId: uid, 
+                    name: finalName, 
+                    email: editForm.email,
+                    phone: editForm.mobileNumber, 
+                    password: "dummy_pass_123",
+                    gender: editForm.gender, 
+                    taxId: editForm.taxId,
+                    taxCountry: editForm.taxCountry, 
+                    residentialAddress: editForm.residentialAddress,
+                    occupation: editForm.occupation, 
+                    dob: editForm.dob, 
+                    bio: editForm.bio
+                };
+                
                 const res = await fetch(API_BASE, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        userId: uid, name: finalName, email: editForm.email,
-                        phone: editForm.mobileNumber, password: "dummy_pass_123"
-                    }),
+                    body: JSON.stringify(payload),
                 });
-                if (!res.ok) throw new Error("Failed to create profile");
+                
+                if (!res.ok) {
+                    const errText = await res.text();
+                    console.error("Profile creation failed:", errText);
+                    throw new Error(errText || "Failed to create profile");
+                }
                 const newProfile = await res.json();
                 setProfile(newProfile);
             } else {
@@ -133,14 +163,14 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="profile_premium_wrapper">
+        <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="profile_premium_wrapper">
 
             <AnimatePresence>
                 {message.text && (
-                    <motion.div initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 0, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }} className={`premium_toast ${message.type}`}>
+                    <Motion.div initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 0, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }} className={`premium_toast ${message.type}`}>
                         {message.type === 'success' ? <FiCheckCircle /> : <FiAlertTriangle />}
                         <span>{message.text}</span>
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
 
@@ -189,28 +219,31 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
             {/* Main Content Area - Single Column for all fields */}
             <div className="premium_body_layout">
                 {isEditing ? (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="premium_edit_form">
+                    <Motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="premium_edit_form">
                         <div className="premium_glass_card">
-                            <h3 className="section_title"><FiUser /> Personal Details</h3>
+                            <h3 className="section_title">
+                                <FiUser /> Personal Details
+                                <InfoHint text="Basic profile information shown across your account." />
+                            </h3>
                             <div className="form_grid_2">
                                 <div className="premium_input_group">
-                                    <label>First Name</label>
+                                    <label>First Name <InfoHint text="Enter your given name." /></label>
                                     <input type="text" value={editForm.firstName} onChange={e => setEditForm({ ...editForm, firstName: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group">
-                                    <label>Last Name</label>
+                                    <label>Last Name <InfoHint text="Enter your family/surname." /></label>
                                     <input type="text" value={editForm.lastName} onChange={e => setEditForm({ ...editForm, lastName: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group">
-                                    <label>Date of Birth</label>
+                                    <label>Date of Birth <InfoHint text="Used for profile completeness and personalized planning." /></label>
                                     <input type="date" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group">
-                                    <label>Occupation</label>
+                                    <label>Occupation <InfoHint text="Optional, helps tailor insights and recommendations." /></label>
                                     <input type="text" value={editForm.occupation} onChange={e => setEditForm({ ...editForm, occupation: e.target.value })} placeholder="e.g. Software Engineer" />
                                 </div>
                                 <div className="premium_input_group full_width">
-                                    <label>Bio</label>
+                                    <label>Bio <InfoHint text="Short intro shown in your profile section." /></label>
                                     <textarea rows="3" value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell us about yourself..."></textarea>
                                 </div>
                                 <div className="premium_input_group full_width">
@@ -225,32 +258,38 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                         </div>
 
                         <div className="premium_glass_card mt-4">
-                            <h3 className="section_title"><FiMail /> Contact & Location</h3>
+                            <h3 className="section_title">
+                                <FiMail /> Contact & Location
+                                <InfoHint text="Contact details used for account updates and communication." />
+                            </h3>
                             <div className="form_grid_2">
                                 <div className="premium_input_group">
-                                    <label>Email Address</label>
+                                    <label>Email Address <InfoHint text="This is your primary account email." /></label>
                                     <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group">
-                                    <label>Phone Number</label>
+                                    <label>Phone Number <InfoHint text="Used for contact and future security verification." /></label>
                                     <input type="text" value={editForm.mobileNumber} onChange={e => setEditForm({ ...editForm, mobileNumber: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group full_width">
-                                    <label>Residential Address</label>
+                                    <label>Residential Address <InfoHint text="Optional address information for profile completeness." /></label>
                                     <textarea rows="2" value={editForm.residentialAddress} onChange={e => setEditForm({ ...editForm, residentialAddress: e.target.value })} />
                                 </div>
                             </div>
                         </div>
 
                         <div className="premium_glass_card mt-4">
-                            <h3 className="section_title"><FiShield /> Legal & Tax</h3>
+                            <h3 className="section_title">
+                                <FiShield /> Legal & Tax
+                                <InfoHint text="Tax-related details for compliance and reporting." />
+                            </h3>
                             <div className="form_grid_2">
                                 <div className="premium_input_group">
-                                    <label>Tax ID</label>
+                                    <label>Tax ID (optional) <InfoHint text="Add PAN/TIN or equivalent identifier if needed." /></label>
                                     <input type="text" value={editForm.taxId} onChange={e => setEditForm({ ...editForm, taxId: e.target.value })} />
                                 </div>
                                 <div className="premium_input_group">
-                                    <label>Tax Country</label>
+                                    <label>Tax Country <InfoHint text="Country where your tax identification applies." /></label>
                                     <input type="text" value={editForm.taxCountry} onChange={e => setEditForm({ ...editForm, taxCountry: e.target.value })} />
                                 </div>
                             </div>
@@ -262,10 +301,10 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                                 {loading ? "Saving..." : <><FiSave /> Save Changes</>}
                             </button>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 ) : (
                     /* Read-Only View showing ALL fields */
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="premium_view_layout">
+                    <Motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="premium_view_layout">
 
                         {editForm.bio && (
                             <div className="premium_glass_card mb-4">
@@ -318,7 +357,7 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                             <h3 className="section_title"><FiShield /> Legal & Tax</h3>
                             <div className="read_only_grid">
                                 <div className="read_only_item">
-                                    <label>Tax ID</label>
+                                    <label>Tax ID (optional)</label>
                                     <span>{editForm.taxId || "--"}</span>
                                 </div>
                                 <div className="read_only_item">
@@ -328,9 +367,10 @@ export default function UserProfile({ user, onBack, onLogout, onProfileUpdate })
                             </div>
                         </div>
 
-                    </motion.div>
+                    </Motion.div>
                 )}
             </div>
-        </motion.div>
+        </Motion.div>
     );
 }
+

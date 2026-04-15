@@ -1,14 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import axios from 'axios';
 import {
     FiFileText, FiDownload, FiCalendar,
     FiTrendingUp, FiTrendingDown, FiFilter, FiInfo
 } from 'react-icons/fi';
+import InfoHint from '../components/InfoHint';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency } from '../utils/currencyUtils';
 import '../styles/TaxSummary.css';
 
-export default function TaxSummary({ user, investments = [], currency = 'INR' }) {
+export default function TaxSummary({ user, investments = [] }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
             const today = new Date();
@@ -19,9 +21,40 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
             return `${year - 1}-${year}`; // Jan - March
         }
     );
+    const [taxTransactions, setTaxTransactions] = useState([]);
+
+    const fetchTaxSummary = useCallback(async () => {
+        if (!user) return;
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const userId = user?.userId || user?.id;
+            const fyToFetch = selectedYear.includes('-') ? selectedYear : `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+            const response = await axios.get(
+                `http://localhost:8088/api/taxes/user/${userId}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { financialYear: fyToFetch }
+                }
+            );
+            setTaxTransactions(response.data || []);
+        } catch (err) {
+            console.log('No tax data found for this year', err);
+            setTaxTransactions([]);
+        }
+    }, [user, selectedYear]);
+
+    useEffect(() => {
+        if (user) {
+            const timer = setTimeout(() => {
+                fetchTaxSummary();
+            }, 0);
+            return () => clearTimeout(timer);
+        }
+    }, [user, fetchTaxSummary]);
 
     // Format currency Helper
-    const fmt = (val) => formatCurrency(val, currency, true);
+    const formatCurrency = (val) =>
+        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
 
     // Format Date Helper
     const formatDate = (dateStr) => {
@@ -29,47 +62,18 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
         return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
-    // Calculate simulated tax transactions entirely on the frontend
     const transactions = useMemo(() => {
-        if (!investments || investments.length === 0) return [];
-        
-        return investments.map((inv, index) => {
-            const buyDateStr = inv.buy_date || inv.start_date || new Date().toISOString().split('T')[0];
-            
-            // If the user hasn't sold the investment, safely simulate it resolving today so they can see data
-            const sellDateStr = inv.end_date || new Date().toISOString().split('T')[0];
-            
-            const buyDate = new Date(buyDateStr);
-            const sellDate = new Date(sellDateStr);
-            
-            const daysDiff = (sellDate - buyDate) / (1000 * 60 * 60 * 24);
-            const type = daysDiff > 365 ? 'LTCG' : 'STCG';
-            
-            const invested = parseFloat(inv.amount || 0);
-            
-            let currentNav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
-                           : inv.nav_at_buy > 0 ? inv.nav_at_buy * 1.05
-                           : 0;
-
-            let finalValue = invested;
-            if (inv.units > 0 && currentNav > 0) {
-                finalValue = inv.units * currentNav;
-            } else {
-                finalValue = invested * 1.15; // General 15% fallback approximation 
-            }
-            const gain = finalValue - invested;
-
-            return {
-                id: inv.investment_id || `txn-${index}`,
-                fundName: inv.scheme_name || `Fund #${inv.fund_id || 'Unknown'}`,
-                buyDate: buyDateStr,
-                sellDate: sellDateStr,
-                units: parseFloat(inv.units || 0),
-                gain: parseFloat(gain.toFixed(2)),
-                tax_type: type
-            };
-        });
-    }, [investments]);
+        return (taxTransactions || []).map((txn, index) => ({
+            id: txn.id || `tax-${index}`,
+            fundName: txn.fundName || 'Unknown',
+            buyDate: txn.buyDate,
+            sellDate: txn.sellDate,
+            units: parseFloat(txn.units || 0),
+            gain: parseFloat(txn.gain || 0),
+            tax_type: txn.type || 'STCG',
+            source: txn.source || 'Tax'
+        }));
+    }, [taxTransactions]);
 
     const { filteredTransactions, totals } = useMemo(() => {
         const startYear = parseInt(selectedYear.substring(0, 4));
@@ -90,9 +94,9 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
             if (txn.tax_type === 'STCG') stcg += parseFloat(txn.gain || 0);
         });
 
-        return { 
-            filteredTransactions: filtered, 
-            totals: { ltcg, stcg, total: ltcg + stcg } 
+        return {
+            filteredTransactions: filtered,
+            totals: { ltcg, stcg, total: ltcg + stcg }
         };
     }, [transactions, selectedYear]);
 
@@ -101,38 +105,26 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
         try {
             const doc = new jsPDF('p', 'pt', 'a4');
             const defaultColor = [41, 128, 185]; // Blue Theme
-            
-            // Helper to strip symbol because default jsPDF fonts don't support special symbols well
-            const pdfCurrency = (val) => formatCurrency(val, currency, true).replace(/[^\d.,]/g, '').trim();
+
+            // Helper to strip Rupee symbol because default jsPDF fonts don't support it well
+            const pdfCurrency = (val) => formatCurrency(val).replace('₹', 'Rs. ');
 
             // Document Header
-            const img = new Image();
-            img.src = '/logo.png';
-            
-            doc.addImage(img, 'PNG', 40, 30, 30, 30);
             doc.setFontSize(22);
             doc.setTextColor(defaultColor[0], defaultColor[1], defaultColor[2]);
-            doc.text('WealthWise Tax Statement', 80, 52);
-
-            // Watermark
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            doc.saveGraphicsState();
-            doc.setGState(new doc.GState({ opacity: 0.05 }));
-            doc.addImage(img, 'PNG', pageWidth/2 - 100, pageHeight/2 - 100, 200, 200);
-            doc.restoreGraphicsState();
+            doc.text('WealthWise Tax Statement', 40, 50);
 
             doc.setFontSize(12);
             doc.setTextColor(100);
             doc.text(`Financial Year: ${selectedYear}`, 40, 75);
-            
+
             const generatedDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
             doc.text(`Report Generated: ${generatedDate}`, 40, 95);
-            
+
             // User Information Section
             const userName = user?.name || user?.firstName || 'Valued Client';
             const userId = user?.userId || user?.id || 'N/A';
-            
+
             doc.setFont('helvetica', 'bold');
             doc.text(`Account Details:`, 40, 120);
             doc.setFont('helvetica', 'normal');
@@ -196,7 +188,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                 alternateRowStyles: { fillColor: [245, 247, 250] },
                 margin: { top: 260, left: 40, right: 40 },
                 styles: { fontSize: 9 },
-                didParseCell: function(data) {
+                didParseCell: function (data) {
                     // Color gains green/red
                     if (data.section === 'body' && data.column.index === 4) {
                         const rawVal = data.cell.raw || '';
@@ -240,7 +232,10 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
             {/* Page Header */}
             <div className="ww-tax-header">
                 <div className="ww-title-section">
-                    <h2>Tax Summary & Reports</h2>
+                    <h2>
+                        Tax Summary & Reports
+                        <InfoHint text="This page shows realized gains from sold investments and estimated tax buckets (LTCG/STCG)." />
+                    </h2>
                     <p>Review your portfolio's realized capital gains and simulated tax liabilities.</p>
                 </div>
                 <div className="ww-action-section">
@@ -259,6 +254,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                         <FiCalendar className="ww-icon-blue" />
                     </div>
                     <span className="ww-card-label">FINANCIAL YEAR</span>
+                    <InfoHint text="Select the financial year to view only transactions sold in that period." />
                     <div className="ww-select-wrapper">
                         <select
                             value={selectedYear}
@@ -282,7 +278,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                         <div className="ww-badge-small purple">Equity &gt; 1 Year</div>
                     </div>
                     <h3 className={totals.ltcg >= 0 ? 'ww-text-green' : 'ww-text-red'}>
-                        {totals.ltcg >= 0 ? '+' : ''}{fmt(totals.ltcg)}
+                        {totals.ltcg >= 0 ? '+' : ''}{formatCurrency(totals.ltcg)}
                     </h3>
                     <p className="ww-card-subtext">Taxable at 10% exceeding ₹1 Lakh threshold.</p>
                 </div>
@@ -294,7 +290,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                         <div className="ww-badge-small orange">Equity &lt; 1 Year</div>
                     </div>
                     <h3 className={totals.stcg >= 0 ? 'ww-text-green' : 'ww-text-red'}>
-                        {totals.stcg >= 0 ? '+' : ''}{fmt(totals.stcg)}
+                        {totals.stcg >= 0 ? '+' : ''}{formatCurrency(totals.stcg)}
                     </h3>
                     <p className="ww-card-subtext">Taxable at flat 15% rate.</p>
                 </div>
@@ -337,7 +333,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR' })
                                             <td className={isPositive ? 'ww-text-green ww-td-bold' : 'ww-text-red ww-td-bold'}>
                                                 <div className="ww-gain-cell">
                                                     {isPositive ? <FiTrendingUp /> : <FiTrendingDown />}
-                                                    {isPositive ? '+' : ''}{fmt(txn.gain)}
+                                                    {isPositive ? '+' : ''}{formatCurrency(txn.gain)}
                                                 </div>
                                             </td>
                                             <td>

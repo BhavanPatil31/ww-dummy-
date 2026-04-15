@@ -28,6 +28,11 @@ public class InvestmentController {
         return investmentService.getUserInvestments(userId);
     }
 
+    @GetMapping("/user/{userId}/active")
+    public List<Investment> getUserActiveInvestments(@PathVariable Long userId){
+        return investmentService.getUserActiveInvestments(userId);
+    }
+
     @PutMapping("/{id}")
     public Investment updateInvestment(@PathVariable("id") Long id, @RequestBody Investment investment) {
         return investmentService.updateInvestment(id, investment);
@@ -41,9 +46,23 @@ public class InvestmentController {
     @PostMapping("/{id}/sell")
     public Investment sellInvestment(@PathVariable("id") Long id, @RequestBody(required = false) java.util.Map<String, String> payload) {
         java.time.LocalDate sellDate = java.time.LocalDate.now();
-        if (payload != null && payload.containsKey("sellDate") && payload.get("sellDate") != null) {
-            sellDate = java.time.LocalDate.parse(payload.get("sellDate"));
+        Double sellNav = null;
+        if (payload != null) {
+            if (payload.containsKey("sellDate") && payload.get("sellDate") != null) {
+                sellDate = java.time.LocalDate.parse(payload.get("sellDate"));
+            }
+            if (payload.containsKey("sellNav") && payload.get("sellNav") != null) {
+                try {
+                    sellNav = Double.parseDouble(payload.get("sellNav"));
+                } catch (NumberFormatException e) {
+                    sellNav = null;
+                }
+            }
         }
-        return investmentService.sellInvestment(id, sellDate);
+        return investmentService.sellInvestment(id, sellDate, sellNav);
+    }
+    @DeleteMapping("/user/{userId}/all")
+    public void deleteAllInvestments(@PathVariable("userId") Long userId) {
+        investmentService.deleteAllInvestments(userId);
     }
 }

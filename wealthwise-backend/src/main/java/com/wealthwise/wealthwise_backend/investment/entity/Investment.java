@@ -31,6 +31,10 @@ public class Investment {
     @Column(name = "investment_type")
     @JsonProperty("investment_type")
     private String investmentType;
+    
+    @Column(name = "status")
+    @JsonProperty("status")
+    private String status = "ACTIVE";  
 
     @JsonProperty("amount")
     private Double amount;
@@ -102,6 +106,9 @@ public class Investment {
     @PrePersist
     public void onCreate() {
         this.createdDate = LocalDate.now();
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "ACTIVE";
+        }
     }
 
     public Long getInvestmentId() {
@@ -142,6 +149,14 @@ public class Investment {
 
     public void setInvestmentType(String investmentType) {
         this.investmentType = investmentType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Double getAmount() {

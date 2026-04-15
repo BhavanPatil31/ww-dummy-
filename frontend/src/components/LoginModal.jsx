@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import InfoHint from "./InfoHint";
 import "../styles/AuthModal.css";
 
 function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initialEmail }) {
@@ -38,8 +39,6 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
         throw new Error(data.error || "Login failed");
       }
 
-      alert(data.message + " Welcome, " + data.name);
-
       if (data.token) {
         localStorage.setItem("jwt_token", data.token);
       }
@@ -53,6 +52,8 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
 
       localStorage.setItem("wealthwise_user", JSON.stringify(userData));
 
+      localStorage.setItem("showLoginToast", data.message + " Welcome, " + data.name + "!");
+      
       if (onLoginSuccess) {
         onLoginSuccess(userData);
       } else {
@@ -135,7 +136,10 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ marginBottom: "0.4rem", fontWeight: 600 }}>Enter OTP sent to your email</div>
             <div className="input-group">
-              <label className="input-label">OTP</label>
+              <label className="input-label">
+                OTP
+                <InfoHint text="Enter the 6-digit OTP sent to your registered email to complete verification." />
+              </label>
               <input
                 type="text"
                 className="modal-input"
@@ -172,7 +176,10 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
 
         <form onSubmit={handleLogin}>
           <div className="input-group">
-            <label className="input-label">Email Address</label>
+            <label className="input-label">
+              Email Address
+              <InfoHint text="Use the same email you used during signup." />
+            </label>
             <input
               type="email"
               className="modal-input"
@@ -189,6 +196,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
               style={{ display: "flex", justifyContent: "space-between" }}
             >
               Password
+              <InfoHint text="Enter your account password. Use Forgot? if you cannot remember it." />
               <span
                 className="auth-link"
                 style={{ fontSize: "0.8rem" }}

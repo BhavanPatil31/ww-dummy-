@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
-function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
+function LandingPage({ openLogin, user, onLogout, theme, setTheme, currency }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -31,9 +31,8 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
       {/* Header Section */}
       <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-container">
-          <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.png" alt="WF" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-            <h2 className="brand-title" style={{ fontSize: '1.6rem', fontWeight: '900', margin: 0 }}>WealthWise</h2>
+          <div className="logo-container">
+            <h2 className="brand-title">WealthWise</h2>
           </div>
 
           <nav className={`nav-links ${mobileMenuOpen ? "open" : ""}`}>
@@ -236,7 +235,7 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
           <div className="social-icons">
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Twitter"><FiTwitter /></a>
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Instagram"><FiInstagram /></a>
-            <a href="mailto:shankarrao0420@gmail.com" className="social-circle" title="Email Us"><FiMail /></a>
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=shankarrao0420@gmail.com" target="_blank" rel="noopener noreferrer" className="social-circle" title="Email Us"><FiMail /></a>
           </div>
         </div>
       </footer>

@@ -4,6 +4,7 @@ import com.wealthwise.wealthwise_backend.investment.entity.Investment;
 import com.wealthwise.wealthwise_backend.investment.repository.InvestmentRepository;
 import com.wealthwise.wealthwise_backend.notification.NotificationService;
 import com.wealthwise.wealthwise_backend.portfolio.service.PortfolioService;
+import com.wealthwise.wealthwise_backend.tax.service.TaxService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,9 @@ public class InvestmentService {
     @Autowired
     private NotificationService notificationService;
 
-    @Transactional
+    @Autowired
+    private TaxService taxService;
+
     public Investment addInvestment(Investment investment) {
         Objects.requireNonNull(investment, "Investment cannot be null");
         
@@ -40,25 +43,25 @@ public class InvestmentService {
         Investment saved = Objects.requireNonNull(investmentRepository.save(investment), "Saved investment cannot be null");
         Long userId = saved.getUserId();
         if (userId != null) {
-            try {
-                portfolioService.updatePortfolio(userId);
-            } catch (Exception e) {
-                System.out.println("Portfolio update failed during add: " + e.getMessage());
-            }
-            
+
             // Create notification
-            String msg = "New " + saved.getInvestmentType() + " investment of ₹" + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
+            String msg = "New " + saved.getInvestmentType() + " investment of Rs." + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";
             notificationService.createNotification(userId, msg, "INVESTMENT");
 
-            // Check if end_date is approaching or reached today
+            // Check if investment is being added with an endDate (already closed)
             if (saved.getEndDate() != null) {
-                LocalDate today = LocalDate.now();
-                if (saved.getEndDate().isEqual(today)) {
-                    notificationService.createNotification(userId, "Important: Today is the end date of your investment in " + saved.getSchemeName() + ".", "INVESTMENT_DUE");
-                } else if (saved.getEndDate().isEqual(today.plusDays(7))) {
-                    notificationService.createNotification(userId, "Notice: Your investment in " + saved.getSchemeName() + " will end in 7 days.", "INVESTMENT_DUE");
-                }
+                // Move to tax_transactions immediately
+                taxService.moveInvestmentToTaxTransaction(saved);
+                // Delete from investments table
+                investmentRepository.deleteById(Objects.requireNonNull(saved.getInvestmentId()));
+                notificationService.createNotification(userId, 
+                        "Your investment in " + saved.getSchemeName() + " with an end date has been moved to tax transactions.", 
+                        "INVESTMENT_CLOSED");
+                return saved;
             }
+            
+            // Otherwise, for active investments, update portfolio
+            portfolioService.updatePortfolio(userId);
         }
         return saved;
     }
@@ -68,6 +71,13 @@ public class InvestmentService {
         return Objects.requireNonNull(investmentRepository.findByUserId(userId), "Investment list cannot be null");
     }
 
+    public List<Investment> getUserActiveInvestments(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        return Objects.requireNonNull(
+                investmentRepository.findActiveByUserId(userId),
+                "Active investment list cannot be null");
+    }
+
     @Transactional
     public Investment updateInvestment(Long id, Investment investment) {
         Objects.requireNonNull(id, "Investment ID cannot be null");
@@ -75,6 +85,8 @@ public class InvestmentService {
 
         Investment existing = investmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
+
+        boolean isBeingClosed = existing.getEndDate() == null && investment.getEndDate() != null;
 
         // Update core fields
         existing.setSchemeName(investment.getSchemeName());
@@ -113,11 +125,22 @@ public class InvestmentService {
         
         Investment saved = Objects.requireNonNull(investmentRepository.save(existing), "Saved investment cannot be null");
         
-        // Force portfolio recalculation
-        Long userId = saved.getUserId();
-        if (userId != null) {
-            portfolioService.updatePortfolio(userId);
+        // If investment is being closed (endDate is being set), move it to tax_transactions
+        if (isBeingClosed) {
+            taxService.moveInvestmentToTaxTransaction(saved);
+            // Delete the investment after moving to tax_transactions
+            investmentRepository.deleteById(id);
+            notificationService.createNotification(saved.getUserId(), 
+                    "Your investment in " + saved.getSchemeName() + " has been moved to tax transactions.", 
+                    "INVESTMENT_CLOSED");
+        } else {
+            // Force portfolio recalculation if not closed
+            Long userId = saved.getUserId();
+            if (userId != null) {
+                portfolioService.updatePortfolio(userId);
+            }
         }
+        
         return saved;
     }
 
@@ -135,19 +158,50 @@ public class InvestmentService {
     }
 
     @Transactional
+    public void deleteAllInvestments(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        List<Investment> userInvestments = investmentRepository.findByUserId(userId);
+        for (Investment inv : userInvestments) {
+            Long investmentId = inv.getInvestmentId();
+            if (investmentId != null) {
+                investmentRepository.deleteGoalInvestmentsByInvestmentId(investmentId);
+            }
+        }
+        investmentRepository.deleteByUserId(userId);
+        portfolioService.updatePortfolio(userId);
+    }
+
+    @Transactional
     public Investment sellInvestment(Long id, LocalDate sellDate) {
+        return sellInvestment(id, sellDate, null);
+    }
+
+    @Transactional
+    public Investment sellInvestment(Long id, LocalDate sellDate, Double sellNav) {
         Objects.requireNonNull(id, "Investment ID cannot be null");
         Investment inv = investmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         inv.setEndDate(sellDate != null ? sellDate : LocalDate.now());
+        if (sellNav != null && sellNav > 0) {
+            inv.setCurrentNav(sellNav);
+        }
+        inv.setStatus("SOLD");
         Investment saved = investmentRepository.save(inv);
+
+        // Move investment to tax_transactions
+        taxService.moveInvestmentToTaxTransaction(saved, sellNav);
 
         Long userId = saved.getUserId();
         if (userId != null) {
             portfolioService.updatePortfolio(userId);
             notificationService.createNotification(userId, "You have successfully realized your investment in " + saved.getSchemeName() + ".", "INVESTMENT_SOLD");
         }
+        
+        // Delete the investment after moving to tax_transactions
+        investmentRepository.deleteById(id);
+        
         return saved;
     }
 }
+
