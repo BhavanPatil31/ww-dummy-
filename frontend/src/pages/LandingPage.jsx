@@ -3,6 +3,7 @@ import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
 function LandingPage({ openLogin, user, onLogout }) {
+  const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -33,7 +34,7 @@ function LandingPage({ openLogin, user, onLogout }) {
         <div className="nav-container">
           <div className="logo-container">
             <div className="logo-icon-small">
-              <img src="/logo.png" alt="WealthWise Logo" style={{ width: '38px', height: '38px', borderRadius: '6px', objectFit: 'cover' }} />
+              <img src={logoSrc} alt="WealthWise Logo" style={{ width: '38px', height: '38px', borderRadius: '6px', objectFit: 'cover' }} />
             </div>
             <h2 className="brand-title">WealthWise</h2>
           </div>

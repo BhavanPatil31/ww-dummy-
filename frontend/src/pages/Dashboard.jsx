@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.js?url';
+
+GlobalWorkerOptions.workerSrc = workerSrc;
+
 import {
     AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     XAxis, YAxis, CartesianGrid
@@ -47,10 +50,10 @@ const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
 };
 
 export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency = 'INR', setCurrency }) {
+    const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
     const safeCurrency = normalizeCurrency(currency);
     const [investments, setInvestments] = useState([]);
     const [dashboardData, setDashboardData] = useState(null);
-    const [goals, setGoals] = useState([]);
     const [historyData, setHistoryData] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -99,23 +102,18 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             maximumFractionDigits: 0
         }).format(val || 0), [safeCurrency]);
 
-    const fmt = (val) =>
-        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
-            maximumFractionDigits: 0
-        }).format(Number(val) || 0);
-
-    const fmtShort = (val) => {
-        const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
+    const fmtShort = useCallback((val) => {
         if (currency === 'INR') {
             if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
             if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
         }
         return formatCurrency(val);
-    }, [safeCurrency, formatCurrency]);
-    const formatDate = (d) => {
+    }, [currency, formatCurrency]);
+
+    const formatDate = useCallback((d) => {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
-    };
+    }, []);
 
     // ── Value helpers ────────────────────────────────────────────
     const getCurrentValue = useCallback((inv) => {
@@ -175,13 +173,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                 // optional source endpoint
             }
 
-            let goalsData = [];
-            try {
-                const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
-                goalsData = r.data || [];
-            } catch {
-                // optional source endpoint
-            }
 
             // Strict separation: If no investments pass the active filter, force graph to zero
             const hasActive = (invData || []).some(inv => {
@@ -239,9 +230,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             setInvestments(invData);
             setDashboardData(dbData);
             setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
-        } finally {
-            setLoading(false);
-        }
     }, [user, timeFrame, getCurrentValue]);
 
     const activeInvestments = useMemo(() => {
@@ -336,7 +324,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const parseCASPDF = async (file) => {
         try {
             const arrayBuffer = await file.arrayBuffer();
-            GlobalWorkerOptions.workerSrc = workerSrc;
             const pdf = await getDocument({ data: arrayBuffer }).promise;
             let allText = '';
 
@@ -520,7 +507,11 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     };
 
     const openCASFilePicker = () => {
-        casFileInputRef.current?.click();
+        if (casFileInputRef.current) {
+            casFileInputRef.current.value = '';
+            casFileInputRef.current.click();
+        }
+        setActiveView('tax');
     };
 
     // ── Derived metrics ──────────────────────────────────────────
@@ -591,30 +582,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         [activeInvestments]
     );
 
-    const goalsPreview = useMemo(() => {
-        const idOf = (inv) => String(inv?.investment_id || inv?.id || inv?.investmentId);
-        return (goals || []).slice(0, 4).map((g, idx) => {
-            const target = Number(g.target_amount || g.targetAmount || 0);
-            const linked = g.linkedInvestments || [];
-            const current = linked.reduce((sum, li) => {
-                const liId = String(li?.investment_id || li);
-                const inv = investments.find(i => idOf(i) === liId);
-                return sum + (inv ? getCurrentValue(inv) : 0);
-            }, 0);
-            const pctRaw = target > 0 ? (current / target) * 100 : 0;
-            const pct = Math.max(0, Math.min(100, Math.round(pctRaw)));
-            return {
-                key: g.goal_id || g.id || idx,
-                name: g.goal_name || g.goalName || `Goal ${idx + 1}`,
-                pct,
-                cur: fmtShort(current),
-                total: fmtShort(target),
-                rem: fmtShort(Math.max(target - current, 0)),
-                color: idx % 2 === 1 ? 'blue' : '',
-            };
-        });
-    }, [goals, investments, getCurrentValue, fmtShort]);
-
     const insights = useMemo(() => {
         const out = [];
         if (!activeInvestments.length) {
@@ -666,7 +633,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             <aside className="dashboard-sidebar">
                 <div className="brand">
                     <div className="logo-wrapper">
-                        <img src="/logo.svg" alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
+                        <img src={logoSrc} alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
                     </div>
                     <h2>WealthWise</h2>
                 </div>

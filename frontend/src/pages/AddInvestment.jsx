@@ -76,19 +76,21 @@ const FALLBACK_FUNDS = [
     { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
 ];
 
+const FALLBACK_NAV_BY_CODE = {}; // intentionally empty placeholder until static NAV fallback values are available
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const getCategory = (name = '') => {
     const n = name.toLowerCase();
-    if (n.includes('small cap') || n.includes('smallcap'))      return 'Small Cap';
-    if (n.includes('midcap') || n.includes('mid cap'))          return 'Mid Cap';
+    if (n.includes('small cap') || n.includes('smallcap')) return 'Small Cap';
+    if (n.includes('midcap') || n.includes('mid cap')) return 'Mid Cap';
     if (n.includes('large cap') || n.includes('bluechip') ||
-        n.includes('top 100') || n.includes('frontline'))       return 'Large Cap';
-    if (n.includes('flexi cap') || n.includes('flexicap'))      return 'Flexi Cap';
+        n.includes('top 100') || n.includes('frontline')) return 'Large Cap';
+    if (n.includes('flexi cap') || n.includes('flexicap')) return 'Flexi Cap';
     if (n.includes('index') || n.includes('nifty') ||
-        n.includes('sensex'))                                    return 'Index Funds';
+        n.includes('sensex')) return 'Index Funds';
     if (n.includes('debt') || n.includes('liquid') ||
-        n.includes('bond') || n.includes('gilt'))               return 'Debt Funds';
-    if (n.includes('elss') || n.includes('tax'))                return 'ELSS / Tax Saving';
+        n.includes('bond') || n.includes('gilt')) return 'Debt Funds';
+    if (n.includes('elss') || n.includes('tax')) return 'ELSS / Tax Saving';
     return 'Other';
 };
 
@@ -103,36 +105,36 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
 
     // ── Fund list ──────────────────────────────────────────────────────────
-    const [allFunds,     setAllFunds]     = useState([]);
+    const [allFunds, setAllFunds] = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
-    const [fundsError,   setFundsError]   = useState('');
+    const [fundsError, setFundsError] = useState('');
 
     // ── Investment type ────────────────────────────────────────────────────
     const [type, setType] = useState('SIP');
 
     // ── Form ───────────────────────────────────────────────────────────────
     const [formData, setFormData] = useState({
-        fundName:  '',
-        fund_id:   '',
-        nav:       '',
-        amount:    '',
+        fundName: '',
+        fund_id: '',
+        nav: '',
+        amount: '',
         frequency: 'Monthly',
         startDate: '',
-        endDate:   ''
+        endDate: ''
     });
 
     // ── Dropdown / search ──────────────────────────────────────────────────
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [filteredFunds,   setFilteredFunds]   = useState([]);
-    const [visibleLimit,    setVisibleLimit]    = useState(100);
+    const [filteredFunds, setFilteredFunds] = useState([]);
+    const [visibleLimit, setVisibleLimit] = useState(100);
     const suggestionRef = useRef(null);
 
 
     // ── NAV state ──────────────────────────────────────────────────────────
-    const [loadingNav,    setLoadingNav]    = useState(false);
-    const [navDate,       setNavDate]       = useState('');   // actual date of the NAV shown
+    const [loadingNav, setLoadingNav] = useState(false);
+    const [navDate, setNavDate] = useState('');   // actual date of the NAV shown
     const [latestNavInfo, setLatestNavInfo] = useState({ nav: '', date: '' });
-    const [navError,      setNavError]      = useState('');   // '' | 'NO_FUND_DATA' | 'NO_DATE_MATCH' | 'FETCH_ERROR'
+    const [navError, setNavError] = useState('');   // '' | 'NO_FUND_DATA' | 'NO_DATE_MATCH' | 'FETCH_ERROR'
     const [usingFallbackNav, setUsingFallbackNav] = useState(false);
 
     /**
@@ -143,23 +145,23 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const navCache = useRef({});
 
     // ── Submission ─────────────────────────────────────────────────────────
-    const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
+    const [status, setStatus] = useState({ loading: false, success: false, error: '' });
     const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
-    const navValue      = parseFloat(formData.nav);
+    const navValue = parseFloat(formData.nav);
     const isNavFetching = loadingNav;
-    const isNavValid    = !isNaN(navValue) && navValue > 0;
+    const isNavValid = !isNaN(navValue) && navValue > 0;
     const isNavOutdated = isNavValid && latestNavInfo.date
-                          && daysSince(latestNavInfo.date) > NAV_OUTDATED_DAYS;
-    const isNavUnavail  = navError !== '';
+        && daysSince(latestNavInfo.date) > NAV_OUTDATED_DAYS;
+    const isNavUnavail = navError !== '';
 
     // Disable submit if: loading / nav fetching / nav invalid or unavailable / no fund selected
     const canSubmit =
         !status.loading &&
-        !isNavFetching  &&
-        isNavValid      &&
-        !isNavUnavail   &&
+        !isNavFetching &&
+        isNavValid &&
+        !isNavUnavail &&
         !!formData.fund_id &&
         !!formData.amount;
 
@@ -364,7 +366,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                 setFormData(p => ({ ...p, nav: entry.nav }));
                 setNavDate(entry.date);
                 setNavError('');
-            setUsingFallbackNav(false);
+                setUsingFallbackNav(false);
 
             } catch (err) {
                 if (cancelled) return;
@@ -428,19 +430,19 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         setStatus({ loading: true, success: false, error: '' });
 
         const payload = {
-            user_id:         user?.userId || user?.id,
-            fund_id:         parseInt(formData.fund_id),
+            user_id: user?.userId || user?.id,
+            fund_id: parseInt(formData.fund_id),
             investment_type: type === 'Lumpsum' ? 'BUY' : type,
-            amount:          parseFloat(formData.amount),
+            amount: parseFloat(formData.amount),
             amount_invested: parseFloat(formData.amount),
-            nav_at_buy:      parseFloat(formData.nav),
-            units:           parseFloat(units),
-            buy_date:        formData.startDate,
-            start_date:      formData.startDate,
-            end_date:        formData.endDate || null,
-            frequency:       type === 'SIP' ? formData.frequency : null,
-            scheme_name:     formData.fundName,
-            current_nav:     parseFloat(latestNavInfo.nav) || parseFloat(formData.nav)
+            nav_at_buy: parseFloat(formData.nav),
+            units: parseFloat(units),
+            buy_date: formData.startDate,
+            start_date: formData.startDate,
+            end_date: formData.endDate || null,
+            frequency: type === 'SIP' ? formData.frequency : null,
+            scheme_name: formData.fundName,
+            current_nav: parseFloat(latestNavInfo.nav) || parseFloat(formData.nav)
         };
 
         try {
@@ -594,7 +596,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                                         {/* Dropdown */}
                                         {showSuggestions && !loadingFunds && (
-                                            <div 
+                                            <div
                                                 className="suggestions-dropdown nice-scroll"
                                                 onScroll={(e) => {
                                                     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -643,7 +645,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                         <div className="input-wrapper">
                                             <CurrencyIcon className="input-icon" />
 
-                                            <span className="currency-prefix">₹</span>
+                                            <span className="currency-prefix"></span>
                                             <input
                                                 id="amount"
                                                 type="number"
@@ -671,14 +673,14 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                                 name="nav"
                                                 className={[
                                                     'readonly-input',
-                                                    isNavFetching      ? 'nav-fetching' : '',
-                                                    isNavUnavail       ? 'nav-error'    : '',
+                                                    isNavFetching ? 'nav-fetching' : '',
+                                                    isNavUnavail ? 'nav-error' : '',
                                                     isNavOutdated && !isNavUnavail ? 'nav-outdated' : ''
                                                 ].join(' ')}
                                                 value={
                                                     isNavFetching ? 'Fetching…'
-                                                    : isNavUnavail ? ''
-                                                    : formData.nav
+                                                        : isNavUnavail ? ''
+                                                            : formData.nav
                                                 }
                                                 readOnly
                                                 required
@@ -733,7 +735,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                                     <div className="form-group">
                                         <label>
-                                            {type === 'SIP' ? 'SIP End Date' : 'Sale/End Date'} 
+                                            {type === 'SIP' ? 'SIP End Date' : 'Sale/End Date'}
                                             <span className="optional-tag">(optional)</span>
                                         </label>
                                         <div className="input-wrapper">

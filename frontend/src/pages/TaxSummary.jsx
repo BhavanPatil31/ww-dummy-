@@ -281,11 +281,7 @@ return (
                 <p>Review your portfolio's realized capital gains and simulated tax liabilities.</p>
             </div>
             <div className="ww-action-section">
-                {onOpenCAS && (
-                    <button className="ww-btn-outline" onClick={onOpenCAS}>
-                        📄 Upload CAS (.pdf)
-                    </button>
-                )}
+
                 <button className="ww-btn-outline" onClick={handleDownloadPDF}>
                     <FiDownload /> Download Tax Statement
                 </button>
