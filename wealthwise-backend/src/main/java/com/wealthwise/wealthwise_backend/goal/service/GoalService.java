@@ -8,10 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashSet; 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -36,6 +38,7 @@ public class GoalService {
         return goalRepository.findByUserId(userId);
     }
 
+    @Transactional
     public Goal updateGoal(Integer id, Goal goalDetails) {
         if (id == null || goalDetails == null) throw new IllegalArgumentException("ID and Goal details cannot be null");
         Goal goal = goalRepository.findById(id).orElseThrow(() -> new RuntimeException("Goal not found with id " + id));
@@ -46,13 +49,40 @@ public class GoalService {
         goal.setTargetYear(goalDetails.getTargetYear());
         goal.setProgress(goalDetails.getProgress());
         
-        // Relationship handle
+        // Merge linked investments in place to avoid duplicate insert races with unique(investment_id).
+        List<GoalInvestment> incoming = sanitizeLinkedInvestments(goalDetails.getLinkedInvestments());
+        Set<Long> incomingIds = incoming.stream()
+                .map(GoalInvestment::getInvestmentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         if (goal.getLinkedInvestments() == null) {
             goal.setLinkedInvestments(new ArrayList<>());
-        } else {
-            goal.getLinkedInvestments().clear();
         }
-        goal.getLinkedInvestments().addAll(sanitizeLinkedInvestments(goalDetails.getLinkedInvestments()));
+
+        List<GoalInvestment> current = goal.getLinkedInvestments();
+        current.removeIf(gi -> gi == null || gi.getInvestmentId() == null || !incomingIds.contains(gi.getInvestmentId()));
+
+        Map<Long, GoalInvestment> currentByInvestmentId = current.stream()
+                .filter(gi -> gi.getInvestmentId() != null)
+                .collect(Collectors.toMap(
+                        GoalInvestment::getInvestmentId,
+                        gi -> gi,
+                        (left, right) -> left
+                ));
+
+        for (GoalInvestment next : incoming) {
+            if (next == null || next.getInvestmentId() == null) continue;
+            GoalInvestment existing = currentByInvestmentId.get(next.getInvestmentId());
+            if (existing != null) {
+                existing.setLinkedAmount(next.getLinkedAmount());
+            } else {
+                GoalInvestment created = new GoalInvestment();
+                created.setInvestmentId(next.getInvestmentId());
+                created.setLinkedAmount(next.getLinkedAmount());
+                current.add(created);
+            }
+        }
         
         return Objects.requireNonNull(goalRepository.save(goal));
     }
@@ -122,9 +152,11 @@ public class GoalService {
 
     private List<GoalInvestment> sanitizeLinkedInvestments(List<GoalInvestment> linked) {
         List<GoalInvestment> out = new ArrayList<>();
+        Set<Long> seenIds = new HashSet<>();
         if (linked == null) return out;
         for (GoalInvestment gi : linked) {
             if (gi == null || gi.getInvestmentId() == null) continue;
+            if (!seenIds.add(gi.getInvestmentId())) continue;
             GoalInvestment clean = new GoalInvestment();
             clean.setInvestmentId(gi.getInvestmentId());
             clean.setLinkedAmount(gi.getLinkedAmount());

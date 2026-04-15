@@ -588,11 +588,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return (goals || []).slice(0, 4).map((g, idx) => {
             const target = Number(g.target_amount || g.targetAmount || 0);
             const linked = g.linkedInvestments || [];
-            const current = linked.reduce((sum, li) => {
+            const computed = linked.reduce((sum, li) => {
                 const liId = String(li?.investment_id || li);
                 const inv = investments.find(i => idOf(i) === liId);
-                return sum + (inv ? getCurrentValue(inv) : 0);
+                if (inv) return sum + getCurrentValue(inv);
+                return sum + Number(li?.linked_amount || 0);
             }, 0);
+            const current = computed;
             const pctRaw = target > 0 ? (current / target) * 100 : 0;
             const pct = Math.max(0, Math.min(100, Math.round(pctRaw)));
             return {
