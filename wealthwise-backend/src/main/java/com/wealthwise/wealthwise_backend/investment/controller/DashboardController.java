@@ -27,9 +27,14 @@ public class DashboardController {
         Map<String, Double> assetAllocationMap = new HashMap<>();
 
         for (Investment inv : investments) {
-            double amount = inv.getAmount() != null ? inv.getAmount() : 0.0;
+            // Check both amount and amount_invested for data robustness
+            double amount = 0.0;
+            if (inv.getAmount() != null) {
+                amount = inv.getAmount();
+            } else if (inv.getAmountInvested() != null) {
+                amount = inv.getAmountInvested();
+            }
             
-            // Group by investment type for Asset Allocation (SIP vs Lumpsum)
             String type = inv.getInvestmentType();
             if (type == null || type.trim().isEmpty()) {
                 type = "Other";
@@ -46,19 +51,12 @@ public class DashboardController {
                     currentInvested = amount * n;
                     
                     if (inv.getCurrentNav() != null && inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0) {
-                        // If we have live NAV, calculate based on growth
                         currentVal = currentInvested * (inv.getCurrentNav() / inv.getNavAtBuy());
                     } else {
-                        // SIP Formula: M = P × ({[1 + i]^n - 1} / i) × (1 + i)
-                        double i = 0.01; // 1% monthly
-                        if (n > 0) {
-                            currentVal = amount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
-                        } else {
-                            currentVal = currentInvested;
-                        }
+                        double i = 0.01; 
+                        currentVal = amount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
                     }
                 } else {
-                    // Lumpsum
                     long days = java.time.temporal.ChronoUnit.DAYS.between(inv.getBuyDate(), java.time.LocalDate.now());
                     if (days < 0) days = 0;
                     currentInvested = amount;
@@ -71,7 +69,11 @@ public class DashboardController {
                     }
                 }
             } else {
-                currentVal = currentInvested * (inv.getCurrentNav() != null && inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0 ? (inv.getCurrentNav() / inv.getNavAtBuy()) : 1.12);
+                if (inv.getCurrentNav() != null && inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0) {
+                    currentVal = currentInvested * (inv.getCurrentNav() / inv.getNavAtBuy());
+                } else {
+                    currentVal = currentInvested * 1.12;
+                }
             }
             
             totalInvested += currentInvested;
@@ -80,17 +82,15 @@ public class DashboardController {
             assetAllocationMap.put(type, assetAllocationMap.getOrDefault(type, 0.0) + currentInvested);
         }
 
-        double returnPercentage = totalInvested > 0 ? ((portfolioValue - totalInvested) / totalInvested) * 100 : 0.0;
+        double profitLoss = portfolioValue - totalInvested;
+        double returnPercentage = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0.0;
 
-        // Convert map to list of maps for Recharts
         List<Map<String, Object>> assetAllocation = assetAllocationMap.entrySet().stream().map(entry -> {
             Map<String, Object> map = new HashMap<>();
             map.put("name", entry.getKey());
             map.put("value", entry.getValue());
             return map;
         }).collect(Collectors.toList());
-
-        double profitLoss = portfolioValue - totalInvested;
 
         Map<String, Object> response = new HashMap<>();
         response.put("totalInvested", totalInvested);

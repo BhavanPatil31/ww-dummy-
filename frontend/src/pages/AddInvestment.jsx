@@ -3,9 +3,10 @@ import axios from 'axios';
 import {
     FiDollarSign, FiCalendar, FiActivity, FiTag, FiCheckCircle, FiInfo
 } from 'react-icons/fi';
+import { CURRENCIES, formatCurrency, getCurrencySymbol } from '../utils/currencyUtils';
 import '../styles/AddInvestment.css';
 
-export default function AddInvestment({ user, onBackToDashboard }) {
+export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
     const [mockFunds, setMockFunds] = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
     const [type, setType] = useState('SIP');
@@ -353,13 +354,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
     }, [formData.fund_id, formData.amount, formData.startDate]);
 
-    const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
-        }).format(val || 0);
-    };
+    const fmt = (val) => formatCurrency(val, currency, true);
 
     const isNavFetching = formData.nav === "Fetching..." || loadingNav;
     const currentNavValue = parseFloat(formData.nav);
@@ -374,21 +369,26 @@ export default function AddInvestment({ user, onBackToDashboard }) {
         e.preventDefault();
         if (isSubmitDisabled) return;
 
-        setStatus({ loading: true, success: false, error: '' });
+        const userId = user?.userId || user?.user_id || user?.id || (user?.user && (user.user.userId || user.user.user_id || user.user.id));
+        if (!userId) {
+            setStatus({ loading: false, success: false, error: 'User session not found. Please log in again.' });
+            return;
+        }
 
         const payload = {
-            userId: user?.userId || user?.id,
-            user_id: user?.userId || user?.id,
+            userId: userId,
+            user_id: userId,
             fund_id: parseInt(formData.fund_id) || Math.floor(Math.random() * 1000) + 1,
             investment_type: type,
-            amount: parseFloat(formData.amount),
+            // Convert user input (in selected currency) back to INR for storage
+            amount: parseFloat(formData.amount) / (CURRENCIES[currency]?.rate || 1),
             nav_at_buy: parseFloat(formData.nav),
             units: parseFloat(units),
             buy_date: formData.startDate,
             frequency: type === 'SIP' ? formData.frequency : null,
             asset_category: type,
             scheme_name: formData.fundName,
-            amount_invested: parseFloat(formData.amount),
+            amount_invested: parseFloat(formData.amount) / (CURRENCIES[currency]?.rate || 1),
             current_nav: parseFloat(formData.nav),
             start_date: formData.startDate,
             end_date: formData.endDate || null
@@ -515,7 +515,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
 
                                 <div className="form-row">
                                     <div className="form-group">
-                                        <label>Amount (₹)</label>
+                                        <label>Amount ({getCurrencySymbol(currency)})</label>
                                         <div className="input-wrapper">
                                             <FiDollarSign className="input-icon" />
                                             <input
@@ -629,11 +629,11 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                             )}
                             <div className="summary-item">
                                 <span>Amount</span>
-                                <strong>{formatCurrency(formData.amount)}</strong>
+                                <strong>{getCurrencySymbol(currency)}{formData.amount || '0'}</strong>
                             </div>
                             <div className="summary-item">
                                 <span>NAV (Live)</span>
-                                <strong>{formData.nav && !isNaN(parseFloat(formData.nav)) ? `₹${formData.nav}` : '-'}</strong>
+                                <strong>{formData.nav && !isNaN(parseFloat(formData.nav)) ? `${getCurrencySymbol(currency)}${(parseFloat(formData.nav) * (CURRENCIES[currency]?.rate || 1)).toFixed(2)}` : '-'}</strong>
                             </div>
                             <div className="summary-item highlight-box">
                                 <span>Expected Units</span>
@@ -641,7 +641,7 @@ export default function AddInvestment({ user, onBackToDashboard }) {
                             </div>
                             <div className="summary-item highlight-box-secondary">
                                 <span>{type === 'SIP' ? 'Installment' : 'Total Value'}</span>
-                                <strong>{formatCurrency(formData.amount)}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
+                                <strong>{getCurrencySymbol(currency)}{formData.amount || '0'}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
                             </div>
                         </div>
                     </div>

@@ -34,7 +34,7 @@ public class NavService {
         try {
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     url,
-                    HttpMethod.GET,
+                    HttpMethod.valueOf("GET"),
                     null,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );

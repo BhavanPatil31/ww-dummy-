@@ -1,6 +1,6 @@
 package com.wealthwise.wealthwise_backend.portfolio.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @Entity

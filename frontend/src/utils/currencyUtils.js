@@ -1,0 +1,44 @@
+/**
+ * WealthWise Currency Utilities
+ * Handles formatting and mock conversion for global currency support.
+ */
+
+export const CURRENCIES = {
+    INR: { symbol: '₹', label: 'INR (Indian Rupee)', rate: 1, locale: 'en-IN' },
+    USD: { symbol: '$', label: 'USD (US Dollar)', rate: 1 / 83, locale: 'en-US' },
+    EUR: { symbol: '€', label: 'EUR (Euro)', rate: 1 / 90, locale: 'en-IE' },
+    GBP: { symbol: '£', label: 'GBP (British Pound)', rate: 1 / 105, locale: 'en-GB' }
+};
+
+/**
+ * Formats a number according to the selected currency.
+ * @param {number} value - The value in the base currency (INR).
+ * @param {string} currencyCode - The target currency code (INR, USD, etc.).
+ * @param {boolean} useConversion - Whether to apply conversion rates.
+ * @returns {string} Formatted currency string.
+ */
+export const formatCurrency = (value, currencyCode = 'INR', useConversion = true) => {
+    const config = CURRENCIES[currencyCode] || CURRENCIES.INR;
+    const finalValue = useConversion ? (value * config.rate) : value;
+
+    return new Intl.NumberFormat(config.locale, {
+        style: 'currency',
+        currency: currencyCode,
+        maximumFractionDigits: 0
+    }).format(finalValue);
+};
+
+/**
+ * Returns only the symbol for a given currency code.
+ */
+export const getCurrencySymbol = (currencyCode = 'INR') => {
+    return CURRENCIES[currencyCode]?.symbol || '₹';
+};
+
+/**
+ * Converts a value from INR to the target currency.
+ */
+export const convertValue = (value, currencyCode = 'INR') => {
+    const config = CURRENCIES[currencyCode] || CURRENCIES.INR;
+    return value * config.rate;
+};

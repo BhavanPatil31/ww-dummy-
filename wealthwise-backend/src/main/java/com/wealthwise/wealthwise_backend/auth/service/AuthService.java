@@ -10,8 +10,8 @@ import com.wealthwise.wealthwise_backend.auth.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -52,9 +52,11 @@ public class AuthService {
 
         User savedUser = Objects.requireNonNull(userRepository.save(user), "Saved user cannot be null");
 
-        // Send OTP to the user's email as part of the registration flow (login
-        // verification)
-        sendOtp(Objects.requireNonNull(savedUser.getEmail(), "User email cannot be null"), "login");
+        try {
+            sendOtp(Objects.requireNonNull(savedUser.getEmail(), "User email cannot be null"), "login");
+        } catch (Exception e) {
+            System.err.println("OTP send failed: " + e.getMessage());
+        }
 
         return savedUser;
     }

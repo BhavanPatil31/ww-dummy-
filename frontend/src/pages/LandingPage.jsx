@@ -31,8 +31,9 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
       {/* Header Section */}
       <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-container">
-          <div className="logo-container">
-            <h2 className="brand-title">WealthWise</h2>
+          <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.png" alt="WF" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+            <h2 className="brand-title" style={{ fontSize: '1.6rem', fontWeight: '900', margin: 0 }}>WealthWise</h2>
           </div>
 
           <nav className={`nav-links ${mobileMenuOpen ? "open" : ""}`}>
@@ -204,7 +205,10 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme }) {
       <footer id="contact" className="site-footer">
         <div className="footer-content">
           <div className="footer-brand">
-            <h3>WealthWise</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+              <img src="/logo.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+              <h3 style={{ margin: 0 }}>WealthWise</h3>
+            </div>
             <p>Empowering you to make smarter financial decisions with real-time tracking and intuitive insights.</p>
           </div>
           <div className="footer-links">

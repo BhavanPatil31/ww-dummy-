@@ -5,9 +5,10 @@ import {
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatCurrency } from '../utils/currencyUtils';
 import '../styles/TaxSummary.css';
 
-export default function TaxSummary({ user, investments = [] }) {
+export default function TaxSummary({ user, investments = [], currency = 'INR' }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
             const today = new Date();
@@ -20,8 +21,7 @@ export default function TaxSummary({ user, investments = [] }) {
     );
 
     // Format currency Helper
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+    const fmt = (val) => formatCurrency(val, currency, true);
 
     // Format Date Helper
     const formatDate = (dateStr) => {
@@ -102,13 +102,25 @@ export default function TaxSummary({ user, investments = [] }) {
             const doc = new jsPDF('p', 'pt', 'a4');
             const defaultColor = [41, 128, 185]; // Blue Theme
             
-            // Helper to strip Rupee symbol because default jsPDF fonts don't support it well
-            const pdfCurrency = (val) => formatCurrency(val).replace('₹', 'Rs. ');
+            // Helper to strip symbol because default jsPDF fonts don't support special symbols well
+            const pdfCurrency = (val) => formatCurrency(val, currency, true).replace(/[^\d.,]/g, '').trim();
 
             // Document Header
+            const img = new Image();
+            img.src = '/logo.png';
+            
+            doc.addImage(img, 'PNG', 40, 30, 30, 30);
             doc.setFontSize(22);
             doc.setTextColor(defaultColor[0], defaultColor[1], defaultColor[2]);
-            doc.text('WealthWise Tax Statement', 40, 50);
+            doc.text('WealthWise Tax Statement', 80, 52);
+
+            // Watermark
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            doc.saveGraphicsState();
+            doc.setGState(new doc.GState({ opacity: 0.05 }));
+            doc.addImage(img, 'PNG', pageWidth/2 - 100, pageHeight/2 - 100, 200, 200);
+            doc.restoreGraphicsState();
 
             doc.setFontSize(12);
             doc.setTextColor(100);
@@ -270,7 +282,7 @@ export default function TaxSummary({ user, investments = [] }) {
                         <div className="ww-badge-small purple">Equity &gt; 1 Year</div>
                     </div>
                     <h3 className={totals.ltcg >= 0 ? 'ww-text-green' : 'ww-text-red'}>
-                        {totals.ltcg >= 0 ? '+' : ''}{formatCurrency(totals.ltcg)}
+                        {totals.ltcg >= 0 ? '+' : ''}{fmt(totals.ltcg)}
                     </h3>
                     <p className="ww-card-subtext">Taxable at 10% exceeding ₹1 Lakh threshold.</p>
                 </div>
@@ -282,7 +294,7 @@ export default function TaxSummary({ user, investments = [] }) {
                         <div className="ww-badge-small orange">Equity &lt; 1 Year</div>
                     </div>
                     <h3 className={totals.stcg >= 0 ? 'ww-text-green' : 'ww-text-red'}>
-                        {totals.stcg >= 0 ? '+' : ''}{formatCurrency(totals.stcg)}
+                        {totals.stcg >= 0 ? '+' : ''}{fmt(totals.stcg)}
                     </h3>
                     <p className="ww-card-subtext">Taxable at flat 15% rate.</p>
                 </div>
@@ -325,7 +337,7 @@ export default function TaxSummary({ user, investments = [] }) {
                                             <td className={isPositive ? 'ww-text-green ww-td-bold' : 'ww-text-red ww-td-bold'}>
                                                 <div className="ww-gain-cell">
                                                     {isPositive ? <FiTrendingUp /> : <FiTrendingDown />}
-                                                    {isPositive ? '+' : ''}{formatCurrency(txn.gain)}
+                                                    {isPositive ? '+' : ''}{fmt(txn.gain)}
                                                 </div>
                                             </td>
                                             <td>

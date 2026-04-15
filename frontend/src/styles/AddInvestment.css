@@ -1,34 +1,43 @@
 /* ── Theme-aware variables ── */
 :root {
-    --ai-input-bg: rgba(11, 17, 32, 0.6);
-    --ai-summary-bg: #1e293b;
-    --ai-text: #f8fafc;
-    --ai-text-muted: #94a3b8;
-    --ai-border: rgba(255, 255, 255, 0.1);
-    --ai-label-color: #cbd5e1;
-    --ai-suggestion-border: rgba(255,255,255,0.05);
-    --ai-suggestion-strong: #f8fafc;
-    --ai-summary-item-border: rgba(255, 255, 255, 0.05);
-    --ai-cancel-hover: rgba(255, 255, 255, 0.05);
-    --fintech-green: #22c55e;
-    --fintech-green-hover: #16a34a;
-    --transition: all 0.3s ease;
+    --ai-input-bg: var(--input-bg);
+    --ai-summary-bg: var(--card-bg);
+    --ai-text: var(--text-primary);
+    --ai-text-muted: var(--text-secondary);
+    --ai-border: var(--border-color);
+    --ai-label-color: var(--text-primary);
+    --ai-suggestion-border: var(--border-color);
+    --ai-suggestion-strong: var(--text-primary);
+    --ai-summary-item-border: var(--border-color);
+    --ai-cancel-hover: var(--glass-bg, rgba(255, 255, 255, 0.05));
+    --fintech-green: var(--button-primary, #22c55e);
+    --fintech-green-hover: var(--button-primary-hover, #16a34a);
+    --transition: var(--transition-smooth, all 0.3s ease);
 }
 
 :root.theme-light {
-    --ai-input-bg: #FFFFFF;
-    --ai-summary-bg: #FFFFFF;
-    --ai-text: #0F172A;
-    --ai-text-muted: #64748B;
-    --ai-border: #E2E8F0;
-    --ai-label-color: #64748B;
-    --ai-suggestion-border: #E2E8F0;
-    --ai-suggestion-strong: #0F172A;
-    --ai-summary-item-border: #E2E8F0;
-    --ai-cancel-hover: #F1F5F9;
-    --fintech-green: #2563EB;
-    --fintech-green-hover: #1D4ED8;
-    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --ai-label-color: #000000 !important;
+    --ai-text-muted: #1e293b !important;
+    --ai-input-bg: #FFFFFF !important;
+    --ai-summary-bg: #FFFFFF !important;
+    --ai-border: #94a3b8 !important;
+}
+
+.theme-light .form-group label {
+    color: #000000 !important;
+}
+
+.theme-light input {
+    color: #000000 !important;
+}
+
+.theme-light input::placeholder {
+    color: #64748b !important;
+}
+
+.theme-light .btn-cancel {
+    color: #000000 !important;
+    border-color: #94a3b8 !important;
 }
 
 .add-investment-container {
@@ -244,7 +253,11 @@
 
 .suggestions-dropdown li:hover {
     background-color: rgba(148, 163, 184, 0.1);
-    color: var(--text-primary);
+    color: #000000 !important;
+}
+
+.theme-light .fund-name-truncate {
+    color: #000000 !important;
 }
 
 .no-suggestions {

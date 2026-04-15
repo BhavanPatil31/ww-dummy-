@@ -15,22 +15,23 @@ import Portfolio from './Portfolio';
 import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
 import Settings from './Settings';
+import { CURRENCIES, formatCurrency, convertValue, getCurrencySymbol } from '../utils/currencyUtils';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
 
-const ChartTooltip = ({ active, payload, label }) => {
+const ChartTooltip = ({ active, payload, label, currencyCode }) => {
     if (!active || !payload?.length) return null;
-    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
+    const val = payload[0].value;
     return (
         <div className="chart-tooltip">
             <div className="ct-date">{label}</div>
-            <div className="ct-val">₹{fmt(payload[0].value)}</div>
+            <div className="ct-val">{formatCurrency(val, currencyCode, true)}</div>
         </div>
     );
 };
 
-export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme }) {
+export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency, setCurrency }) {
     const [investments, setInvestments] = useState([]);
     const [dashboardData, setDashboardData] = useState(null);
     const [historyData, setHistoryData] = useState([]);
@@ -45,11 +46,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
 
-    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
+    const fmt = (v) => formatCurrency(v, currency, true);
     const fmtShort = (val) => {
-        if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-        if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
-        return `₹${fmt(val)}`;
+        const converted = convertValue(val, currency);
+        const symbol = getCurrencySymbol(currency);
+        if (converted >= 1000000) return `${symbol}${(converted / 1000000).toFixed(2)}M`;
+        if (converted >= 1000) return `${symbol}${(converted / 1000).toFixed(1)}K`;
+        return formatCurrency(val, currency, true);
     };
     const formatDate = (d) => {
         if (!d) return '—';
@@ -60,7 +63,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const getCurrentValue = useCallback((inv) => {
         const nav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
             : inv.nav_at_buy > 0 ? inv.nav_at_buy * (1 + 0.05 + ((inv.investment_id || 1) % 10) / 100)
-            : 0;
+                : 0;
         if (inv.units > 0 && nav > 0) return inv.units * nav;
         const pct = 0.05 + ((inv.investment_id || 1) % 10) / 100;
         return parseFloat(inv.amount || 0) * (1 + pct);
@@ -90,14 +93,23 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         if (!user) return;
         setLoading(true);
         const token = localStorage.getItem('jwt_token');
-        const userId = user?.userId || user?.id;
+
+        // Robust userId extraction - handle camelCase, snake_case, or generic id keys
+        const userId = user?.userId || user?.user_id || user?.id || (user?.user && (user.user.userId || user.user.user_id || user.user.id));
+
+        if (!userId) {
+            console.error("Dashboard: missing userId in user object", user);
+            setLoading(false);
+            return;
+        }
+
         const headers = { Authorization: `Bearer ${token}` };
         try {
             let invData = [];
             try {
                 const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}`, { headers });
                 invData = r.data || [];
-            } catch { }
+            } catch (err) { console.error("Investments fetch error", err); }
 
             let dbData = null;
             try {
@@ -171,22 +183,34 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Derived metrics ──────────────────────────────────────────
     const metrics = useMemo(() => {
-        if (dashboardData) return {
-            totalInvested: dashboardData.totalInvested || 0,
-            portfolioValue: dashboardData.portfolioValue || 0,
-            profitLoss: dashboardData.profitLoss || 0,
-            returnPct: dashboardData.returnPercentage || 0,
-        };
-        const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
-        const portfolioValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
+        const invs = investments || [];
+        const hasDbData = dashboardData && (dashboardData.totalInvested > 0 || dashboardData.portfolioValue > 0);
+
+        if (hasDbData) {
+            return {
+                totalInvested: dashboardData.totalInvested || 0,
+                portfolioValue: dashboardData.portfolioValue || 0,
+                profitLoss: dashboardData.profitLoss || 0,
+                returnPct: dashboardData.returnPercentage || 0,
+            };
+        }
+
+        // Manual calculate fallback if API is empty/unreachable
+        const totalInvested = invs.reduce((s, i) => {
+            const val = i.amount !== undefined ? i.amount : i.amount_invested;
+            return s + parseFloat(val || 0);
+        }, 0);
+
+        const portfolioValue = invs.reduce((s, i) => s + getCurrentValue(i), 0);
         const profitLoss = portfolioValue - totalInvested;
         const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
+
         return { totalInvested, portfolioValue, profitLoss, returnPct };
     }, [dashboardData, investments, getCurrentValue]);
 
     const assetAllocation = useMemo(() => {
         if (dashboardData?.assetAllocation?.length) return dashboardData.assetAllocation;
-        if (!investments.length) return [];
+        if (!investments?.length) return [];
         const groups = {};
         investments.forEach(inv => {
             const t = inv.investment_type || 'Other';
@@ -247,7 +271,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return (
             <div className={`profit-pill ${isPos ? 'pos' : 'neg'}`}>
                 {isPos ? <FiArrowUpRight /> : <FiArrowDownRight />}
-                {isPos ? '+' : ''}₹{fmt(Math.abs(profitLoss))}
+                {isPos ? '+' : '-'}{fmt(Math.abs(profitLoss))}
                 <span>({isPos ? '+' : ''}{returnPct.toFixed(2)}%)</span>
             </div>
         );
@@ -257,7 +281,24 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         <div className="dashboard-container">
             {/* ── SIDEBAR ── */}
             <aside className="dashboard-sidebar">
-                <div className="brand"><h2>WealthWise</h2></div>
+                <div className="brand" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' }}>
+                    <img src="/logo.png" alt="WealthWise Logo" style={{ width: '45px', height: '45px', marginRight: '10px', objectFit: 'contain' }} />
+                    <h2 style={{
+                        fontSize: '1.6rem',
+                        fontWeight: '900',
+                        margin: 0,
+                        letterSpacing: '-0.02em',
+                        whiteSpace: 'nowrap',
+                        ...(theme === 'light' ? {
+                            color: '#000000'
+                        } : {
+                            background: 'linear-gradient(135deg, #3b82f6, #a855f7)',
+                            WebkitBackgroundClip: 'text',
+                            backgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                        })
+                    }}>WealthWise</h2>
+                </div>
                 <nav className="sidebar-nav">
                     {[
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
@@ -284,34 +325,34 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <h1>
                             {activeView === 'dashboard'
                                 ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
-                                : activeView === 'profile'  ? 'Account Overview'
-                                : activeView === 'addInvestment' ? 'Add Investment'
-                                : activeView === 'portfolio' ? 'My Portfolio'
-                                : activeView === 'tax' ? 'Tax Summary'
-                                : activeView === 'settings' ? 'Settings'
-                                : activeView === 'goals'    ? 'Goals & Targets'
-                                : 'WealthWise'}
+                                : activeView === 'profile' ? 'Account Overview'
+                                    : activeView === 'addInvestment' ? 'Add Investment'
+                                        : activeView === 'portfolio' ? 'My Portfolio'
+                                            : activeView === 'tax' ? 'Tax Summary'
+                                                : activeView === 'settings' ? 'Settings'
+                                                    : activeView === 'goals' ? 'Goals & Targets'
+                                                        : 'WealthWise'}
                         </h1>
                         <p>
                             {activeView === 'dashboard'
                                 ? new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
                                 : activeView === 'addInvestment' ? 'Track a new mutual fund, SIP or lump-sum investment'
-                                : activeView === 'portfolio'     ? 'Monitor performance across all your holdings'
-                                : activeView === 'profile'       ? 'Manage your personal details and preferences'
-                                : activeView === 'tax'           ? 'Review your realized capital gains and tax liabilities'
-                                : activeView === 'settings'      ? 'Configure application preferences and security'
-                                : activeView === 'goals'         ? 'Set and track your financial milestones'
-                                : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                    : activeView === 'portfolio' ? 'Monitor performance across all your holdings'
+                                        : activeView === 'profile' ? 'Manage your personal details and preferences'
+                                            : activeView === 'tax' ? 'Review your realized capital gains and tax liabilities'
+                                                : activeView === 'settings' ? 'Configure application preferences and security'
+                                                    : activeView === 'goals' ? 'Set and track your financial milestones'
+                                                        : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     </div>
                     <div className="header-actions">
                         <div className="notification-wrapper">
-                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`} 
+                            <button className={`icon-btn ${showNotifications ? 'active' : ''}`}
                                 onClick={() => setShowNotifications(!showNotifications)}>
                                 <FiBell />
                                 {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
                             </button>
-                            
+
                             {showNotifications && (
                                 <div className="notifications-dropdown">
                                     <div className="notif-header">
@@ -325,7 +366,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             <div className="notif-empty">No notifications</div>
                                         ) : (
                                             notifications.map(n => (
-                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`} 
+                                                <div key={n.id} className={`notif-item ${n.read ? 'read' : 'unread'}`}
                                                     onClick={() => !n.read && markNotificationAsRead(n.id)}>
                                                     <div className="notif-icon-circle">
                                                         <FiAlertTriangle />
@@ -359,9 +400,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             <section className="growth-hero-card">
                                 <div className="hero-top">
                                     <div className="hero-left">
-                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE</span>
+                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE ({currency})</span>
                                         <div className="hero-value-row">
-                                            <span className="big-price">₹{fmt(metrics.portfolioValue)}</span>
+                                            <span className="big-price">{fmt(metrics.portfolioValue)}</span>
                                             {profitPill()}
                                         </div>
                                         <div className="timeframe-filters">
@@ -373,7 +414,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                     <div className="hero-right">
                                         <div className="hero-mini-stat">
                                             <span>Invested</span>
-                                            <strong>₹{fmt(metrics.totalInvested)}</strong>
+                                            <strong>{fmt(metrics.totalInvested)}</strong>
                                         </div>
                                         <div className="hero-mini-stat">
                                             <span>Holdings</span>
@@ -399,7 +440,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
                                             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} interval="preserveStartEnd" dy={8} />
                                             <YAxis hide domain={['auto', 'auto']} />
-                                            <Tooltip content={<ChartTooltip />} />
+                                            <Tooltip content={<ChartTooltip currencyCode={currency} />} />
                                             <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5}
                                                 fill="url(#areaGrad)" dot={false}
                                                 activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
@@ -411,12 +452,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 2. KPI CARDS ── */}
                             <div className="kpi-grid">
                                 {[
-                                    { label: 'Total Invested', value: `₹${fmt(metrics.totalInvested)}`, icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
-                                    { label: 'Portfolio Value', value: `₹${fmt(metrics.portfolioValue)}`, icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
+                                    { label: 'Total Invested', value: fmt(metrics.totalInvested), icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
+                                    { label: 'Portfolio Value', value: fmt(metrics.portfolioValue), icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
                                     {
                                         label: 'Total Gain / Loss',
                                         value: metrics.profitLoss === 0 ? 'Break-even'
-                                            : `${metrics.profitLoss > 0 ? '+' : ''}₹${fmt(Math.abs(metrics.profitLoss))}`,
+                                            : `${metrics.profitLoss > 0 ? '+' : '-'}${fmt(Math.abs(metrics.profitLoss))}`,
                                         icon: metrics.profitLoss >= 0 ? <FiTrendingUp /> : <FiTrendingDown />,
                                         cls: metrics.profitLoss > 0 ? 'i-green' : metrics.profitLoss < 0 ? 'i-red' : 'i-muted',
                                         sub: metrics.profitLoss === 0 ? 'No change yet' : `${metrics.returnPct.toFixed(2)}% overall`,
@@ -453,7 +494,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <Pie data={assetAllocation} innerRadius={58} outerRadius={82} paddingAngle={4} dataKey="value" stroke="none">
                                                             {assetAllocation.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => [`₹${fmt(v)}`, '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        <Tooltip formatter={(v) => [fmt(v), '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                                 <div className="donut-center">
@@ -467,7 +508,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
                                                         <span className="legend-name">{item.name}</span>
                                                         <span className="legend-pct">{metrics.portfolioValue > 0 ? ((item.value / metrics.portfolioValue) * 100).toFixed(0) : 0}%</span>
-                                                        <span className="legend-val">₹{fmt(item.value)}</span>
+                                                        <span className="legend-val">{fmt(item.value)}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -545,7 +586,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <strong>{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 24)}{(inv.scheme_name?.length > 24) ? '…' : ''}</strong>
                                                         <span>{inv.investment_type} · {formatDate(inv.buy_date || inv.start_date)}</span>
                                                     </div>
-                                                    <div className="activity-amount">+₹{fmt(inv.amount)}</div>
+                                                    <div className="activity-amount">+{fmt(inv.amount)}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -558,8 +599,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 <div className="card-top"><h3>Financial Goals</h3><FiTarget /></div>
                                 <div className="goals-grid">
                                     {[
-                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: '₹6.5L', total: '₹10L', rem: '₹3.5L', color: '' },
-                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: '₹80K', total: '₹2L', rem: '₹1.2L', color: 'blue' },
+                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: (1000000 * 0.65), total: 1000000, rem: (1000000 * 0.35) },
+                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: (200000 * 0.4), total: 200000, rem: (200000 * 0.6) },
                                     ].map((g, i) => (
                                         <div key={i} className="goal-card">
                                             <div className="goal-header">
@@ -570,8 +611,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                 <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
                                             </div>
                                             <div className="goal-footer">
-                                                <span>{g.cur} of {g.total}</span>
-                                                <span className="goal-rem">{g.rem} to go</span>
+                                                <span>{fmtShort(g.cur)} of {fmtShort(g.total)}</span>
+                                                <span className="goal-rem">{fmtShort(g.rem)} to go</span>
                                             </div>
                                         </div>
                                     ))}
@@ -580,15 +621,15 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
                         </div>
                     ) : activeView === 'addInvestment' ? (
-                        <AddInvestment user={user} onBackToDashboard={() => { fetchAllData(); setActiveView('dashboard'); }} />
+                        <AddInvestment user={user} currency={currency} onBackToDashboard={() => { fetchAllData(); setActiveView('dashboard'); }} />
                     ) : activeView === 'portfolio' ? (
-                        <Portfolio user={user} />
+                        <Portfolio user={user} currency={currency} />
                     ) : activeView === 'tax' ? (
-                        <TaxSummary user={user} investments={investments} />
+                        <TaxSummary user={user} investments={investments} currency={currency} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
                     ) : activeView === 'settings' ? (
-                        <Settings user={user} theme={theme} setTheme={setTheme} />
+                        <Settings user={user} theme={theme} setTheme={setTheme} currency={currency} setCurrency={setCurrency} />
                     ) : null}
                 </div>
             </main>

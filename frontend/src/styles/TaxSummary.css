@@ -1,24 +1,16 @@
 /* WealthWise Premium Tax Summary Theme */
 :root {
-    --ww-bg-main: #0b1120;
-    /* Deepest Navy Background */
-    --ww-bg-card: #151c2c;
-    /* Card background */
-    --ww-bg-hover: #1e293b;
-    /* Hover state */
-
-    --ww-text-main: #f8fafc;
-    /* Bright white text */
-    --ww-text-muted: #94a3b8;
-    /* Soft gray */
-
-    --ww-border: rgba(255, 255, 255, 0.08);
-
-    --ww-blue: #3b82f6;
+    --ww-bg-main: var(--bg-primary);
+    --ww-bg-card: var(--card-bg);
+    --ww-bg-hover: var(--input-bg);
+    --ww-text-main: var(--text-primary);
+    --ww-text-muted: var(--text-secondary);
+    --ww-border: var(--border-color);
+    --ww-blue: var(--accent-color);
     --ww-purple: #8b5cf6;
     --ww-orange: #f97316;
-    --ww-green: #10b981;
-    --ww-red: #ef4444;
+    --ww-green: var(--button-primary, #10b981);
+    --ww-red: var(--danger-color, #ef4444);
 }
 
 /* Base Layout */
@@ -140,13 +132,11 @@
 }
 
 .ww-badge-small.purple {
-    background: rgba(139, 92, 246, 0.15);
-    color: #c4b5fd;
+    color: var(--ww-purple);
 }
 
 .ww-badge-small.orange {
-    background: rgba(249, 115, 22, 0.15);
-    color: #fdba74;
+    color: var(--ww-orange);
 }
 
 /* Financial Year Card specifics */
@@ -327,14 +317,12 @@
 }
 
 .pill-ltcg {
-    background: rgba(139, 92, 246, 0.15);
-    color: #c4b5fd;
+    color: var(--ww-purple);
     border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
 .pill-stcg {
-    background: rgba(249, 115, 22, 0.15);
-    color: #fdba74;
+    color: var(--ww-orange);
     border: 1px solid rgba(249, 115, 22, 0.3);
 }
 
@@ -345,4 +333,37 @@
     font-style: italic;
     border: 1px dashed var(--ww-border);
     border-radius: 12px;
+}
+
+/* ── Light Theme Overrides ── */
+:root.theme-light .ww-tax-container {
+    --ww-bg-main: #F3F4F6;
+    --ww-bg-card: #FFFFFF;
+    --ww-text-main: #1e293b;
+    --ww-text-muted: #475569;
+    --ww-border: #cbd5e1;
+}
+
+:root.theme-light .ww-tax-card,
+:root.theme-light .ww-tax-table-card {
+    background: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:root.theme-light .ww-fy-select {
+    background: #ffffff;
+    color: #1e293b;
+}
+
+:root.theme-light .ww-icon-btn:hover {
+    background: #f1f5f9;
+}
+
+:root.theme-light .ww-data-table tr:hover td {
+    background-color: #f8fafc;
+}
+
+:root.theme-light .ww-title-section h2,
+:root.theme-light .ww-tax-card h3 {
+    color: #1e293b;
 }

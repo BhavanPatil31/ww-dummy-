@@ -1,21 +1,21 @@
 /* ─── WealthWise Premium Dashboard CSS ─── */
 
 :root {
-    --db-bg: #060d1a;
-    --db-sidebar: #080f1c;
-    --db-card: #0f1929;
-    --db-card-alt: #111e30;
-    --db-border: rgba(255, 255, 255, 0.06);
+    --db-bg: var(--bg-primary);
+    --db-sidebar: var(--bg-secondary);
+    --db-card: var(--card-bg);
+    --db-card-alt: var(--input-bg);
+    --db-border: var(--border-color);
     --db-border-glow: rgba(59, 130, 246, 0.25);
-    --db-accent: #3b82f6;
+    --db-accent: var(--accent-color);
     --db-green: #22c55e;
     --db-red: #ef4444;
     --db-yellow: #f59e0b;
     --db-purple: #a855f7;
-    --db-text: #f1f5f9;
-    --db-muted: #64748b;
-    --db-muted2: #94a3b8;
-    --db-hover: #151f30;
+    --db-text: var(--text-primary);
+    --db-muted: var(--text-secondary);
+    --db-muted2: var(--text-secondary);
+    --db-hover: rgba(59, 130, 246, 0.07);
 }
 
 /* ─── Layout ─────────────────────────────────────────────── */
@@ -54,7 +54,7 @@
     border-right: 1px solid var(--db-border);
     display: flex;
     flex-direction: column;
-    padding: 28px 0 20px;
+    padding: 10px 0 20px;
     height: 100vh;
     position: sticky;
     top: 0;
@@ -140,7 +140,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 18px 40px;
-    background: rgba(6, 13, 26, 0.9);
+    background: var(--overlay-bg);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--db-border);
     position: sticky;
@@ -148,6 +148,80 @@
     z-index: 50;
     width: 100%;
     box-sizing: border-box;
+    transition: background 0.3s ease;
+}
+
+/* Premium White Header for Light Mode */
+:root.theme-light .dashboard-header {
+    background: #FFFFFF;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+:root.theme-light .dashboard-header .welcome-section h1 {
+    color: #000000;
+}
+
+:root.theme-light .dashboard-header .welcome-section p {
+    color: #6b7280;
+}
+
+:root.theme-light .dashboard-header .icon-btn,
+:root.theme-light .dashboard-header .profile-pill {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+/* Royal Blue Sidebar for Light Mode */
+:root.theme-light .dashboard-sidebar {
+    background: #8494FF;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+:root.theme-light .nav-item {
+    color: #1e1b4b;
+    font-weight: 500;
+}
+
+:root.theme-light .nav-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #000000;
+}
+
+:root.theme-light .nav-item.active {
+    background: rgba(0, 0, 0, 0.08);
+    color: #000000;
+    box-shadow: inset 3px 0 0 #000000;
+}
+
+:root.theme-light .brand h2 {
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    -webkit-text-fill-color: inherit;
+    color: #000000;
+}
+
+:root.theme-light .logout-btn {
+    color: #000000;
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+:root.theme-light .logout-btn:hover {
+    background: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Fintech Status Colors */
+:root.theme-light .ww-text-green,
+:root.theme-light .pos {
+    color: #059669 !important;
+}
+
+:root.theme-light .ww-text-red,
+:root.theme-light .neg {
+    color: #DC2626 !important;
 }
 
 .welcome-section h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
@@ -197,10 +271,10 @@
     top: calc(100% + 12px);
     right: 0;
     width: 320px;
-    background: #0f1929;
+    background: var(--db-card);
     border: 1px solid var(--db-border);
     border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--card-shadow, 0 10px 40px rgba(0, 0, 0, 0.5));
     z-index: 1000;
     overflow: hidden;
     animation: fadeInScale 0.2s ease-out;
@@ -281,7 +355,7 @@
     margin: 0 0 4px;
     font-size: 0.85rem;
     line-height: 1.4;
-    color: #f1f5f9;
+    color: var(--db-text);
 }
 
 .notif-time {
@@ -319,11 +393,11 @@
 
 /* ─── Growth Hero Card ───────────────────────────────────── */
 .growth-hero-card {
-    background: linear-gradient(145deg, #0f1929 0%, #111e32 100%);
+    background: var(--db-card);
     border: 1px solid var(--db-border);
     border-radius: 20px;
     padding: 28px 32px 20px;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--card-shadow, 0 8px 40px rgba(0, 0, 0, 0.35));
 }
 
 .hero-top {
@@ -381,7 +455,7 @@
     font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: 0.2s;
 }
 .timeframe-filters button.active {
-    background: var(--db-accent); color: white; border-color: var(--db-accent);
+    background: var(--db-accent); color: var(--button-text); border-color: var(--db-accent);
 }
 .timeframe-filters button:hover:not(.active) { border-color: rgba(255,255,255,0.15); color: var(--db-text); }
 
@@ -400,13 +474,13 @@
 .main-chart-container { width: 100%; }
 
 .chart-tooltip {
-    background: #1e293b;
-    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--db-card);
+    border: 1px solid var(--db-border);
     border-radius: 10px;
     padding: 10px 14px;
 }
 .ct-date { font-size: 0.78rem; color: var(--db-muted); margin-bottom: 4px; }
-.ct-val { font-size: 1.05rem; font-weight: 800; color: #fff; }
+.ct-val { font-size: 1.05rem; font-weight: 800; color: var(--db-text); }
 
 /* ─── KPI Grid ───────────────────────────────────────────── */
 .kpi-grid {
@@ -430,9 +504,9 @@
 }
 
 .kpi-card.highlight {
-    background: linear-gradient(145deg, #0f1e38, #0d1a2b);
-    border-color: rgba(59, 130, 246, 0.2);
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+    background: var(--db-card);
+    border-color: var(--db-accent);
+    box-shadow: var(--card-shadow, 0 4px 20px rgba(59, 130, 246, 0.08));
 }
 
 .kpi-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }

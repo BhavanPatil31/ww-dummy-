@@ -26,12 +26,25 @@ public class InvestmentService {
     @Autowired
     private NotificationService notificationService;
 
+    @Transactional
     public Investment addInvestment(Investment investment) {
         Objects.requireNonNull(investment, "Investment cannot be null");
+        
+        // Ensure both amount fields are synchronized for consistent calculations
+        if (investment.getAmount() != null && investment.getAmountInvested() == null) {
+            investment.setAmountInvested(investment.getAmount());
+        } else if (investment.getAmountInvested() != null && investment.getAmount() == null) {
+            investment.setAmount(investment.getAmountInvested());
+        }
+
         Investment saved = Objects.requireNonNull(investmentRepository.save(investment), "Saved investment cannot be null");
         Long userId = saved.getUserId();
         if (userId != null) {
-            portfolioService.updatePortfolio(userId);
+            try {
+                portfolioService.updatePortfolio(userId);
+            } catch (Exception e) {
+                System.out.println("Portfolio update failed during add: " + e.getMessage());
+            }
             
             // Create notification
             String msg = "New " + saved.getInvestmentType() + " investment of ₹" + saved.getAmount() + " in " + saved.getSchemeName() + " added successfully.";

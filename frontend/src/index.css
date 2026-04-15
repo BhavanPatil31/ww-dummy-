@@ -99,8 +99,8 @@ button {
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
+    --bg-primary: #F3F4F6;
+    --bg-secondary: #FFFFFF;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
 
@@ -134,8 +134,8 @@ button {
 }
 
 .theme-light {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
+  --bg-primary: #F3F4F6;
+  --bg-secondary: #FFFFFF;
   --text-primary: #1e293b;
   --text-secondary: #64748b;
 

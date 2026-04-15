@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiShield, FiBell, FiMonitor, FiLock,
-    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle
+    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle,
+    FiHelpCircle, FiMessageSquare, FiLifeBuoy, FiAlertTriangle, FiBook
 } from 'react-icons/fi';
 import axios from 'axios';
+import HelpSupport from '../components/HelpSupport';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme }) {
+export default function Settings({ user, theme, setTheme, currency, setCurrency }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
@@ -28,13 +30,19 @@ export default function Settings({ user, theme, setTheme }) {
         promo: false
     });
 
-    // 3. Appearance State
-    const [currency, setCurrency] = useState('USD');
+    // 3. Appearance State - Handled globally via props.
 
     // 4. Privacy State
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });
+
+    // 5. Help & Support State
+    const [feedbackForm, setFeedbackForm] = useState({
+        type: 'General',
+        message: ''
+    });
+    const [feedbackStatus, setFeedbackStatus] = useState('');
 
     // --- HANDLERS ---
     const handlePasswordChange = (e) => {
@@ -119,12 +127,38 @@ export default function Settings({ user, theme, setTheme }) {
         }
     };
 
+    const handleFeedbackSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setFeedbackStatus('');
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const headers = { Authorization: `Bearer ${token}` };
+            const uid = user?.userId || user?.id;
+
+            await axios.post('http://localhost:8088/api/feedback/submit', {
+                userId: uid,
+                type: feedbackForm.type,
+                message: feedbackForm.message
+            }, { headers });
+
+            setFeedbackStatus('Success');
+            setFeedbackForm({ type: 'General', message: '' });
+            setTimeout(() => setFeedbackStatus(''), 3000);
+        } catch (error) {
+            setFeedbackStatus('Error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // --- CONFIG ---
     const tabs = [
         { id: 'security', label: 'Security & Login', icon: <FiShield /> },
         { id: 'notifications', label: 'Notifications', icon: <FiBell /> },
         { id: 'appearance', label: 'Appearance', icon: <FiMonitor /> },
-        { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> }
+        { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> },
+        { id: 'help', label: 'Help & Support', icon: <FiHelpCircle /> }
     ];
 
     // Animation settings for smoother transitions
@@ -366,6 +400,13 @@ export default function Settings({ user, theme, setTheme }) {
                                 Delete Account
                             </button>
                         </div>
+                    </motion.div>
+                );
+
+            case 'help':
+                return (
+                    <motion.div {...pageTransition}>
+                        <HelpSupport user={user} />
                     </motion.div>
                 );
 
