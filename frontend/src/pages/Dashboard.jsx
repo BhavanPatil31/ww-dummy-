@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf';
-import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.js?url';
+
+GlobalWorkerOptions.workerSrc = workerSrc;
+
 import {
     AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     XAxis, YAxis, CartesianGrid
@@ -10,7 +13,7 @@ import {
     FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut,
     FiTrendingUp, FiTrendingDown, FiArrowUpRight, FiArrowDownRight,
     FiDollarSign, FiActivity, FiPieChart, FiZap, FiAward, FiStar,
-    FiAlertTriangle, FiRefreshCw, FiClock, FiSettings
+    FiAlertTriangle, FiRefreshCw, FiClock, FiSettings, FiMessageSquare
 } from 'react-icons/fi';
 import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
@@ -18,12 +21,11 @@ import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
 import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
+import AIAssistant from './AIAssistant';
 import '../styles/Dashboard.css';
 
-GlobalWorkerOptions.workerSrc = workerSrc;
-
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
-const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings'];
+const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings', 'ai-assistant'];
 
 const normalizeCurrency = (value) => {
     const code = String(value || '').toUpperCase();
@@ -41,13 +43,15 @@ const ChartTooltip = ({ active, payload, label }) => {
     );
 };
 
-export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme }) {
+export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setTheme, currency = 'INR', setCurrency }) {
+    const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
+    const safeCurrency = normalizeCurrency(currency);
     const [investments, setInvestments] = useState([]);
     const [dashboardData, setDashboardData] = useState(null);
-    const [goals, setGoals] = useState([]);
     const [historyData, setHistoryData] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [goals, setGoals] = useState([]);
     const [timeFrame, setTimeFrame] = useState('1M');
     const [activeView, setActiveView] = useState(() => {
         const stored = localStorage.getItem('activeView');
@@ -86,25 +90,46 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         localStorage.setItem('activeView', safeView);
     }, [activeView]);
 
-    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
-    const fmtShort = (val) => {
-        if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-        if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
-        return `₹${fmt(val)}`;
-    };
-    const formatDate = (d) => {
+    const formatCurrency = useCallback((val) =>
+        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
+            style: 'currency',
+            currency: safeCurrency,
+            maximumFractionDigits: 0
+        }).format(val || 0), [safeCurrency]);
+
+    const fmt = (val) =>
+        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
+            maximumFractionDigits: 0
+        }).format(Number(val) || 0);
+
+    const fmtShort = useCallback((val) => {
+        const symbol = safeCurrency === 'INR' ? '₹' : safeCurrency === 'USD' ? '$' : safeCurrency === 'EUR' ? '€' : '£';
+        if (safeCurrency === 'INR') {
+            if (val >= 10000000) return `${symbol}${(val / 10000000).toFixed(2)}Cr`;
+            if (val >= 100000) return `${symbol}${(val / 100000).toFixed(2)}L`;
+        }
+        return formatCurrency(val);
+    }, [safeCurrency, formatCurrency]);
+    const formatDate = useCallback((d) => {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
-    };
+    }, []);
 
     // ── Value helpers ────────────────────────────────────────────
     const getCurrentValue = useCallback((inv) => {
-        const nav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav
-            : inv.nav_at_buy > 0 ? inv.nav_at_buy * (1 + 0.05 + ((inv.investment_id || 1) % 10) / 100)
-                : 0;
-        if (inv.units > 0 && nav > 0) return inv.units * nav;
-        const pct = 0.05 + ((inv.investment_id || 1) % 10) / 100;
-        return parseFloat(inv.amount || 0) * (1 + pct);
+        const storedUnits = Number(inv.units || 0);
+        const currentNav = Number(inv.current_nav || inv.currentNav || 0);
+        const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
+        const invested = Number(inv.amount_invested || inv.amountInvested || inv.amount || 0);
+        const healedUnits = (storedUnits > 0 && navAtBuy > 1.5 && invested > 0 && Math.abs(storedUnits - invested) < 0.0001)
+            ? (invested / navAtBuy)
+            : storedUnits;
+        const units = healedUnits > 0 ? healedUnits : (invested > 0 && navAtBuy > 0 ? invested / navAtBuy : 0);
+        const usableCurrentNav = (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5)) ? currentNav : 0;
+
+        if (units > 0 && usableCurrentNav > 0) return units * usableCurrentNav;
+        if (units > 0 && navAtBuy > 0) return units * navAtBuy;
+        return invested;
     }, []);
 
     // ── Generate chart history ────────────────────────────────────
@@ -126,7 +151,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return data;
     }, []);
 
-
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
         if (!user) return;
@@ -137,7 +161,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
         if (!userId) {
             console.error("Dashboard: missing userId in user object", user);
-            setLoading(false);
             return;
         }
 
@@ -158,15 +181,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             // optional source endpoint
         }
 
-        let histData = [];
-        try {
-            const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
-            const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
-            histData = r.data || [];
-        } catch {
-            // optional source endpoint
-        }
-
         let goalsData = [];
         try {
             const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
@@ -175,12 +189,21 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             // optional source endpoint
         }
 
-        // Strict separation: If no investments pass the active filter, force graph to zero
-        const hasActive = (invData || []).some(inv => {
-            if (inv.end_date || inv.endDate) return false;
-            const s = (inv.status || "").toUpperCase();
-            return s !== "SOLD" && s !== "CLOSED";
-        });
+            let histData = [];
+            try {
+                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
+                const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
+                histData = r.data || [];
+            } catch {
+                // optional source endpoint
+            }
+
+            // Strict separation: If no investments pass the active filter, force graph to zero
+            const hasActive = (invData || []).some(inv => {
+                if (inv.end_date || inv.endDate) return false;
+                const s = (inv.status || "").toUpperCase();
+                return s !== "SOLD" && s !== "CLOSED";
+            });
 
         const livePortfolioValue = (invData || [])
             .filter(inv => {
@@ -222,21 +245,40 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             });
         }
 
-        setInvestments(invData);
-        setDashboardData(dbData);
-        setGoals(goalsData);
-        setHistoryData(resolvedHistory);
+            setInvestments(invData);
+            setDashboardData(dbData);
+            setHistoryData(resolvedHistory);
+            setGoals(goalsData);
     }, [user, timeFrame, getCurrentValue]);
 
     const activeInvestments = useMemo(() => {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
         return (investments || []).filter(inv => {
             // New strict logic: Hide if it has an end date OR it is sold
-            if (inv.end_date || inv.endDate) return false;
+            if (inv.end_date) return false;
             if (inv.status === 'SOLD' || inv.status === 'CLOSED') return false;
 
             return true;
         });
     }, [investments]);
+
+    const goalsPreview = useMemo(() => {
+        return (goals || []).slice(0, 3).map((goal, index) => {
+            const target = Number(goal.target_amount || goal.targetAmount || 0);
+            const progress = Number(goal.progress || 0);
+            const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+            return {
+                key: goal.goal_id || goal.id || index,
+                name: goal.goal_name || goal.goalName || `Goal ${index + 1}`,
+                pct,
+                cur: formatCurrency(progress),
+                total: formatCurrency(target),
+                rem: formatCurrency(Math.max(0, target - progress)),
+                color: ['blue', 'purple', 'green'][index % 3]
+            };
+        });
+    }, [goals, formatCurrency]);
 
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
@@ -491,8 +533,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             );
 
             console.log('CAS data saved:', response.data);
-            alert('CAS data uploaded successfully!');
             fetchAllData(); // Refresh dashboard
+            setActiveView('tax');
         } catch (err) {
             const serverMessage = err?.response?.data?.message || err?.response?.data || err?.message;
             console.error('Error sending CAS data to backend:', err?.response?.status, serverMessage, err);
@@ -501,7 +543,11 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     };
 
     const openCASFilePicker = () => {
-        casFileInputRef.current?.click();
+        if (casFileInputRef.current) {
+            casFileInputRef.current.value = '';
+            casFileInputRef.current.click();
+        }
+        setActiveView('tax');
     };
 
     // ── Derived metrics ──────────────────────────────────────────
@@ -624,7 +670,12 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
             {/* ── SIDEBAR ── */}
             <aside className="dashboard-sidebar">
-                <div className="brand"><h2>WealthWise</h2></div>
+                <div className="brand">
+                    <div className="logo-wrapper">
+                        <img src={logoSrc} alt="WealthWise Logo" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
+                    </div>
+                    <h2>WealthWise</h2>
+                </div>
                 <nav className="sidebar-nav">
                     {[
                         { view: 'dashboard', icon: <FiTrendingUp />, label: 'Dashboard' },
@@ -632,6 +683,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
                         { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
                         { view: 'goals', icon: <FiTarget />, label: 'Goals' },
+                        { view: 'ai-assistant', icon: <FiMessageSquare />, label: 'AI Assistant' },
                         { view: 'settings', icon: <FiSettings />, label: 'Settings' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
@@ -656,6 +708,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         : activeView === 'portfolio' ? 'My Portfolio'
                                             : activeView === 'tax' ? 'Tax Summary'
                                                 : activeView === 'settings' ? 'Settings'
+                                                    : activeView === 'ai-assistant' ? 'AI Financial Assistant'
                                                     : activeView === 'goals' ? 'Goals & Targets'
                                                         : 'WealthWise'}
                         </h1>
@@ -667,6 +720,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         : activeView === 'profile' ? 'Manage your personal details and preferences'
                                             : activeView === 'tax' ? 'Review your realized capital gains and tax liabilities'
                                                 : activeView === 'settings' ? 'Configure application preferences and security'
+                                                    : activeView === 'ai-assistant' ? 'Ask anything about your portfolio, strategy, or tax optimizations'
                                                     : activeView === 'goals' ? 'Set and track your financial milestones'
                                                         : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
@@ -754,44 +808,146 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Chart */}
                                 <div className="main-chart-container">
-                                    <ResponsiveContainer width="100%" height={260}>
-                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                                                    <stop offset="90%" stopColor="#3b82f6" stopOpacity={0} />
-                                                </linearGradient>
-                                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                                    <feGaussianBlur stdDeviation="4" result="blur" />
-                                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                                </filter>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                                            <XAxis
-                                                dataKey="date"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
-                                                interval="preserveStartEnd"
-                                                dy={12}
-                                                padding={{ left: 10, right: 10 }}
-                                            />
-                                            <YAxis hide domain={['auto', 'auto']} />
-                                            <Tooltip content={<ChartTooltip />} />
-                                            <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5}
-                                                fill="url(#areaGrad)" dot={false}
-                                                activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
+                                    {historyData.length === 0 ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 260, flexDirection: 'column', gap: 12, opacity: 0.4 }}>
+                                            <FiActivity size={40} />
+                                            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>No portfolio history yet</p>
+                                        </div>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height={280}>
+                                            <AreaChart data={historyData} margin={{ top: 24, right: 8, left: -10, bottom: 0 }}>
+                                                <defs>
+                                                    {/* Main area gradient */}
+                                                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                                                        <stop offset="60%" stopColor="#3b82f6" stopOpacity={0.08} />
+                                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    {/* Glow filter on the line */}
+                                                    <filter id="lineGlow" x="-10%" y="-80%" width="120%" height="260%">
+                                                        <feGaussianBlur stdDeviation="4" result="blur" />
+                                                        <feMerge>
+                                                            <feMergeNode in="blur" />
+                                                            <feMergeNode in="SourceGraphic" />
+                                                        </feMerge>
+                                                    </filter>
+                                                    {/* Horizontal grid lines fade gradient */}
+                                                    <linearGradient id="gridFade" x1="0" y1="0" x2="1" y2="0">
+                                                        <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+                                                        <stop offset="20%" stopColor="rgba(255,255,255,0.05)" />
+                                                        <stop offset="80%" stopColor="rgba(255,255,255,0.05)" />
+                                                        <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                                                    </linearGradient>
+                                                </defs>
+
+                                                <CartesianGrid
+                                                    strokeDasharray="0"
+                                                    vertical={false}
+                                                    stroke="rgba(255,255,255,0.045)"
+                                                    strokeWidth={1}
+                                                />
+
+                                                <XAxis
+                                                    dataKey="date"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
+                                                    interval="preserveStartEnd"
+                                                    dy={14}
+                                                    padding={{ left: 16, right: 16 }}
+                                                />
+
+                                                <YAxis
+                                                    hide={false}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#475569', fontSize: 10, fontWeight: 600 }}
+                                                    tickFormatter={(v) => {
+                                                        if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)}Cr`;
+                                                        if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+                                                        if (v >= 1000) return `₹${(v / 1000).toFixed(0)}K`;
+                                                        return `₹${v}`;
+                                                    }}
+                                                    width={64}
+                                                    domain={['auto', 'auto']}
+                                                />
+
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (!active || !payload?.length) return null;
+                                                        const val = payload[0].value;
+                                                        const idx = historyData.findIndex(d => d.date === label);
+                                                        const prev = idx > 0 ? historyData[idx - 1].value : val;
+                                                        const change = val - prev;
+                                                        const changePct = prev > 0 ? ((change / prev) * 100).toFixed(2) : '0.00';
+                                                        const isPos = change >= 0;
+                                                        return (
+                                                            <div className="chart-tooltip-pro">
+                                                                <div className="ct-date-pro">{label}</div>
+                                                                <div className="ct-rows">
+                                                                    <div className="ct-row">
+                                                                        <span className="ct-dot" style={{ background: '#3b82f6' }} />
+                                                                        <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Portfolio</span>
+                                                                        <span style={{ marginLeft: 'auto', fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>
+                                                                            ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(val)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Daily Change</span>
+                                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: isPos ? '#4ade80' : '#f87171' }}>
+                                                                        {isPos ? '+' : ''}₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.abs(change))} ({isPos ? '+' : ''}{changePct}%)
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }}
+                                                    cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1, strokeDasharray: '4 2' }}
+                                                />
+
+                                                {/* Shadow beneath line for depth */}
+                                                <Area
+                                                    type="monotoneX"
+                                                    dataKey="value"
+                                                    stroke="transparent"
+                                                    fill="url(#areaGrad)"
+                                                    fillOpacity={1}
+                                                    dot={false}
+                                                    activeDot={false}
+                                                    strokeWidth={0}
+                                                />
+
+                                                {/* Main glowing line */}
+                                                <Area
+                                                    type="monotoneX"
+                                                    dataKey="value"
+                                                    stroke="#3b82f6"
+                                                    strokeWidth={2.5}
+                                                    fill="none"
+                                                    dot={false}
+                                                    activeDot={{
+                                                        r: 6,
+                                                        fill: '#3b82f6',
+                                                        stroke: '#fff',
+                                                        strokeWidth: 2.5,
+                                                        filter: 'url(#lineGlow)'
+                                                    }}
+                                                    style={{ filter: 'url(#lineGlow)' }}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    )}
                                 </div>
                             </section>
 
                             {/* ── 2. KPI CARDS ── */}
                             <div className="kpi-grid">
                                 {[
-                                    { label: 'Total Invested', value: fmt(metrics.totalInvested), icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
-                                    { label: 'Portfolio Value', value: fmt(metrics.portfolioValue), icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
+                                    { label: 'Total Invested', value: `₹${fmt(metrics.totalInvested)}`, icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
+                                    { label: 'Portfolio Value', value: `₹${fmt(metrics.portfolioValue)}`, icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
                                     {
                                         label: 'Total Gain / Loss',
                                         value: metrics.profitLoss === 0 ? 'Break-even'
@@ -843,7 +999,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         >
                                                             {assetAllocation.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => [fmt(v), '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        <Tooltip formatter={(v) => [`₹${fmt(v)}`, '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                                 <div className="donut-center">
@@ -898,7 +1054,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                     <div className="performer-ret pos"><FiArrowUpRight />+{topPerformers.best.returnPct.toFixed(2)}%</div>
                                                 </div>
                                             )}
-                                            {topPerformers.worst && topPerformers.worst.fundId !== topPerformers.best?.fundId && (
+                                            {/* FIX 5: was comparing .fundId (camelCase) — correct field is .fund_id (snake_case) */}
+                                            {topPerformers.worst && topPerformers.worst.fund_id !== topPerformers.best?.fund_id && (
                                                 <div className="performer-item">
                                                     <div className="performer-badge red">Lowest</div>
                                                     <div className="performer-info">
@@ -946,26 +1103,41 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 5. GOALS PREVIEW ── */}
                             <div className="goals-preview-card">
                                 <div className="card-top"><h3>Financial Goals</h3><FiTarget /></div>
-                                <div className="goals-grid">
-                                    {[
-                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: '₹6.5L', total: '₹10L', rem: '₹3.5L', color: '' },
-                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: '₹80K', total: '₹2L', rem: '₹1.2L', color: 'blue' },
-                                    ].map((g, i) => (
-                                        <div key={i} className="goal-card">
-                                            <div className="goal-header">
-                                                <span>{g.emoji} {g.name}</span>
-                                                <span className="goal-pct">{g.pct}%</span>
+                                {goalsPreview.length === 0 ? (
+                                    <div className="empty-state-sm"><FiTarget /><p>No goals created yet</p></div>
+                                ) : (
+                                    <div className="goals-grid">
+                                        {goalsPreview.map((g) => (
+                                            <div key={g.key} className="goal-card">
+                                                <div className="goal-header">
+                                                    <span>{g.name}</span>
+                                                    <span className="goal-pct">{g.pct}%</span>
+                                                </div>
+                                                <div className="goal-bar">
+                                                    <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
+                                                </div>
+                                                <div className="goal-footer">
+                                                    <span>{g.cur} of {g.total}</span>
+                                                    <span className="goal-rem">{g.rem} to go</span>
+                                                </div>
                                             </div>
-                                            <div className="goal-bar">
-                                                <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
-                                            </div>
-                                            <div className="goal-footer">
-                                                <span>{g.cur} of {g.total}</span>
-                                                <span className="goal-rem">{g.rem} to go</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── 6. CAS UPLOAD SECTION ── */}
+                            <div className="cas-section">
+                                <button className="cas-button" onClick={openCASFilePicker}>
+                                    📄 Upload CAS (.pdf)
+                                </button>
+                                <input
+                                    ref={casFileInputRef}
+                                    type="file"
+                                    accept=".pdf"
+                                    onChange={handleCASFileSelect}
+                                    hidden
+                                />
                             </div>
 
                         </div>
@@ -974,15 +1146,24 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     ) : activeView === 'portfolio' ? (
                         <Portfolio user={user} currency={currency} />
                     ) : activeView === 'tax' ? (
-                        <TaxSummary user={user} investments={investments} currency={currency} />
+                        <TaxSummary user={user} investments={investments} currency={currency} onOpenCAS={openCASFilePicker} />
                     ) : activeView === 'profile' ? (
                         <UserProfile user={user} onBack={() => setActiveView('dashboard')} onLogout={onLogout} onProfileUpdate={onProfileUpdate} theme={theme} setTheme={setTheme} />
                     ) : activeView === 'goals' ? (
                         <GoalPlanning user={user} investments={investments} getCurrentValue={getCurrentValue} currency={currency} />
                     ) : activeView === 'settings' ? (
                         <Settings user={user} theme={theme} setTheme={setTheme} currency={currency} setCurrency={setCurrency} />
+                    ) : activeView === 'ai-assistant' ? (
+                        <AIAssistant user={user} />
                     ) : null}
                 </div>
+                <input
+                    ref={casFileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleCASFileSelect}
+                    hidden
+                />
             </main>
         </div>
     );

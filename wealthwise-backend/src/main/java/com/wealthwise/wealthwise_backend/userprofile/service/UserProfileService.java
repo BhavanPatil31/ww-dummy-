@@ -75,7 +75,7 @@ public class UserProfileService {
     @NonNull
     public UserProfileDTO getProfileByUserId(@NonNull Long userId) {
         // ✅ Explicitly guarantee the found entity is non-null
-        UserProfileDetails profile = repository.findByUserId(userId)
+        UserProfileDetails profile = repository.findFirstByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Profile not found for userId: " + userId));
         if (profile == null) throw new RuntimeException("Profile cannot be null");
         return toDTO(profile);

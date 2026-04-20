@@ -11,7 +11,7 @@ import {
     ResponsiveContainer, ReferenceLine, Legend,
     AreaChart, Area, BarChart, Line
 } from 'recharts';
-import { formatCurrency, convertValue, getCurrencySymbol } from '../utils/currencyUtils';
+import { CURRENCIES, formatCurrency, convertValue, getCurrencySymbol } from '../utils/currencyUtils';
 import '../styles/Portfolio.css';
 
 const MOCK_FUNDS = [
@@ -90,9 +90,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
     }, [user, fetchInvestments]);
 
     // ── Helpers ────────────────────────────────────────────────
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
-
     const getCurrentNav = (inv) => {
         const currentNav = Number(inv.current_nav || inv.currentNav || 0);
         const navAtBuy = Number(inv.nav_at_buy || inv.navAtBuy || 0);
@@ -132,6 +129,8 @@ export default function Portfolio({ user, currency = 'INR' }) {
         if (!invested) return 0;
         return ((getCurrentValue(inv) - invested) / invested) * 100;
     };
+
+    const fmt = (value) => formatCurrency(Number(value) || 0, currency);
 
     // ── Aggregates ─────────────────────────────────────────────
     const totalInvested = investments.reduce((s, i) => s + getInvestedAmount(i), 0);
@@ -243,7 +242,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
             const pnl = parseFloat((current - invested).toFixed(0));
             const pct = invested > 0 ? ((current - invested) / invested * 100).toFixed(1) : '0.0';
             const label = (inv.scheme_name || `Fund #${inv.fund_id}` || '?').slice(0, 10);
-            return { name: label, pnl, pct: parseFloat(pct), invested, current, fullName: inv.scheme_name || `Fund #${inv.fund_id}` };
+            return { name: label, pnl, pct: parseFloat(pct) || 0, invested, current, fullName: inv.scheme_name || `Fund #${inv.fund_id}` };
         });
     };
 
@@ -374,7 +373,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
 
             setLoadingSellNav(true);
             try {
-                const response = await axios.get(`https://api.mfapi.in/mf/${fundId}`);
+                const response = await axios.get(`http://localhost:8088/api/mf/proxy/${fundId}`);
                 const data = response.data;
                 if (data && data.data && data.data.length > 0) {
                     // Convert HTML yyyy-MM-dd to mfapi dd-MM-yyyy
@@ -527,133 +526,47 @@ export default function Portfolio({ user, currency = 'INR' }) {
                                 </span>
                             </div>
                             <div className="chart-container">
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ResponsiveContainer width="100%" height={380}>
                                     <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }} barCategoryGap="30%">
                                         <defs>
-                                            {/* Invested - Minimal Bar Gradient */}
-                                            <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.2} />
-                                                <stop offset="100%" stopColor="#475569" stopOpacity={0.05} />
+                                            <linearGradient id="barGreen" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#16a34a" stopOpacity={0.7} />
                                             </linearGradient>
-
-                                            {/* Current Value Area Gradient (Dynamic based on profit/loss theme) */}
-                                            <linearGradient id="colorCurrentArea" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
-                                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                                            </linearGradient>
-
-                                            {/* Specialized Bar Gradients */}
-                                            <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#10b981" />
-                                                <stop offset="100%" stopColor="#06b6d4" />
-                                            </linearGradient>
-                                            <linearGradient id="gradLoss" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#f43f5e" />
-                                                <stop offset="100%" stopColor="#fb923c" />
-                                            </linearGradient>
-
-                                            {/* Glow Filters */}
-                                            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                                                <feGaussianBlur stdDeviation="4" result="blur" />
-                                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                            </filter>
-
-                                            {/* Visual Performance Ranges */}
-                                            <linearGradient id="profitRange" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
-                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
-                                            </linearGradient>
-                                            <linearGradient id="lossRange" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.25} />
-                                                <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.05} />
-                                            </linearGradient>
-
-                                            {/* Invested Background Area */}
-                                            <linearGradient id="investedArea" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1} />
-                                                <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
+                                            <linearGradient id="barRed" x1="0" y1="1" x2="0" y2="0">
+                                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.7} />
                                             </linearGradient>
                                         </defs>
-
-                                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" strokeDasharray="5 5" />
-
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                                         <XAxis
-                                            dataKey="chartId"
-                                            axisLine={false}
+                                            dataKey="name"
+                                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                                            axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
                                             tickLine={false}
-                                            tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
-                                            tickFormatter={(val) => {
-                                                const d = finalChartData.find(item => item.chartId === val);
-                                                return d ? d.name : val;
-                                            }}
-                                            dy={15}
-                                            interval={0}
+                                            dy={8}
                                         />
                                         <YAxis
-                                            tick={{ fill: '#64748b', fontSize: 10 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 11 }}
                                             axisLine={false}
                                             tickLine={false}
+
+
                                             tickFormatter={(val) => `${val >= 0 ? '+' : '-'}${getCurrencySymbol(currency)}${Math.abs(convertValue(val, currency) / 1000).toFixed(0)}k`}
                                             dx={-6}
                                         />
-
-                                        <Tooltip
-                                            content={<PnLTooltip />}
-                                            cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                                            animationDuration={300}
-                                        />
-
-                                        {chartMode === 'absolute' ? (
-                                            <>
-                                                {/* 1. Range Area to represent Difference (The Gap) */}
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="performanceRange"
-                                                    stroke="none"
-                                                    fill="url(#profitRange)"
-                                                    animationDuration={2000}
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="4 4" />
+                                        <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} allowEscapeViewBox={{ x: true, y: true }} />
+                                        <Bar dataKey="pnl" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                                            {chartData.map((entry, i) => (
+                                                <Cell
+                                                    key={i}
+                                                    fill={entry.pnl >= 0 ? 'url(#barGreen)' : 'url(#barRed)'}
+                                                    stroke={entry.pnl >= 0 ? '#22c55e' : '#ef4444'}
+                                                    strokeWidth={1}
                                                 />
-
-                                                {/* 2. Invested Amount (Neutral Baseline Line) */}
-                                                <Line
-                                                    type="monotone"
-                                                    dataKey="invested"
-                                                    name="Invested Amount"
-                                                    stroke="#94a3b8"
-                                                    strokeWidth={2}
-                                                    strokeDasharray="5 5"
-                                                    dot={{ r: 4, stroke: "#64748b", strokeWidth: 1.5, fill: "#0b1120" }}
-                                                    // Squares are set in CSS or via path, but here we use a hollow circle to represent square-hollow feel
-                                                    activeDot={{ r: 6, stroke: "#94a3b8", strokeWidth: 2, fill: "#fff" }}
-                                                    animationDuration={1500}
-                                                />
-
-                                                {/* 3. Current Value (Vibrant Glow Line) */}
-                                                <Line
-                                                    type="monotone"
-                                                    dataKey="current"
-                                                    name="Current Value"
-                                                    stroke="#06b6d4"
-                                                    strokeWidth={4}
-                                                    filter="url(#glow)"
-                                                    dot={{ r: 5, fill: "#06b6d4", stroke: "#fff", strokeWidth: 2 }}
-                                                    activeDot={{ r: 8, fill: "#fff", stroke: "#06b6d4", strokeWidth: 3, filter: 'url(#glow)' }}
-                                                    animationDuration={2500}
-                                                />
-                                            </>
-                                        ) : (
-                                            <Bar dataKey="pct" name="Return %" animationDuration={1500} barSize={24} radius={[10, 10, 0, 0]}>
-                                                {finalChartData.map((entry, index) => (
-                                                    <Cell
-                                                        key={`cell-pct-${index}`}
-                                                        fill={entry.pct >= 0 ? "url(#gradProfit)" : "url(#gradLoss)"}
-                                                        style={{ filter: entry.pct >= 0 ? 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.4))' : 'drop-shadow(0 0 10px rgba(244, 63, 94, 0.4))' }}
-                                                    />
-                                                ))}
-                                            </Bar>
-                                        )}
-
-                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="3 3" />
+                                            ))}
+                                        </Bar>
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1212,7 +1125,7 @@ export default function Portfolio({ user, currency = 'INR' }) {
                             <FiTrash2 className="delete-icon-large" />
                             <p>Are you sure you want to remove</p>
                             <strong className="delete-fund-name">{deleteTarget.scheme_name || `Fund #${deleteTarget.fund_id}`}</strong>
-                            <p className="delete-warn">This action cannot be undone.</p>
+                            <p className="delete-warn">It will be moved to <strong>Deleted History</strong> in Settings where you can recover it later if needed.</p>
                             <div className="form-actions">
                                 <button className="btn-cancel" onClick={closeDelete}>Cancel</button>
                                 <button className="btn-delete" onClick={handleDelete}>
@@ -1301,3 +1214,4 @@ export default function Portfolio({ user, currency = 'INR' }) {
         </div>
     );
 }
+

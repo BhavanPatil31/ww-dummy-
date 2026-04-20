@@ -151,23 +151,60 @@ public class InvestmentService {
                 .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
 
         Long userId = inv.getUserId();
-        investmentRepository.delete(inv);
+        investmentRepository.softDeleteInvestment(id);
         if (userId != null) {
-            portfolioService.updatePortfolio(userId);
+            try {
+                portfolioService.updatePortfolio(userId);
+            } catch (Exception e) {
+                System.err.println("Warning: Portfolio update failed after soft delete: " + e.getMessage());
+            }
         }
+    }
+
+    public List<Investment> getDeletedInvestments(Long userId) {
+        Objects.requireNonNull(userId, "User ID cannot be null");
+        return investmentRepository.findDeletedByUserId(userId);
+    }
+
+    @Transactional
+    public Investment recoverInvestment(Long id) {
+        Objects.requireNonNull(id, "Investment ID cannot be null");
+        Investment inv = investmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Investment not found with id: " + id));
+        
+        investmentRepository.recoverInvestment(id);
+        
+        Long userId = inv.getUserId();
+        if (userId != null) {
+            try {
+                portfolioService.updatePortfolio(userId);
+            } catch (Exception e) {
+                // Portfolio update failure should not block recovery
+                System.err.println("Warning: Portfolio update failed after recovery: " + e.getMessage());
+            }
+            try {
+                notificationService.createNotification(userId, "Investment in " + inv.getSchemeName() + " has been recovered.", "INVESTMENT_RECOVERED");
+            } catch (Exception e) {
+                System.err.println("Warning: Notification failed: " + e.getMessage());
+            }
+        }
+        inv.setStatus("ACTIVE");
+        inv.setDeletedAt(null);
+        return inv;
+    }
+
+    @Transactional
+    public void permanentlyDeleteInvestment(Long id) {
+        Objects.requireNonNull(id, "Investment ID cannot be null");
+        // Clean up foreign key references first
+        investmentRepository.deleteGoalInvestmentsByInvestmentId(id);
+        investmentRepository.permanentlyDeleteById(id);
     }
 
     @Transactional
     public void deleteAllInvestments(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
-        List<Investment> userInvestments = investmentRepository.findByUserId(userId);
-        for (Investment inv : userInvestments) {
-            Long investmentId = inv.getInvestmentId();
-            if (investmentId != null) {
-                investmentRepository.deleteGoalInvestmentsByInvestmentId(investmentId);
-            }
-        }
-        investmentRepository.deleteByUserId(userId);
+        investmentRepository.softDeleteAllByUserId(userId);
         portfolioService.updatePortfolio(userId);
     }
 

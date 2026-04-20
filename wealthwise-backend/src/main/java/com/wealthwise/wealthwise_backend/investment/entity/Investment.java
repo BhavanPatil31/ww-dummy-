@@ -100,6 +100,10 @@ public class Investment {
     @JsonProperty("investment_duration")
     private Integer investmentDuration;
 
+    @Column(name = "deleted_at")
+    @JsonProperty("deleted_at")
+    private java.time.LocalDateTime deletedAt;
+
     public Investment() {
     }
 
@@ -293,5 +297,13 @@ public class Investment {
 
     public void setInvestmentDuration(Integer investmentDuration) {
         this.investmentDuration = investmentDuration;
+    }
+
+    public java.time.LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(java.time.LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

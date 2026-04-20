@@ -1,0 +1,253 @@
+﻿diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index 951c9a3..7fe47ed 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -154,40 +154,45 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+         setTimeout(() => setToast(null), 4000);
+     }, []);
+ 
+     useEffect(() => {
+         const msg = localStorage.getItem("showLoginToast");
+         if (msg) {
+             showToast(msg, 'success');
+             localStorage.removeItem("showLoginToast");
+         }
+     }, [showToast]);
+ 
+     useEffect(() => { localStorage.setItem('activeView', activeView); }, [activeView]);
+ 
+     const formatCurrency = (val) =>
+         new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+             style: 'currency',
+             currency: currency,
+             maximumFractionDigits: 0
+         }).format(val || 0);
+ 
++    const fmt = (val) =>
++        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
++            maximumFractionDigits: 0
++        }).format(val || 0);
++
+     const fmtShort = (val) => {
+         const symbol = currency === 'INR' ? 'Γé╣' : currency === 'USD' ? '$' : currency === 'EUR' ? 'Γé¼' : '┬ú';
+         if (currency === 'INR') {
+             if (val >= 10000000) return `Γé╣${(val / 10000000).toFixed(2)}Cr`;
+             if (val >= 100000) return `Γé╣${(val / 100000).toFixed(2)}L`;
+         }
+         return formatCurrency(val);
+     };
+     const formatDate = (d) => {
+         if (!d) return 'ΓÇö';
+         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+     };
+ 
+     // ΓöÇΓöÇ Value helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+     const getCurrentValue = useCallback((inv) => {
+         const units = Number(inv.units || 0);
+         const currentNav = Number(inv.current_nav || 0);
+         const navAtBuy = Number(inv.nav_at_buy || 0);
+ 
+         if (units > 0 && currentNav > 0) {
+@@ -219,40 +224,41 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+             let dbData = null;
+             try {
+                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, { headers });
+                 dbData = r.data;
+                 if (dbData && dbData.profitLoss === undefined)
+                     dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
+             } catch (err) {
+                 console.warn("Failed to fetch dashboard summary", err);
+             }
+ 
+             setChartLoading(true);
+             let histData = [];
+             try {
+                 const points = HISTORY_DAYS[timeFrame] ?? 30;
+                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
+                 histData = r.data || [];
+             } catch { }
+ 
+             setInvestments(invData);
+             setDashboardData(dbData);
++            const hasActive = invData.length > 0;
+             setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
+         } finally {
+             setLoading(false);
+             setChartLoading(false);
+         }
+     }, [user, timeFrame, getCurrentValue]);
+ 
+     const activeInvestments = useMemo(() => {
+         const today = new Date();
+         today.setHours(23, 59, 59, 999);
+         return (investments || []).filter(inv => {
+             // New strict logic: Hide if it has an end date OR it is sold
+             if (inv.end_date) return false;
+             if (inv.status === 'SOLD' || inv.status === 'CLOSED') return false;
+ 
+             return true;
+         });
+     }, [investments]);
+ 
+     useEffect(() => {
+@@ -738,136 +744,133 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+                                     </div>
+                                 </div>
+                             )}
+                         </div>
+                         <div className="profile-pill" onClick={() => {
+                             setActiveView('profile');
+                             setShowNotifications(false);
+                         }}>
+                             <FiUser /> {dashboardData?.userName || user?.name || 'User'}
+                         </div>
+                     </div>
+                 </header>
+ 
+                 <div className="dashboard-view-content">
+                     {activeView === 'dashboard' ? (
+                         <div className="premium-dashboard">
+ 
+                             {/* ΓöÇΓöÇ 1. PORTFOLIO GROWTH HERO ΓöÇΓöÇ */}
+                             <section className="groww-style-hero">
+                                 <div className="hero-header-groww">
+-                                    <span className="hero-label-small">Total Portfolio Value</span>
+-                                    <div className="hero-main-row">
+-                                        <div className="hero-value-big">{formatCurrency(metrics.portfolioValue)}</div>
+-                                        <div className={`profit-badge-groww ${metrics.profitLoss >= 0 ? 'pos' : 'neg'}`}>
+-                                            <span className="profit-badge-tri">{metrics.profitLoss >= 0 ? 'Γû▓' : 'Γû╝'}</span>
+-                                            <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
+-                                            <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
++                                    <div className="hero-left-col">
++                                        <span className="hero-label-small">Total Portfolio Value</span>
++                                        <div className="hero-main-row">
++                                            <div className="hero-value-big">{formatCurrency(metrics.portfolioValue)}</div>
++                                            <div className={`profit-badge-groww ${metrics.profitLoss >= 0 ? 'pos' : 'neg'}`}>
++                                                <span className="profit-badge-tri">{metrics.profitLoss >= 0 ? 'Γû▓' : 'Γû╝'}</span>
++                                                <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
++                                                <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
++                                            </div>
+                                         </div>
+                                         <div className="timeframe-filters">
+                                             {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
+                                                 <button key={tf} className={timeFrame === tf ? 'active' : ''} onClick={() => setTimeFrame(tf)}>{tf}</button>
+                                             ))}
+                                         </div>
+                                     </div>
+-                                    <div className="hero-right">
++
++                                    <div className="hero-right-stats">
+                                         <div className="hero-mini-stat">
+                                             <span>Invested</span>
+                                             <strong>{formatCurrency(metrics.totalInvested)}</strong>
+                                         </div>
+                                         <div className="hero-mini-stat">
+                                             <span>Holdings</span>
+                                             <strong>{investments.length}</strong>
+                                         </div>
+                                         <div className="hero-mini-stat">
+                                             <span>Return</span>
+                                             <strong className={metrics.returnPct >= 0 ? 'pos' : 'neg'}>
+                                                 {metrics.returnPct >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%
+                                             </strong>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <div className="main-chart-container">
+                                     <ResponsiveContainer width="100%" height={260}>
+-                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
++                                        <ComposedChart data={chartDisplayData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                                             <defs>
+                                                 <linearGradient id="gwValGrad" x1="0" y1="0" x2="0" y2="1">
+                                                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                                                     <stop offset="55%" stopColor="#3b82f6" stopOpacity={0.08} />
+                                                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                                 </linearGradient>
++                                                <filter id="glow">
++                                                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
++                                                    <feMerge>
++                                                        <feMergeNode in="coloredBlur" />
++                                                        <feMergeNode in="SourceGraphic" />
++                                                    </feMerge>
++                                                </filter>
+                                             </defs>
+-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
++                                            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
+                                             <XAxis
+                                                 dataKey="date"
+                                                 axisLine={false}
+                                                 tickLine={false}
+                                                 tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                                                 interval="preserveStartEnd"
+                                                 dy={12}
+                                                 padding={{ left: 10, right: 10 }}
+                                             />
+                                             <YAxis hide domain={['auto', 'auto']} />
+                                             <Tooltip
+                                                 content={<ChartTooltip currency={currency} />}
+                                                 cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1 }}
+                                             />
+                                             {/* Glow Layer */}
+                                             <Area
+                                                 type="natural"
+                                                 dataKey="value"
+                                                 stroke="#3b82f6"
+                                                 strokeWidth={4}
+                                                 fill="transparent"
+                                                 strokeOpacity={0.4}
+                                                 style={{ filter: 'url(#glow)' }}
+                                                 activeDot={false}
+-                                                animationDuration={2000}
++                                                animationDuration={2200}
+                                             />
+                                             {/* Main Line & Gradient */}
+                                             <Area
+                                                 type="natural"
+                                                 dataKey="value"
+                                                 stroke="#3b82f6"
+                                                 strokeWidth={2.5}
+-                                                fill="url(#areaGrad)"
++                                                fill="url(#gwValGrad)"
+                                                 dot={false}
+                                                 activeDot={{ r: 5, fill: '#3b82f6', stroke: '#0f172a', strokeWidth: 2 }}
+                                                 isAnimationActive
+-                                                animationDuration={500}
++                                                animationDuration={2200}
+                                                 animationEasing="ease-in-out"
+                                             />
+-                                            <Line
+-                                                type="monotone"
+-                                                dataKey="invested"
+-                                                stroke="#a855f7"
+-                                                strokeWidth={2}
+-                                                strokeDasharray="6 5"
+-                                                dot={false}
+-                                                activeDot={false}
+-                                                isAnimationActive
+-                                                animationDuration={500}
+-                                                animationEasing="ease-in-out"
+-                                            />
+-                                        </ComposedChart>
++                                         </ComposedChart>
+                                     </ResponsiveContainer>
+-                                    )}
+                                 </div>
+ 
+                                 <div className="chart-footer-legend">
+                                     <div className="legend-item-gw">
+                                         <div className="l-line blue" />
+                                         Current Value
+                                     </div>
+                                     <div className="legend-item-gw">
+                                         <div className="l-line purple" />
+                                         Invested
+                                     </div>
+                                     <div className="live-tag">
+                                         <div className="live-dot-pulse" />
+                                         Live ┬╖ {liveClock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                     </div>
+                                 </div>
+                             </section>
+ 
+                             {/* ΓöÇΓöÇ 2. KPI CARDS ΓöÇΓöÇ */}
+                             <div className="kpi-grid">

@@ -7,10 +7,10 @@ import {
 import InfoHint from '../components/InfoHint';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatCurrency } from '../utils/currencyUtils';
+import { formatCurrency as formatCurrencyValue } from '../utils/currencyUtils';
 import '../styles/TaxSummary.css';
 
-export default function TaxSummary({ user, investments = [] }) {
+export default function TaxSummary({ user, investments = [], currency = 'INR', onOpenCAS }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
             const today = new Date();
@@ -53,8 +53,7 @@ export default function TaxSummary({ user, investments = [] }) {
     }, [user, fetchTaxSummary]);
 
     // Format currency Helper
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+    const formatCurrency = (val) => formatCurrencyValue(val || 0, currency);
 
     // Format Date Helper
     const formatDate = (dateStr) => {
@@ -63,17 +62,55 @@ export default function TaxSummary({ user, investments = [] }) {
     };
 
     const transactions = useMemo(() => {
-        return (taxTransactions || []).map((txn, index) => ({
+        const results = (taxTransactions || []).map((txn, index) => ({
             id: txn.id || `tax-${index}`,
-            fundName: txn.fundName || 'Unknown',
+            fundName: txn.fundName || "Unknown",
             buyDate: txn.buyDate,
             sellDate: txn.sellDate,
             units: parseFloat(txn.units || 0),
             gain: parseFloat(txn.gain || 0),
-            tax_type: txn.type || 'STCG',
-            source: txn.source || 'Tax'
+            tax_type: txn.type || "STCG",
+            source: txn.source || "Tax",
         }));
-    }, [taxTransactions]);
+
+        if (results.length > 0) {
+            return results;
+        }
+
+        // Fall back to a simulated view from active investments when no tax rows exist yet.
+        const simulated = (investments || []).map((inv, index) => {
+            const buyDateStr = inv.buy_date || inv.start_date || new Date().toISOString().split("T")[0];
+            const sellDateStr = inv.end_date || new Date().toISOString().split("T")[0];
+
+            const buyDate = new Date(buyDateStr);
+            const sellDate = new Date(sellDateStr);
+            const daysDiff = (sellDate - buyDate) / (1000 * 60 * 60 * 24);
+            const type = daysDiff > 365 ? "LTCG" : "STCG";
+
+            const invested = parseFloat(inv.amount || 0);
+            const units = parseFloat(inv.units || 0);
+            const currentNav = inv.current_nav && inv.current_nav > 0 ? inv.current_nav : inv.nav_at_buy > 0 ? inv.nav_at_buy : 0;
+
+            let finalValue = invested;
+            if (units > 0 && currentNav > 0) {
+                finalValue = units * currentNav;
+            }
+            const gain = finalValue - invested;
+
+            return {
+                id: inv.investment_id || `txn-${index}`,
+                fundName: inv.scheme_name || `Fund #${inv.fund_id || "Unknown"}`,
+                buyDate: buyDateStr,
+                sellDate: sellDateStr,
+                units: parseFloat(inv.units || 0),
+                gain: parseFloat(gain.toFixed(2)),
+                tax_type: type,
+                source: "Simulated",
+            };
+        });
+
+        return simulated;
+    }, [taxTransactions, investments]);
 
     const { filteredTransactions, totals } = useMemo(() => {
         const startYear = parseInt(selectedYear.substring(0, 4));
@@ -244,7 +281,6 @@ export default function TaxSummary({ user, investments = [] }) {
                     </button>
                 </div>
             </div>
-
             {/* Top Controls & Summary Cards */}
             <div className="ww-tax-summary-grid">
 

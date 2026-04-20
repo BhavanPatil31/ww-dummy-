@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
     FiShield, FiBell, FiMonitor, FiLock,
-    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle
+    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle, FiAlertTriangle
 } from 'react-icons/fi';
 import axios from 'axios';
+import InfoHint from '../components/InfoHint';
+import HelpSupport from '../components/HelpSupport';
+import DeletedHistory from '../components/DeletedHistory';
 import '../styles/Settings.css';
 
 export default function Settings({ user, theme, setTheme }) {
@@ -177,7 +180,8 @@ export default function Settings({ user, theme, setTheme }) {
         { id: 'security', label: 'Security & Login', icon: <FiShield /> },
         { id: 'notifications', label: 'Notifications', icon: <FiBell /> },
         { id: 'appearance', label: 'Appearance', icon: <FiMonitor /> },
-        { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> }
+        { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> },
+        { id: 'deleted', label: 'Deleted History', icon: <FiTrash2 /> }
     ];
 
     // Animation settings for smoother transitions
@@ -397,9 +401,16 @@ export default function Settings({ user, theme, setTheme }) {
 
             case 'help':
                 return (
-                    <motion.div {...pageTransition}>
+                    <Motion.div {...pageTransition}>
                         <HelpSupport user={user} />
-                    </motion.div>
+                    </Motion.div>
+                );
+
+            case 'deleted':
+                return (
+                    <Motion.div {...pageTransition}>
+                        <DeletedHistory user={user} />
+                    </Motion.div>
                 );
 
             default: return null;

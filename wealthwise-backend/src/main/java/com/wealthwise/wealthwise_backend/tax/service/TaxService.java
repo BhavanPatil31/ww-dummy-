@@ -1,6 +1,7 @@
 package com.wealthwise.wealthwise_backend.tax.service;
 
 import com.wealthwise.wealthwise_backend.investment.entity.Investment;
+
 import com.wealthwise.wealthwise_backend.tax.dto.TaxTransactionDTO;
 import com.wealthwise.wealthwise_backend.tax.entity.TaxTransaction;
 import com.wealthwise.wealthwise_backend.tax.repository.TaxTransactionRepository;
@@ -19,6 +20,7 @@ public class TaxService {
 
     @Autowired
     private TaxTransactionRepository taxTransactionRepository;
+
 
     public List<TaxTransactionDTO> getTaxSummary(Long userId, String financialYear) {
         List<TaxTransactionDTO> result = new java.util.ArrayList<>();

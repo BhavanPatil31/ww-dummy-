@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/investments")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class InvestmentController {
 
     @Autowired
@@ -41,6 +41,21 @@ public class InvestmentController {
     @DeleteMapping("/{id}")
     public void deleteInvestment(@PathVariable("id") Long id) {
         investmentService.deleteInvestment(id);
+    }
+
+    @GetMapping("/user/{userId}/deleted")
+    public List<Investment> getDeletedInvestments(@PathVariable Long userId) {
+        return investmentService.getDeletedInvestments(userId);
+    }
+
+    @PostMapping("/{id}/recover")
+    public Investment recoverInvestment(@PathVariable Long id) {
+        return investmentService.recoverInvestment(id);
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    public void permanentlyDeleteInvestment(@PathVariable Long id) {
+        investmentService.permanentlyDeleteInvestment(id);
     }
 
     @PostMapping("/{id}/sell")

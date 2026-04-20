@@ -14,13 +14,13 @@ public class Portfolio {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(precision = 12, scale = 4)
+    @Column(precision = 20, scale = 4)
     private BigDecimal total_units;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 20, scale = 2)
     private BigDecimal total_invested;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 20, scale = 2)
     private BigDecimal current_value;
 
     @Column(precision = 8, scale = 2)
@@ -32,7 +32,7 @@ public class Portfolio {
     @Column(precision = 8, scale = 2)
     private BigDecimal cagr;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 20, scale = 2)
     private BigDecimal profit_loss;
 
     public Portfolio() {

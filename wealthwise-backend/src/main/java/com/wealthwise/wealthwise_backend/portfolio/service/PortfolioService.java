@@ -51,7 +51,7 @@ public class PortfolioService {
                 String status = inv.getStatus();
                 if (status != null) {
                     String s = status.trim().toUpperCase();
-                    if ("SOLD".equals(s) || "CLOSED".equals(s)) return false;
+                    if ("SOLD".equals(s) || "CLOSED".equals(s) || "DELETED".equals(s)) return false;
                 }
                 
                 return true; 
@@ -148,7 +148,10 @@ public class PortfolioService {
             if (holding.getTotalUnits() > 0.0001) {
                 Double latestNav = navService.getLatestNav(String.valueOf(holding.getFundId()));
                 if (!isUsableNav(latestNav, findFirstInvestmentByFund(investments, holding.getFundId()))) {
-                    latestNav = fallbackNavForFund(investments, holding.getFundId());
+                    // Bug fix: fallbackNavForFund returns 0.0 when no usable nav is found.
+                    // Store null in that case so we don't misleadingly set latestNav=0.
+                    double fallback = fallbackNavForFund(investments, holding.getFundId());
+                    latestNav = fallback > 0 ? fallback : null;
                 }
                 holding.setLatestNav(latestNav);
                 holding.setCurrentValue(holding.getTotalUnits() * (latestNav != null ? latestNav : 0.0));
@@ -157,7 +160,11 @@ public class PortfolioService {
                 
                 totalCurrentValue += holding.getCurrentValue();
                 activeHoldings.add(holding);
-                fundNavMap.put(holding.getFundId(), latestNav);
+                // Bug fix: only store nav in map if non-null, to avoid overwriting
+                // a valid currentNav on the investment entity with null.
+                if (latestNav != null) {
+                    fundNavMap.put(holding.getFundId(), latestNav);
+                }
                 
                 String cat = "Mutual Funds";
                 allocationMap.put(cat, allocationMap.getOrDefault(cat, 0.0) + holding.getCurrentValue());
@@ -191,13 +198,22 @@ public class PortfolioService {
         // Populate Recent Activity (Only from Active Investments)
         List<InvestmentActivityDTO> activities = new ArrayList<>();
         activeInvestments.stream()
-            .sorted(Comparator.comparing((Investment i) -> i.getBuyDate() != null ? i.getBuyDate() : i.getStartDate()).reversed())
+            // Bug fix: null-safe comparator — if both buyDate and startDate are null,
+            // fall back to LocalDate.MIN so the comparator never throws NPE.
+            .sorted(Comparator.comparing((Investment i) -> {
+                LocalDate d = i.getBuyDate() != null ? i.getBuyDate()
+                        : (i.getStartDate() != null ? i.getStartDate() : LocalDate.MIN);
+                return d;
+            }).reversed())
             .limit(10)
             .forEach(inv -> {
                 InvestmentActivityDTO a = new InvestmentActivityDTO();
                 a.setSchemeName(inv.getSchemeName());
                 a.setType(inv.getInvestmentType());
-                a.setDate((inv.getBuyDate() != null ? inv.getBuyDate() : inv.getStartDate()).toString());
+                // Bug fix: null-safe date — guard against both buyDate and startDate being null.
+                LocalDate actDate = inv.getBuyDate() != null ? inv.getBuyDate()
+                        : (inv.getStartDate() != null ? inv.getStartDate() : LocalDate.now());
+                a.setDate(actDate.toString());
                 a.setAmount(inv.getAmount() != null ? inv.getAmount() : 0.0);
                 activities.add(a);
             });
@@ -229,6 +245,8 @@ public class PortfolioService {
         portfolio.setReturn_percentage(toSafeBigDecimal(dto.getReturnPercentage(), 2));
         portfolio.setXirr(toSafeBigDecimal(dto.getXirr(), 2));
         portfolio.setCagr(toSafeBigDecimal(dto.getCagr(), 2));
+        // Bug fix: profit_loss field existed in the entity but was never persisted.
+        portfolio.setProfit_loss(toSafeBigDecimal(dto.getProfitLoss(), 2));
         
         return portfolioRepository.save(portfolio);
     }
@@ -246,7 +264,7 @@ public class PortfolioService {
                 String status = inv.getStatus();
                 if (status != null) {
                     String s = status.trim().toUpperCase();
-                    if ("SOLD".equals(s) || "CLOSED".equals(s)) return false;
+                    if ("SOLD".equals(s) || "CLOSED".equals(s) || "DELETED".equals(s)) return false;
                 }
                 return true; 
             })
@@ -289,7 +307,10 @@ public class PortfolioService {
                 
             } else if ("SELL".equalsIgnoreCase(type)) {
                 double units = inv.getUnits() != null ? inv.getUnits() : 0.0;
-                unitChangesByFund.get(fundId).add(new UnitChange(inv.getBuyDate(), -units));
+                // Bug fix: getBuyDate() can be null for SELL entries; fall back to startDate or today.
+                LocalDate sellDate = inv.getBuyDate() != null ? inv.getBuyDate()
+                        : (inv.getStartDate() != null ? inv.getStartDate() : today);
+                unitChangesByFund.get(fundId).add(new UnitChange(sellDate, -units));
                 
             } else if ("SIP".equalsIgnoreCase(type)) {
                 LocalDate start = inv.getStartDate() != null ? inv.getStartDate() : inv.getBuyDate();

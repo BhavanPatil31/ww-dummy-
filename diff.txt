@@ -1,0 +1,123 @@
+﻿diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index 951c9a3..7fe47ed 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -171,6 +171,11 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+             maximumFractionDigits: 0
+         }).format(val || 0);
+ 
++    const fmt = (val) =>
++        new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
++            maximumFractionDigits: 0
++        }).format(val || 0);
++
+     const fmtShort = (val) => {
+         const symbol = currency === 'INR' ? 'Γé╣' : currency === 'USD' ? '$' : currency === 'EUR' ? 'Γé¼' : '┬ú';
+         if (currency === 'INR') {
+@@ -236,6 +241,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+ 
+             setInvestments(invData);
+             setDashboardData(dbData);
++            const hasActive = invData.length > 0;
+             setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
+         } finally {
+             setLoading(false);
+@@ -755,13 +761,15 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+                             {/* ΓöÇΓöÇ 1. PORTFOLIO GROWTH HERO ΓöÇΓöÇ */}
+                             <section className="groww-style-hero">
+                                 <div className="hero-header-groww">
+-                                    <span className="hero-label-small">Total Portfolio Value</span>
+-                                    <div className="hero-main-row">
+-                                        <div className="hero-value-big">{formatCurrency(metrics.portfolioValue)}</div>
+-                                        <div className={`profit-badge-groww ${metrics.profitLoss >= 0 ? 'pos' : 'neg'}`}>
+-                                            <span className="profit-badge-tri">{metrics.profitLoss >= 0 ? 'Γû▓' : 'Γû╝'}</span>
+-                                            <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
+-                                            <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
++                                    <div className="hero-left-col">
++                                        <span className="hero-label-small">Total Portfolio Value</span>
++                                        <div className="hero-main-row">
++                                            <div className="hero-value-big">{formatCurrency(metrics.portfolioValue)}</div>
++                                            <div className={`profit-badge-groww ${metrics.profitLoss >= 0 ? 'pos' : 'neg'}`}>
++                                                <span className="profit-badge-tri">{metrics.profitLoss >= 0 ? 'Γû▓' : 'Γû╝'}</span>
++                                                <span className="profit-badge-amt">{metrics.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(metrics.profitLoss))}</span>
++                                                <span className="profit-badge-pct">({metrics.profitLoss >= 0 ? '+' : ''}{metrics.returnPct.toFixed(2)}%)</span>
++                                            </div>
+                                         </div>
+                                         <div className="timeframe-filters">
+                                             {['1W', '1M', '3M', '6M', '1Y', 'ALL'].map(tf => (
+@@ -769,7 +777,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+                                             ))}
+                                         </div>
+                                     </div>
+-                                    <div className="hero-right">
++
++                                    <div className="hero-right-stats">
+                                         <div className="hero-mini-stat">
+                                             <span>Invested</span>
+                                             <strong>{formatCurrency(metrics.totalInvested)}</strong>
+@@ -788,15 +797,22 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+                                 </div>
+                                 <div className="main-chart-container">
+                                     <ResponsiveContainer width="100%" height={260}>
+-                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
++                                        <ComposedChart data={chartDisplayData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                                             <defs>
+                                                 <linearGradient id="gwValGrad" x1="0" y1="0" x2="0" y2="1">
+                                                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                                                     <stop offset="55%" stopColor="#3b82f6" stopOpacity={0.08} />
+                                                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                                 </linearGradient>
++                                                <filter id="glow">
++                                                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
++                                                    <feMerge>
++                                                        <feMergeNode in="coloredBlur" />
++                                                        <feMergeNode in="SourceGraphic" />
++                                                    </feMerge>
++                                                </filter>
+                                             </defs>
+-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
++                                            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
+                                             <XAxis
+                                                 dataKey="date"
+                                                 axisLine={false}
+@@ -821,7 +837,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+                                                 strokeOpacity={0.4}
+                                                 style={{ filter: 'url(#glow)' }}
+                                                 activeDot={false}
+-                                                animationDuration={2000}
++                                                animationDuration={2200}
+                                             />
+                                             {/* Main Line & Gradient */}
+                                             <Area
+@@ -829,28 +845,15 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
+                                                 dataKey="value"
+                                                 stroke="#3b82f6"
+                                                 strokeWidth={2.5}
+-                                                fill="url(#areaGrad)"
++                                                fill="url(#gwValGrad)"
+                                                 dot={false}
+                                                 activeDot={{ r: 5, fill: '#3b82f6', stroke: '#0f172a', strokeWidth: 2 }}
+                                                 isAnimationActive
+-                                                animationDuration={500}
++                                                animationDuration={2200}
+                                                 animationEasing="ease-in-out"
+                                             />
+-                                            <Line
+-                                                type="monotone"
+-                                                dataKey="invested"
+-                                                stroke="#a855f7"
+-                                                strokeWidth={2}
+-                                                strokeDasharray="6 5"
+-                                                dot={false}
+-                                                activeDot={false}
+-                                                isAnimationActive
+-                                                animationDuration={500}
+-                                                animationEasing="ease-in-out"
+-                                            />
+-                                        </ComposedChart>
++                                         </ComposedChart>
+                                     </ResponsiveContainer>
+-                                    )}
+                                 </div>
+ 
+                                 <div className="chart-footer-legend">

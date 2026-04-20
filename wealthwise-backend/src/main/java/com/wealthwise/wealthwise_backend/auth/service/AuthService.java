@@ -195,6 +195,16 @@ public class AuthService {
             
         entityManager.createQuery("DELETE FROM Notification e WHERE e.userId = :userId")
             .setParameter("userId", userId).executeUpdate();
+
+        // Delete goal_investments BEFORE investments (FK: goal_investments -> investments)
+        // goal_investments doesn't have userId directly, so use native SQL to join through goals
+        entityManager.createNativeQuery(
+            "DELETE gi FROM goal_investments gi INNER JOIN goals g ON gi.goal_id = g.goal_id WHERE g.user_id = :userId")
+            .setParameter("userId", userId).executeUpdate();
+
+        // Delete goals BEFORE investments (goals also reference user)
+        entityManager.createQuery("DELETE FROM Goal e WHERE e.userId = :userId")
+            .setParameter("userId", userId).executeUpdate();
             
         entityManager.createQuery("DELETE FROM Investment e WHERE e.userId = :userId")
             .setParameter("userId", userId).executeUpdate();

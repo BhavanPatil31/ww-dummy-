@@ -8,6 +8,7 @@ import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
 import InfoHint from '../components/InfoHint';
 import { getCurrencySymbol } from '../utils/currencyUtils';
+const currencyIcons = { INR: FiDollarSign, USD: FiDollarSign, EUR: FiDollarSign, GBP: FiDollarSign };
 
 // ── Module-level constants ──────────────────────────────────────────────
 const NAV_OUTDATED_DAYS = 30;
@@ -16,23 +17,68 @@ const TODAY = new Date().toISOString().split('T')[0];
 const currencySymbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
 
 const FALLBACK_FUNDS = [
-    { code: '119551', name: 'Axis Bluechip Fund - Direct Plan - Growth' },
-    { code: '120503', name: 'Mirae Asset Large Cap Fund - Direct Plan - Growth' },
-    { code: '122639', name: 'SBI Small Cap Fund - Direct Plan - Growth' },
-    { code: '120505', name: 'Parag Parikh Flexi Cap Fund - Direct Plan - Growth' },
-    { code: '118989', name: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth' },
+    { code: "125497", name: "HDFC Top 100 Fund - Direct Plan - Growth" },
+    { code: "118834", name: "SBI Bluechip Fund - Direct Plan - Growth" },
+    { code: "118825", name: "Mirae Asset Large Cap Fund - Direct Plan - Growth" },
+    { code: "120465", name: "Axis Bluechip Fund - Direct Plan - Growth" },
+    { code: "120716", name: "ICICI Prudential Bluechip Fund - Direct Plan - Growth" },
+    { code: "122639", name: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "120468", name: "UTI Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "120199", name: "Aditya Birla Sun Life Frontline Equity Fund - Direct Plan - Growth" },
+    { code: "125354", name: "SBI Small Cap Fund - Direct Plan - Growth" },
+    { code: "120847", name: "Quant Small Cap Fund - Direct Plan - Growth" },
+    { code: "120822", name: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth" },
+    { code: "130321", name: "Kotak Emerging Equity Fund - Direct Plan - Growth" },
+    { code: "129457", name: "ICICI Prudential Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "130115", name: "Axis Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "128051", name: "HDFC Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "132010", name: "DSP Flexi Cap Fund - Direct Plan - Growth" },
+    { code: "130323", name: "Kotak Equity Opportunities Fund - Direct Plan - Growth" },
+    { code: "131201", name: "SBI Focused Equity Fund - Direct Plan - Growth" },
+    { code: "130112", name: "Axis Focused 25 Fund - Direct Plan - Growth" },
+    { code: "130114", name: "Axis Small Cap Fund - Direct Plan - Growth" },
+    { code: "100148", name: "Franklin India Prima Fund - Growth" },
+    { code: "100251", name: "Franklin India Bluechip Fund - Growth" },
+    { code: "100305", name: "Franklin India Taxshield - Growth" },
+    { code: "131203", name: "SBI Contra Fund - Direct Plan - Growth" },
+    { code: "131202", name: "SBI Magnum Midcap Fund - Direct Plan - Growth" },
+    { code: "131205", name: "SBI Long Term Equity Fund - Direct Plan - Growth" },
+    { code: "132011", name: "DSP Small Cap Fund - Direct Plan - Growth" },
+    { code: "132012", name: "DSP Equity Opportunities Fund - Direct Plan - Growth" },
+    { code: "132013", name: "DSP Tax Saver Fund - Direct Plan - Growth" },
+    { code: "129456", name: "ICICI Prudential Value Discovery Fund - Direct Plan - Growth" },
+    { code: "128052", name: "HDFC Balanced Advantage Fund - Direct Plan - Growth" },
+    { code: "128053", name: "HDFC Hybrid Equity Fund - Direct Plan - Growth" },
+    { code: "128054", name: "HDFC Large and Mid Cap Fund - Direct Plan - Growth" },
+    { code: "128055", name: "HDFC Small Cap Fund - Direct Plan - Growth" },
+    { code: "127042", name: "DSP Midcap Fund - Direct Plan - Growth" },
+    { code: "126503", name: "Axis Midcap Fund - Direct Plan - Growth" },
+    { code: "130322", name: "Kotak Small Cap Fund - Direct Plan - Growth" },
+    { code: "130324", name: "Kotak Bluechip Fund - Direct Plan - Growth" },
+    { code: "119551", name: "Tata Digital India Fund - Direct Plan - Growth" },
+    { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
 ];
 
+// Hardcoded NAV for the same fallback 40 schemes.
+// Used only when external API is unavailable/busy.
 const FALLBACK_NAV_BY_CODE = {
-    '119551': 52.34,
-    '120503': 98.12,
-    '122639': 155.67,
-    '120505': 72.45,
-    '118989': 134.89,
+    "125497": 19.84, "118834": 76.15, "118825": 112.42, "120465": 64.31, "120716": 89.76,
+    "122639": 71.28, "120468": 226.51, "120199": 412.37, "125354": 158.94, "120847": 248.63,
+    "120822": 189.27, "130321": 102.88, "129457": 92.74, "130115": 37.56, "128051": 96.21,
+    "132010": 45.73, "130323": 121.34, "131201": 83.22, "130112": 58.14, "130114": 87.69,
+    "100148": 57.48, "100251": 104.92, "100305": 92.31, "131203": 68.55, "131202": 94.17,
+    "131205": 126.44, "132011": 33.28, "132012": 61.77, "132013": 49.65, "129456": 278.39,
+    "128052": 39.74, "128053": 111.52, "128054": 84.37, "128055": 77.93, "127042": 214.88,
+    "126503": 104.63, "130322": 144.21, "130324": 72.19, "119551": 31.42, "120318": 73.58
 };
 
-export default function AddInvestment({ user, onBackToDashboard, currency }) {
-    const [allFunds, setAllFunds] = useState([]);
+// ─── Component ────────────────────────────────────────────────────────────────
+export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
+    // pick icon dynamically
+    const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
+
+    // ── Fund list ──────────────────────────────────────────────────────────
+    const [allFunds,     setAllFunds]     = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
     const [fundsError, setFundsError] = useState('');
 
@@ -72,14 +118,8 @@ export default function AddInvestment({ user, onBackToDashboard, currency }) {
     const navCache = useRef({});
 
     // ── Submission ─────────────────────────────────────────────────────────
-    const [status, setStatus] = useState({ loading: false, success: false, error: '' });
-    const [toastMsg] = useState('');
-
-    // ── Generic form handler ────────────────────────────────────────────
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(p => ({ ...p, [name]: value }));
-    };
+    const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
+    const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
     const navValue = parseFloat(formData.nav);
@@ -329,6 +369,15 @@ export default function AddInvestment({ user, onBackToDashboard, currency }) {
         }).format(val || 0);
     };
 
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'fundName') {
+            setShowSuggestions(true);
+        }
+    };
+
     const handleSelectFund = (fund) => {
         setFormData(p => ({ ...p, fundName: fund.name, fund_id: fund.code, nav: '' }));
         setShowSuggestions(false);
@@ -349,21 +398,19 @@ export default function AddInvestment({ user, onBackToDashboard, currency }) {
         }
 
         const payload = {
-            userId: user?.userId || user?.id,
-            user_id: user?.userId || user?.id,
-            fund_id: parseInt(formData.fund_id) || Math.floor(Math.random() * 1000) + 1,
-            investment_type: type,
-            amount: parseFloat(formData.amount),
-            nav_at_buy: parseFloat(formData.nav),
-            units: parseFloat(units),
-            buy_date: formData.startDate,
-            frequency: type === 'SIP' ? formData.frequency : null,
-            asset_category: type,
-            scheme_name: formData.fundName,
+            user_id:         user?.userId || user?.id,
+            fund_id:         parseInt(formData.fund_id),
+            investment_type: type === 'Lumpsum' ? 'BUY' : type,
+            amount:          parseFloat(formData.amount),
             amount_invested: parseFloat(formData.amount),
-            current_nav: parseFloat(formData.nav),
-            start_date: formData.startDate,
-            end_date: formData.endDate || null
+            nav_at_buy:      parseFloat(formData.nav),
+            units:           parseFloat(units),
+            buy_date:        formData.startDate,
+            start_date:      formData.startDate,
+            end_date:        formData.endDate || null,
+            frequency:       type === 'SIP' ? formData.frequency : null,
+            scheme_name:     formData.fundName,
+            current_nav:     parseFloat(formData.nav)
         };
 
         try {
@@ -448,7 +495,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency }) {
         <div className="add-investment-container">
 
             {/* Toast */}
-            {toastMsg && <div className="toast-notification">{toastMsg}</div>}
 
             <header className="page-header">
                 <h1>Add Investment</h1>
@@ -561,7 +607,9 @@ export default function AddInvestment({ user, onBackToDashboard, currency }) {
                                     <div className="form-group">
                                         <label>Amount (₹)</label>
                                         <div className="input-wrapper">
-                                            <span className="currency-prefix">{currencySymbols[currency] || '₹'}</span>
+                                            <CurrencyIcon className="input-icon" />
+
+                                            <span className="currency-prefix"></span>
                                             <input
                                                 id="amount"
                                                 type="number"
