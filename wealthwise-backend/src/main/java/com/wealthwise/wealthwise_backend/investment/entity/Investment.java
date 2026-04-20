@@ -3,6 +3,7 @@ package com.wealthwise.wealthwise_backend.investment.entity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 @Entity
 @Table(name = "investments")
@@ -16,6 +17,7 @@ public class Investment {
 
     @Column(name = "user_id")
     @JsonProperty("user_id")
+    @JsonAlias({"userId", "id"})
     private Long userId;
 
     @Column(name = "fund_id")
@@ -97,6 +99,10 @@ public class Investment {
     @Column(name = "investment_duration")
     @JsonProperty("investment_duration")
     private Integer investmentDuration;
+
+    @Column(name = "deleted_at")
+    @JsonProperty("deleted_at")
+    private java.time.LocalDateTime deletedAt;
 
     public Investment() {
     }
@@ -291,5 +297,13 @@ public class Investment {
 
     public void setInvestmentDuration(Integer investmentDuration) {
         this.investmentDuration = investmentDuration;
+    }
+
+    public java.time.LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(java.time.LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

@@ -13,7 +13,7 @@ import {
     FiPlus, FiBriefcase, FiTarget, FiFileText, FiBell, FiUser, FiLogOut,
     FiTrendingUp, FiTrendingDown, FiArrowUpRight, FiArrowDownRight,
     FiDollarSign, FiActivity, FiPieChart, FiZap, FiAward, FiStar,
-    FiAlertTriangle, FiRefreshCw, FiClock, FiSettings
+    FiAlertTriangle, FiRefreshCw, FiClock, FiSettings, FiMessageSquare
 } from 'react-icons/fi';
 import AddInvestment from './AddInvestment';
 import Portfolio from './Portfolio';
@@ -21,30 +21,24 @@ import UserProfile from './UserProfile';
 import TaxSummary from './TaxSummary';
 import GoalPlanning from './GoalPlanning';
 import Settings from './Settings';
-import InfoHint from '../components/InfoHint';
+import AIAssistant from './AIAssistant';
 import '../styles/Dashboard.css';
 
 const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6', '#6366f1', '#ec4899'];
-const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings'];
+const VALID_VIEWS = ['dashboard', 'addInvestment', 'portfolio', 'tax', 'goals', 'profile', 'settings', 'ai-assistant'];
 
 const normalizeCurrency = (value) => {
     const code = String(value || '').toUpperCase();
     return ['INR', 'USD', 'EUR', 'GBP'].includes(code) ? code : 'INR';
 };
 
-const ChartTooltip = ({ active, payload, label, currency = 'INR' }) => {
+const ChartTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
-    const safeCurrency = normalizeCurrency(currency);
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
-            style: 'currency',
-            currency: safeCurrency,
-            maximumFractionDigits: 0
-        }).format(val || 0);
+    const fmt = (v) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0);
     return (
         <div className="chart-tooltip">
             <div className="ct-date">{label}</div>
-            <div className="ct-val">{formatCurrency(payload[0].value)}</div>
+            <div className="ct-val">₹{fmt(payload[0].value)}</div>
         </div>
     );
 };
@@ -57,6 +51,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     const [historyData, setHistoryData] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [goals, setGoals] = useState([]);
     const [timeFrame, setTimeFrame] = useState('1M');
     const [activeView, setActiveView] = useState(() => {
         const stored = localStorage.getItem('activeView');
@@ -102,14 +97,19 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             maximumFractionDigits: 0
         }).format(val || 0), [safeCurrency]);
 
+    const fmt = (val) =>
+        new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
+            maximumFractionDigits: 0
+        }).format(Number(val) || 0);
+
     const fmtShort = useCallback((val) => {
-        if (currency === 'INR') {
-            if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-            if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+        const symbol = safeCurrency === 'INR' ? '₹' : safeCurrency === 'USD' ? '$' : safeCurrency === 'EUR' ? '€' : '£';
+        if (safeCurrency === 'INR') {
+            if (val >= 10000000) return `${symbol}${(val / 10000000).toFixed(2)}Cr`;
+            if (val >= 100000) return `${symbol}${(val / 100000).toFixed(2)}L`;
         }
         return formatCurrency(val);
-    }, [currency, formatCurrency]);
-
+    }, [safeCurrency, formatCurrency]);
     const formatDate = useCallback((d) => {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
@@ -124,112 +124,131 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         const healedUnits = (storedUnits > 0 && navAtBuy > 1.5 && invested > 0 && Math.abs(storedUnits - invested) < 0.0001)
             ? (invested / navAtBuy)
             : storedUnits;
-        const units = healedUnits > 0
-            ? healedUnits
-            : (invested > 0 && navAtBuy > 0 ? invested / navAtBuy : 0);
-        const usableCurrentNav = (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5))
-            ? currentNav
-            : 0;
+        const units = healedUnits > 0 ? healedUnits : (invested > 0 && navAtBuy > 0 ? invested / navAtBuy : 0);
+        const usableCurrentNav = (currentNav > 0 && !(currentNav <= 1.000001 && navAtBuy > 1.5)) ? currentNav : 0;
 
-        if (units > 0 && usableCurrentNav > 0) {
-            return units * usableCurrentNav;
-        }
-        if (units > 0 && navAtBuy > 0) {
-            return units * navAtBuy;
-        }
+        if (units > 0 && usableCurrentNav > 0) return units * usableCurrentNav;
+        if (units > 0 && navAtBuy > 0) return units * navAtBuy;
         return invested;
+    }, []);
+
+    // ── Generate chart history ────────────────────────────────────
+    const generateHistory = useCallback((baseVal, tf) => {
+        const points = tf === '1W' ? 7 : tf === '1M' ? 30 : tf === '6M' ? 180 : tf === '1Y' ? 365 : 730;
+        const data = [];
+        let base = baseVal * 0.78;
+        const now = new Date();
+        for (let i = points; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(now.getDate() - i);
+            base = Math.max(base + (Math.random() - 0.44) * (baseVal * 0.014), baseVal * 0.5);
+            data.push({
+                date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                value: parseFloat(base.toFixed(2))
+            });
+        }
+        if (data.length > 0) data[data.length - 1].value = baseVal;
+        return data;
     }, []);
 
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
         if (!user) return;
         const token = localStorage.getItem('jwt_token');
-        const userId = user?.userId || user?.id;
+
+        // Robust userId extraction - handle camelCase, snake_case, or generic id keys
+        const userId = user?.userId || user?.user_id || user?.id || (user?.user && (user.user.userId || user.user.user_id || user.user.id));
+
+        if (!userId) {
+            console.error("Dashboard: missing userId in user object", user);
+            return;
+        }
+
         const headers = { Authorization: `Bearer ${token}` };
         let invData = [];
-            try {
-                const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
-                invData = r.data || [];
-            } catch {
-                // optional source endpoint
-            }
+        try {
+            const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
+            invData = r.data || [];
+        } catch { }
 
-            let dbData = null;
-            try {
-                const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, { headers });
-                dbData = r.data;
-                if (dbData && dbData.profitLoss === undefined)
-                    dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
-            } catch {
-                // optional source endpoint
-            }
+        let dbData = null;
+        try {
+            const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}`, { headers });
+            dbData = r.data;
+            if (dbData && dbData.profitLoss === undefined)
+                dbData.profitLoss = (dbData.portfolioValue || 0) - (dbData.totalInvested || 0);
+        } catch {
+            // optional source endpoint
+        }
+
+        let goalsData = [];
+        try {
+            const r = await axios.get(`http://localhost:8088/api/goals/user/${userId}`, { headers });
+            goalsData = r.data || [];
+        } catch {
+            // optional source endpoint
+        }
 
             let histData = [];
             try {
-                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 730;
+                const points = timeFrame === '1W' ? 7 : timeFrame === '1M' ? 30 : timeFrame === '3M' ? 90 : timeFrame === '6M' ? 180 : timeFrame === '1Y' ? 365 : 36500;
                 const r = await axios.get(`http://localhost:8088/api/dashboard/${userId}/history?days=${points}`, { headers });
                 histData = r.data || [];
             } catch {
                 // optional source endpoint
             }
 
-
             // Strict separation: If no investments pass the active filter, force graph to zero
             const hasActive = (invData || []).some(inv => {
-                if (inv.end_date) return false;
+                if (inv.end_date || inv.endDate) return false;
                 const s = (inv.status || "").toUpperCase();
-                if (s === "SOLD" || s === "CLOSED") return false;
-                if (!inv.end_date) return true;
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const end = new Date(inv.end_date);
-                end.setHours(0, 0, 0, 0);
-                return end >= today;
+                return s !== "SOLD" && s !== "CLOSED";
             });
 
-            const livePortfolioValue = (invData || [])
-                .filter(inv => {
-                    if (inv.end_date || inv.endDate) return false;
-                    const s = (inv.status || "").toUpperCase();
-                    return s !== "SOLD" && s !== "CLOSED";
-                })
-                .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
+        const livePortfolioValue = (invData || [])
+            .filter(inv => {
+                if (inv.end_date || inv.endDate) return false;
+                const s = (inv.status || "").toUpperCase();
+                return s !== "SOLD" && s !== "CLOSED";
+            })
+            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
 
-            let resolvedHistory = hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 }));
-            const historyAllZero = !resolvedHistory.length || resolvedHistory.every(pt => Number(pt?.value || 0) <= 0);
-            if (hasActive && livePortfolioValue > 0 && historyAllZero) {
-                const activeInv = (invData || []).filter(inv => {
-                    if (inv.end_date || inv.endDate) return false;
-                    const s = (inv.status || "").toUpperCase();
-                    return s !== "SOLD" && s !== "CLOSED";
-                });
+        let resolvedHistory = hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 }));
+        const historyAllZero = !resolvedHistory.length || resolvedHistory.every(pt => Number(pt?.value || 0) <= 0);
+        if (hasActive && livePortfolioValue > 0 && historyAllZero) {
+            const activeInv = (invData || []).filter(inv => {
+                if (inv.end_date || inv.endDate) return false;
+                const s = (inv.status || "").toUpperCase();
+                return s !== "SOLD" && s !== "CLOSED";
+            });
 
-                const liveInvested = activeInv.reduce(
-                    (sum, inv) => sum + Number(inv.amount_invested || inv.amountInvested || inv.amount || 0),
-                    0
-                );
-                const earliestDate = activeInv
-                    .map(inv => new Date(inv.buy_date || inv.buyDate || inv.start_date || inv.startDate || new Date()))
-                    .sort((a, b) => a - b)[0] || new Date();
-                const today = new Date();
-                const totalDays = Math.max(1, Math.floor((today - earliestDate) / (1000 * 60 * 60 * 24)));
-                const points = resolvedHistory.length ? resolvedHistory : [{ date: today.toISOString().slice(0, 10), value: liveInvested }];
+            const liveInvested = activeInv.reduce(
+                (sum, inv) => sum + Number(inv.amount_invested || inv.amountInvested || inv.amount || 0),
+                0
+            );
+            const earliestDate = activeInv
+                .map(inv => new Date(inv.buy_date || inv.buyDate || inv.start_date || inv.startDate || new Date()))
+                .sort((a, b) => a - b)[0] || new Date();
+            const today = new Date();
+            const totalDays = Math.max(1, Math.floor((today - earliestDate) / (1000 * 60 * 60 * 24)));
+            const points = resolvedHistory.length ? resolvedHistory : [{ date: today.toISOString().slice(0, 10), value: liveInvested }];
 
-                resolvedHistory = points.map(pt => {
-                    const d = new Date(pt.date);
-                    if (isNaN(d.getTime()) || d <= earliestDate) {
-                        return { ...pt, value: liveInvested };
-                    }
-                    const elapsed = Math.max(0, Math.floor((d - earliestDate) / (1000 * 60 * 60 * 24)));
-                    const progress = Math.min(1, elapsed / totalDays);
-                    const synthetic = liveInvested + (livePortfolioValue - liveInvested) * progress;
-                    return { ...pt, value: Number(synthetic.toFixed(2)) };
-                });
-            }
+            resolvedHistory = points.map(pt => {
+                const d = new Date(pt.date);
+                if (isNaN(d.getTime()) || d <= earliestDate) {
+                    return { ...pt, value: liveInvested };
+                }
+                const elapsed = Math.max(0, Math.floor((d - earliestDate) / (1000 * 60 * 60 * 24)));
+                const progress = Math.min(1, elapsed / totalDays);
+                const synthetic = liveInvested + (livePortfolioValue - liveInvested) * progress;
+                return { ...pt, value: Number(synthetic.toFixed(2)) };
+            });
+        }
 
             setInvestments(invData);
             setDashboardData(dbData);
-            setHistoryData(hasActive ? histData : histData.map(pt => ({ ...pt, value: 0 })));
+            setHistoryData(resolvedHistory);
+            setGoals(goalsData);
     }, [user, timeFrame, getCurrentValue]);
 
     const activeInvestments = useMemo(() => {
@@ -243,6 +262,23 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
             return true;
         });
     }, [investments]);
+
+    const goalsPreview = useMemo(() => {
+        return (goals || []).slice(0, 3).map((goal, index) => {
+            const target = Number(goal.target_amount || goal.targetAmount || 0);
+            const progress = Number(goal.progress || 0);
+            const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+            return {
+                key: goal.goal_id || goal.id || index,
+                name: goal.goal_name || goal.goalName || `Goal ${index + 1}`,
+                pct,
+                cur: formatCurrency(progress),
+                total: formatCurrency(target),
+                rem: formatCurrency(Math.max(0, target - progress)),
+                color: ['blue', 'purple', 'green'][index % 3]
+            };
+        });
+    }, [goals, formatCurrency]);
 
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
@@ -516,52 +552,29 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
 
     // ── Derived metrics ──────────────────────────────────────────
     const metrics = useMemo(() => {
-        const totalInvested = activeInvestments.reduce(
-            (sum, inv) => sum + Number(inv.amount_invested || inv.amount || 0),
-            0
-        );
-        const portfolioValue = activeInvestments.reduce(
-            (sum, inv) => sum + getCurrentValue(inv),
-            0
-        );
+        if (dashboardData) return {
+            totalInvested: dashboardData.totalInvested || 0,
+            portfolioValue: dashboardData.portfolioValue || 0,
+            profitLoss: dashboardData.profitLoss || 0,
+            returnPct: dashboardData.returnPercentage || 0,
+        };
+        const totalInvested = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+        const portfolioValue = investments.reduce((s, i) => s + getCurrentValue(i), 0);
         const profitLoss = portfolioValue - totalInvested;
         const returnPct = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
-
-        return {
-            totalInvested,
-            portfolioValue,
-            profitLoss,
-            returnPct,
-            realizedPnL: dashboardData?.realizedProfitLoss || 0,
-        };
-    }, [activeInvestments, getCurrentValue, dashboardData]);
+        return { totalInvested, portfolioValue, profitLoss, returnPct };
+    }, [dashboardData, investments, getCurrentValue]);
 
     const assetAllocation = useMemo(() => {
-        if (!activeInvestments.length) return [];
-
-        const sipValue = activeInvestments
-            .filter(inv => (inv.investment_type || '').toUpperCase() === 'SIP')
-            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
-
-        const lumpsumValue = activeInvestments
-            .filter(inv => {
-                const type = (inv.investment_type || '').toUpperCase();
-                return type === 'LUMPSUM' || type === 'BUY' || type === '';
-            })
-            .reduce((sum, inv) => sum + getCurrentValue(inv), 0);
-
-        const data = [];
-        if (sipValue > 0) data.push({ name: 'SIP', value: sipValue });
-        if (lumpsumValue > 0) data.push({ name: 'Lumpsum', value: lumpsumValue });
-
-        // If no SIP/Lumpsum detected but investments exist (fallback)
-        if (data.length === 0 && activeInvestments.length > 0) {
-            const totalVal = activeInvestments.reduce((sum, inv) => sum + getCurrentValue(inv), 0);
-            data.push({ name: 'Mutual Funds', value: totalVal });
-        }
-
-        return data;
-    }, [activeInvestments, getCurrentValue]);
+        if (dashboardData?.assetAllocation?.length) return dashboardData.assetAllocation;
+        if (!investments.length) return [];
+        const groups = {};
+        investments.forEach(inv => {
+            const t = inv.investment_type || 'Other';
+            groups[t] = (groups[t] || 0) + getCurrentValue(inv);
+        });
+        return Object.entries(groups).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
+    }, [dashboardData, investments, getCurrentValue]);
 
     const topPerformers = useMemo(() => {
         if (!investments.length) return { best: null, worst: null };
@@ -615,7 +628,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         return (
             <div className={`profit-pill ${isPos ? 'pos' : 'neg'}`}>
                 {isPos ? <FiArrowUpRight /> : <FiArrowDownRight />}
-                {isPos ? '+' : ''}{formatCurrency(Math.abs(profitLoss))}
+                {isPos ? '+' : ''}₹{fmt(Math.abs(profitLoss))}
                 <span>({isPos ? '+' : ''}{returnPct.toFixed(2)}%)</span>
             </div>
         );
@@ -644,6 +657,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         { view: 'portfolio', icon: <FiBriefcase />, label: 'Portfolio' },
                         { view: 'tax', icon: <FiFileText />, label: 'Tax Reports' },
                         { view: 'goals', icon: <FiTarget />, label: 'Goals' },
+                        { view: 'ai-assistant', icon: <FiMessageSquare />, label: 'AI Assistant' },
                         { view: 'settings', icon: <FiSettings />, label: 'Settings' }
                     ].map(({ view, icon, label }) => (
                         <button key={view} className={`nav-item ${activeView === view ? 'active' : ''}`} onClick={() => setActiveView(view)}>
@@ -662,12 +676,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     <div className="welcome-section">
                         <h1>
                             {activeView === 'dashboard'
-                                ? `Welcome back, ${dashboardData?.userName || user?.name || 'Investor'} 👋`
+                                ? `Welcome back, ${user?.name?.split(' ')[0] || 'Investor'} 👋`
                                 : activeView === 'profile' ? 'Account Overview'
                                     : activeView === 'addInvestment' ? 'Add Investment'
                                         : activeView === 'portfolio' ? 'My Portfolio'
                                             : activeView === 'tax' ? 'Tax Summary'
                                                 : activeView === 'settings' ? 'Settings'
+                                                    : activeView === 'ai-assistant' ? 'AI Financial Assistant'
                                                     : activeView === 'goals' ? 'Goals & Targets'
                                                         : 'WealthWise'}
                         </h1>
@@ -679,13 +694,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         : activeView === 'profile' ? 'Manage your personal details and preferences'
                                             : activeView === 'tax' ? 'Review your realized capital gains and tax liabilities'
                                                 : activeView === 'settings' ? 'Configure application preferences and security'
+                                                    : activeView === 'ai-assistant' ? 'Ask anything about your portfolio, strategy, or tax optimizations'
                                                     : activeView === 'goals' ? 'Set and track your financial milestones'
                                                         : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                            <InfoHint text="Use the left menu to switch modules. Hover or click info icons on pages to see short guidance." />
                         </p>
                     </div>
                     <div className="header-actions">
-                        <div className="notification-wrapper" ref={notifRef}>
+                        <div className="notification-wrapper">
                             <button className={`icon-btn ${showNotifications ? 'active' : ''}`}
                                 onClick={() => setShowNotifications(!showNotifications)}>
                                 <FiBell />
@@ -739,9 +754,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             <section className="growth-hero-card">
                                 <div className="hero-top">
                                     <div className="hero-left">
-                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE</span>
+                                        <span className="eyebrow">TOTAL PORTFOLIO VALUE ({currency})</span>
                                         <div className="hero-value-row">
-                                            <span className="big-price">{formatCurrency(metrics.portfolioValue)}</span>
+                                            <span className="big-price">₹{fmt(metrics.portfolioValue)}</span>
                                             {profitPill()}
                                         </div>
                                         <div className="timeframe-filters">
@@ -753,7 +768,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                     <div className="hero-right">
                                         <div className="hero-mini-stat">
                                             <span>Invested</span>
-                                            <strong>{formatCurrency(metrics.totalInvested)}</strong>
+                                            <strong>₹{fmt(metrics.totalInvested)}</strong>
                                         </div>
                                         <div className="hero-mini-stat">
                                             <span>Holdings</span>
@@ -767,71 +782,150 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Chart */}
                                 <div className="main-chart-container">
-                                    <ResponsiveContainer width="100%" height={260}>
-                                        <AreaChart data={historyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                                                    <stop offset="90%" stopColor="#3b82f6" stopOpacity={0} />
-                                                </linearGradient>
-                                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                                    <feGaussianBlur stdDeviation="4" result="blur" />
-                                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                                </filter>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                                            <XAxis
-                                                dataKey="date"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
-                                                interval="preserveStartEnd"
-                                                dy={12}
-                                                padding={{ left: 10, right: 10 }}
-                                            />
-                                            <YAxis hide domain={['auto', 'auto']} />
-                                            <Tooltip
-                                                content={<ChartTooltip currency={currency} />}
-                                                cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1 }}
-                                            />
-                                            {/* Glow Layer */}
-                                            <Area
-                                                type="natural"
-                                                dataKey="value"
-                                                stroke="#3b82f6"
-                                                strokeWidth={4}
-                                                fill="transparent"
-                                                strokeOpacity={0.4}
-                                                style={{ filter: 'url(#glow)' }}
-                                                activeDot={false}
-                                                animationDuration={2000}
-                                            />
-                                            {/* Main Line & Gradient */}
-                                            <Area
-                                                type="natural"
-                                                dataKey="value"
-                                                stroke="#3b82f6"
-                                                strokeWidth={2.5}
-                                                fill="url(#areaGrad)"
-                                                dot={false}
-                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                                                animationDuration={1500}
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
+                                    {historyData.length === 0 ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 260, flexDirection: 'column', gap: 12, opacity: 0.4 }}>
+                                            <FiActivity size={40} />
+                                            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>No portfolio history yet</p>
+                                        </div>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height={280}>
+                                            <AreaChart data={historyData} margin={{ top: 24, right: 8, left: -10, bottom: 0 }}>
+                                                <defs>
+                                                    {/* Main area gradient */}
+                                                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                                                        <stop offset="60%" stopColor="#3b82f6" stopOpacity={0.08} />
+                                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    {/* Glow filter on the line */}
+                                                    <filter id="lineGlow" x="-10%" y="-80%" width="120%" height="260%">
+                                                        <feGaussianBlur stdDeviation="4" result="blur" />
+                                                        <feMerge>
+                                                            <feMergeNode in="blur" />
+                                                            <feMergeNode in="SourceGraphic" />
+                                                        </feMerge>
+                                                    </filter>
+                                                    {/* Horizontal grid lines fade gradient */}
+                                                    <linearGradient id="gridFade" x1="0" y1="0" x2="1" y2="0">
+                                                        <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+                                                        <stop offset="20%" stopColor="rgba(255,255,255,0.05)" />
+                                                        <stop offset="80%" stopColor="rgba(255,255,255,0.05)" />
+                                                        <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                                                    </linearGradient>
+                                                </defs>
+
+                                                <CartesianGrid
+                                                    strokeDasharray="0"
+                                                    vertical={false}
+                                                    stroke="rgba(255,255,255,0.045)"
+                                                    strokeWidth={1}
+                                                />
+
+                                                <XAxis
+                                                    dataKey="date"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
+                                                    interval="preserveStartEnd"
+                                                    dy={14}
+                                                    padding={{ left: 16, right: 16 }}
+                                                />
+
+                                                <YAxis
+                                                    hide={false}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#475569', fontSize: 10, fontWeight: 600 }}
+                                                    tickFormatter={(v) => {
+                                                        if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)}Cr`;
+                                                        if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+                                                        if (v >= 1000) return `₹${(v / 1000).toFixed(0)}K`;
+                                                        return `₹${v}`;
+                                                    }}
+                                                    width={64}
+                                                    domain={['auto', 'auto']}
+                                                />
+
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (!active || !payload?.length) return null;
+                                                        const val = payload[0].value;
+                                                        const idx = historyData.findIndex(d => d.date === label);
+                                                        const prev = idx > 0 ? historyData[idx - 1].value : val;
+                                                        const change = val - prev;
+                                                        const changePct = prev > 0 ? ((change / prev) * 100).toFixed(2) : '0.00';
+                                                        const isPos = change >= 0;
+                                                        return (
+                                                            <div className="chart-tooltip-pro">
+                                                                <div className="ct-date-pro">{label}</div>
+                                                                <div className="ct-rows">
+                                                                    <div className="ct-row">
+                                                                        <span className="ct-dot" style={{ background: '#3b82f6' }} />
+                                                                        <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Portfolio</span>
+                                                                        <span style={{ marginLeft: 'auto', fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>
+                                                                            ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(val)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Daily Change</span>
+                                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: isPos ? '#4ade80' : '#f87171' }}>
+                                                                        {isPos ? '+' : ''}₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.abs(change))} ({isPos ? '+' : ''}{changePct}%)
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }}
+                                                    cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1, strokeDasharray: '4 2' }}
+                                                />
+
+                                                {/* Shadow beneath line for depth */}
+                                                <Area
+                                                    type="monotoneX"
+                                                    dataKey="value"
+                                                    stroke="transparent"
+                                                    fill="url(#areaGrad)"
+                                                    fillOpacity={1}
+                                                    dot={false}
+                                                    activeDot={false}
+                                                    strokeWidth={0}
+                                                />
+
+                                                {/* Main glowing line */}
+                                                <Area
+                                                    type="monotoneX"
+                                                    dataKey="value"
+                                                    stroke="#3b82f6"
+                                                    strokeWidth={2.5}
+                                                    fill="none"
+                                                    dot={false}
+                                                    activeDot={{
+                                                        r: 6,
+                                                        fill: '#3b82f6',
+                                                        stroke: '#fff',
+                                                        strokeWidth: 2.5,
+                                                        filter: 'url(#lineGlow)'
+                                                    }}
+                                                    style={{ filter: 'url(#lineGlow)' }}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    )}
                                 </div>
                             </section>
 
                             {/* ── 2. KPI CARDS ── */}
                             <div className="kpi-grid">
                                 {[
-                                    { label: 'Total Invested', value: formatCurrency(metrics.totalInvested), icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
-                                    { label: 'Portfolio Value', value: formatCurrency(metrics.portfolioValue), icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
+                                    { label: 'Total Invested', value: `₹${fmt(metrics.totalInvested)}`, icon: <FiDollarSign />, cls: 'i-purple', sub: `${investments.length} holding${investments.length !== 1 ? 's' : ''}` },
+                                    { label: 'Portfolio Value', value: `₹${fmt(metrics.portfolioValue)}`, icon: <FiBriefcase />, cls: 'i-blue', sub: 'Current market value', highlight: true },
                                     {
                                         label: 'Total Gain / Loss',
                                         value: metrics.profitLoss === 0 ? 'Break-even'
-                                            : `${metrics.profitLoss > 0 ? '+' : ''}${formatCurrency(Math.abs(metrics.profitLoss))}`,
+                                            : `${metrics.profitLoss > 0 ? '+' : ''}₹${fmt(Math.abs(metrics.profitLoss))}`,
                                         icon: metrics.profitLoss >= 0 ? <FiTrendingUp /> : <FiTrendingDown />,
                                         cls: metrics.profitLoss > 0 ? 'i-green' : metrics.profitLoss < 0 ? 'i-red' : 'i-muted',
                                         sub: metrics.realizedPnL !== 0 ? `Incl. ${fmtShort(metrics.realizedPnL)} realized` : `${(metrics.returnPct || 0).toFixed(2)}% overall`,
@@ -879,7 +973,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         >
                                                             {assetAllocation.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => [formatCurrency(v), '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        <Tooltip formatter={(v) => [`₹${fmt(v)}`, '']} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                                 <div className="donut-center">
@@ -893,7 +987,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
                                                         <span className="legend-name">{item.name}</span>
                                                         <span className="legend-pct">{metrics.portfolioValue > 0 ? ((item.value / metrics.portfolioValue) * 100).toFixed(0) : 0}%</span>
-                                                        <span className="legend-val">{formatCurrency(item.value)}</span>
+                                                        <span className="legend-val">₹{fmt(item.value)}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -972,7 +1066,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                                         <strong>{(inv.scheme_name || `Fund #${inv.fund_id}`).slice(0, 24)}{(inv.scheme_name?.length > 24) ? '…' : ''}</strong>
                                                         <span>{inv.investment_type === 'Lumpsum' ? 'BUY' : inv.investment_type} · {formatDate(inv.buy_date || inv.start_date)}</span>
                                                     </div>
-                                                    <div className="activity-amount">{inv.investment_type === 'SELL' ? '-' : '+'}{formatCurrency(inv.amount)}</div>
+                                                    <div className="activity-amount">+₹{fmt(inv.amount)}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -983,26 +1077,27 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                             {/* ── 5. GOALS PREVIEW ── */}
                             <div className="goals-preview-card">
                                 <div className="card-top"><h3>Financial Goals</h3><FiTarget /></div>
-                                <div className="goals-grid">
-                                    {[
-                                        { emoji: '🏠', name: 'New Home Fund', pct: 65, cur: '₹6.5L', total: '₹10L', rem: '₹3.5L', color: '' },
-                                        { emoji: '✈️', name: 'Vacation Fund', pct: 40, cur: '₹80K', total: '₹2L', rem: '₹1.2L', color: 'blue' },
-                                    ].map((g, i) => (
-                                        <div key={i} className="goal-card">
-                                            <div className="goal-header">
-                                                <span>{g.emoji} {g.name}</span>
-                                                <span className="goal-pct">{g.pct}%</span>
+                                {goalsPreview.length === 0 ? (
+                                    <div className="empty-state-sm"><FiTarget /><p>No goals created yet</p></div>
+                                ) : (
+                                    <div className="goals-grid">
+                                        {goalsPreview.map((g) => (
+                                            <div key={g.key} className="goal-card">
+                                                <div className="goal-header">
+                                                    <span>{g.name}</span>
+                                                    <span className="goal-pct">{g.pct}%</span>
+                                                </div>
+                                                <div className="goal-bar">
+                                                    <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
+                                                </div>
+                                                <div className="goal-footer">
+                                                    <span>{g.cur} of {g.total}</span>
+                                                    <span className="goal-rem">{g.rem} to go</span>
+                                                </div>
                                             </div>
-                                            <div className="goal-bar">
-                                                <div className={`goal-fill ${g.color}`} style={{ width: `${g.pct}%` }} />
-                                            </div>
-                                            <div className="goal-footer">
-                                                <span>{g.cur} of {g.total}</span>
-                                                <span className="goal-rem">{g.rem} to go</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* ── 6. CAS UPLOAD SECTION ── */}
@@ -1010,6 +1105,13 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                                 <button className="cas-button" onClick={openCASFilePicker}>
                                     📄 Upload CAS (.pdf)
                                 </button>
+                                <input
+                                    ref={casFileInputRef}
+                                    type="file"
+                                    accept=".pdf"
+                                    onChange={handleCASFileSelect}
+                                    hidden
+                                />
                             </div>
 
                         </div>
@@ -1025,6 +1127,8 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                         <GoalPlanning user={user} investments={investments} getCurrentValue={getCurrentValue} currency={currency} />
                     ) : activeView === 'settings' ? (
                         <Settings user={user} theme={theme} setTheme={setTheme} currency={currency} setCurrency={setCurrency} />
+                    ) : activeView === 'ai-assistant' ? (
+                        <AIAssistant user={user} />
                     ) : null}
                 </div>
                 <input

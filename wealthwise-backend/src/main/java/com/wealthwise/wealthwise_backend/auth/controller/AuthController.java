@@ -39,8 +39,10 @@ public class AuthController {
                 response.put("message", "Login Successful");
                 Optional<User> loggedUser = authService.getUserByEmail(user.getEmail());
                 if (loggedUser.isPresent()) {
+                    response.put("userId", loggedUser.get().getUser_id().toString());
+                    response.put("id",     loggedUser.get().getUser_id().toString());
+                    response.put("user_id", loggedUser.get().getUser_id().toString());
                     response.put("name",   loggedUser.get().getName());
-                    response.put("userId", loggedUser.get().getUser_id());
                     response.put("email",  loggedUser.get().getEmail());
                 }
                 response.put("token", tokenOpt.get());

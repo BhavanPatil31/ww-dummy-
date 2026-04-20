@@ -103,7 +103,7 @@ public class NavService {
         try {
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     url,
-                    HttpMethod.GET,
+                    HttpMethod.valueOf("GET"),
                     null,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
@@ -123,7 +123,7 @@ public class NavService {
         try {
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     ALL_FUNDS_URL,
-                    HttpMethod.GET,
+                    HttpMethod.valueOf("GET"),
                     null,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );

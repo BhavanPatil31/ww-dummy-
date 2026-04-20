@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
-function LandingPage({ openLogin, user, onLogout }) {
+function LandingPage({ openLogin, user, onLogout, theme, setTheme, currency }) {
   const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -208,7 +208,10 @@ function LandingPage({ openLogin, user, onLogout }) {
       <footer id="contact" className="site-footer">
         <div className="footer-content">
           <div className="footer-brand">
-            <h3>WealthWise</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+              <img src={logoSrc} alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+              <h3 style={{ margin: 0 }}>WealthWise</h3>
+            </div>
             <p>Empowering you to make smarter financial decisions with real-time tracking and intuitive insights.</p>
           </div>
           <div className="footer-links">

@@ -4,35 +4,18 @@ import {
     FiCalendar, FiSearch, FiTrendingUp, FiInfo,
     FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiDollarSign
 } from 'react-icons/fi';
+import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
 import InfoHint from '../components/InfoHint';
+import { getCurrencySymbol } from '../utils/currencyUtils';
+const currencyIcons = { INR: FiDollarSign, USD: FiDollarSign, EUR: FiDollarSign, GBP: FiDollarSign };
 
-import '../styles/AddInvestment.css';
+// ── Module-level constants ──────────────────────────────────────────────
+const NAV_OUTDATED_DAYS = 30;
+const TODAY = new Date().toISOString().split('T')[0];
 
-import { FaRupeeSign, FaEuroSign, FaPoundSign } from "react-icons/fa";
+const currencySymbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
 
-const currencyIcons = {
-    INR: FaRupeeSign,
-    USD: FiDollarSign,
-    EUR: FaEuroSign,
-    GBP: FaPoundSign,
-};
-
-const currencySymbols = {
-    INR: "₹",
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-};
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-const TODAY = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
-    .toISOString()
-    .split('T')[0];
-
-const NAV_OUTDATED_DAYS = 10; // warn (not block) if latest NAV older than this
-
-// ─── Fallback Data ───────────────────────────────────────────────────────────
 const FALLBACK_FUNDS = [
     { code: "125497", name: "HDFC Top 100 Fund - Direct Plan - Growth" },
     { code: "118834", name: "SBI Bluechip Fund - Direct Plan - Growth" },
@@ -76,28 +59,18 @@ const FALLBACK_FUNDS = [
     { code: "120318", name: "Kotak Flexicap Fund - Direct Plan - Growth" }
 ];
 
-const FALLBACK_NAV_BY_CODE = {}; // intentionally empty placeholder until static NAV fallback values are available
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const getCategory = (name = '') => {
-    const n = name.toLowerCase();
-    if (n.includes('small cap') || n.includes('smallcap')) return 'Small Cap';
-    if (n.includes('midcap') || n.includes('mid cap')) return 'Mid Cap';
-    if (n.includes('large cap') || n.includes('bluechip') ||
-        n.includes('top 100') || n.includes('frontline')) return 'Large Cap';
-    if (n.includes('flexi cap') || n.includes('flexicap')) return 'Flexi Cap';
-    if (n.includes('index') || n.includes('nifty') ||
-        n.includes('sensex')) return 'Index Funds';
-    if (n.includes('debt') || n.includes('liquid') ||
-        n.includes('bond') || n.includes('gilt')) return 'Debt Funds';
-    if (n.includes('elss') || n.includes('tax')) return 'ELSS / Tax Saving';
-    return 'Other';
+// Hardcoded NAV for the same fallback 40 schemes.
+// Used only when external API is unavailable/busy.
+const FALLBACK_NAV_BY_CODE = {
+    "125497": 19.84, "118834": 76.15, "118825": 112.42, "120465": 64.31, "120716": 89.76,
+    "122639": 71.28, "120468": 226.51, "120199": 412.37, "125354": 158.94, "120847": 248.63,
+    "120822": 189.27, "130321": 102.88, "129457": 92.74, "130115": 37.56, "128051": 96.21,
+    "132010": 45.73, "130323": 121.34, "131201": 83.22, "130112": 58.14, "130114": 87.69,
+    "100148": 57.48, "100251": 104.92, "100305": 92.31, "131203": 68.55, "131202": 94.17,
+    "131205": 126.44, "132011": 33.28, "132012": 61.77, "132013": 49.65, "129456": 278.39,
+    "128052": 39.74, "128053": 111.52, "128054": 84.37, "128055": 77.93, "127042": 214.88,
+    "126503": 104.63, "130322": 144.21, "130324": 72.19, "119551": 31.42, "120318": 73.58
 };
-
-const formatINR = (val) =>
-    new Intl.NumberFormat('en-IN', {
-        style: 'currency', currency: 'INR', maximumFractionDigits: 0
-    }).format(val || 0);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
@@ -105,7 +78,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
 
     // ── Fund list ──────────────────────────────────────────────────────────
-    const [allFunds, setAllFunds] = useState([]);
+    const [allFunds,     setAllFunds]     = useState([]);
     const [loadingFunds, setLoadingFunds] = useState(false);
     const [fundsError, setFundsError] = useState('');
 
@@ -145,7 +118,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
     const navCache = useRef({});
 
     // ── Submission ─────────────────────────────────────────────────────────
-    const [status, setStatus] = useState({ loading: false, success: false, error: '' });
+    const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
     const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
@@ -389,28 +362,19 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
 
     const formatCurrency = (val) => {
-        return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+        return new Intl.NumberFormat('en-IN', {
             style: 'currency',
-            currency: currency,
+            currency: 'INR',
             maximumFractionDigits: 0
         }).format(val || 0);
     };
-    // ─────────────────────────────────────────────────────────────────────
-    // 5. HANDLERS
-    // ─────────────────────────────────────────────────────────────────────
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
         if (name === 'fundName') {
-            // Typing in the search box — clear fund selection
-            setFormData(p => ({ ...p, fundName: value, fund_id: '', nav: '' }));
-            setNavDate('');
-            setNavError('');
-            setUsingFallbackNav(false);
-            setLatestNavInfo({ nav: '', date: '' });
             setShowSuggestions(true);
-        } else {
-            setFormData(p => ({ ...p, [name]: value }));
         }
     };
 
@@ -427,22 +391,26 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         e.preventDefault();
         if (!canSubmit) return;
 
-        setStatus({ loading: true, success: false, error: '' });
+        const userId = user?.userId || user?.user_id || user?.id || (user?.user && (user.user.userId || user.user.user_id || user.user.id));
+        if (!userId) {
+            setStatus({ loading: false, success: false, error: 'User session not found. Please log in again.' });
+            return;
+        }
 
         const payload = {
-            user_id: user?.userId || user?.id,
-            fund_id: parseInt(formData.fund_id),
+            user_id:         user?.userId || user?.id,
+            fund_id:         parseInt(formData.fund_id),
             investment_type: type === 'Lumpsum' ? 'BUY' : type,
-            amount: parseFloat(formData.amount),
+            amount:          parseFloat(formData.amount),
             amount_invested: parseFloat(formData.amount),
-            nav_at_buy: parseFloat(formData.nav),
-            units: parseFloat(units),
-            buy_date: formData.startDate,
-            start_date: formData.startDate,
-            end_date: formData.endDate || null,
-            frequency: type === 'SIP' ? formData.frequency : null,
-            scheme_name: formData.fundName,
-            current_nav: parseFloat(latestNavInfo.nav) || parseFloat(formData.nav)
+            nav_at_buy:      parseFloat(formData.nav),
+            units:           parseFloat(units),
+            buy_date:        formData.startDate,
+            start_date:      formData.startDate,
+            end_date:        formData.endDate || null,
+            frequency:       type === 'SIP' ? formData.frequency : null,
+            scheme_name:     formData.fundName,
+            current_nav:     parseFloat(formData.nav)
         };
 
         try {
@@ -637,11 +605,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 {/* ── Amount + NAV Row ── */}
                                 <div className="form-row">
                                     <div className="form-group">
-                                        <label>
-                                            Amount ({currencySymbols[currency] || "$"})
-                                            <InfoHint text="Enter the amount invested in one installment (for SIP) or full amount (for lumpsum)." />
-                                        </label>
-
+                                        <label>Amount (₹)</label>
                                         <div className="input-wrapper">
                                             <CurrencyIcon className="input-icon" />
 
@@ -811,18 +775,11 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
                             <div className="summary-row">
                                 <span>Amount</span>
-                                <strong>{formData.amount ? formatCurrency(formData.amount) : '—'}</strong>
+                                <strong>{formatCurrency(formData.amount)}</strong>
                             </div>
-
-                            <div className="summary-row">
-                                <span>NAV (at Purchase)</span>
-                                <strong>
-                                    {isNavFetching ? (
-                                        <span className="fetching-text">Fetching…</span>
-                                    ) : isNavValid ? (
-                                        `${currencySymbols[currency] || '₹'}${parseFloat(formData.nav).toFixed(4)}`
-                                    ) : '—'}
-                                </strong>
+                            <div className="summary-item">
+                                <span>NAV (Live)</span>
+                                <strong>{formData.nav && !isNaN(parseFloat(formData.nav)) ? `₹${formData.nav}` : '-'}</strong>
                             </div>
 
                             {latestNavInfo.nav && !isNavUnavail && (
@@ -840,15 +797,9 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                 <span className="label">Expected Units</span>
                                 <span className="value">{units}</span>
                             </div>
-
-                            <div className="highlight-panel value">
-                                <span className="label">
-                                    {type === 'SIP' ? 'Per Instalment' : 'Total Value'}
-                                </span>
-                                <span className="value">
-                                    {formData.amount ? formatCurrency(formData.amount) : '—'}
-                                    {type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}
-                                </span>
+                            <div className="summary-item highlight-box-secondary">
+                                <span>{type === 'SIP' ? 'Installment' : 'Total Value'}</span>
+                                <strong>{formatCurrency(formData.amount)}{type === 'SIP' ? ` / ${formData.frequency.toLowerCase()}` : ''}</strong>
                             </div>
 
                         </div>

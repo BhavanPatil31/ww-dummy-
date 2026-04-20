@@ -52,9 +52,11 @@ public class AuthService {
 
         User savedUser = Objects.requireNonNull(userRepository.save(user), "Saved user cannot be null");
 
-        // Send OTP to the user's email as part of the registration flow (login
-        // verification)
-        sendOtp(Objects.requireNonNull(savedUser.getEmail(), "User email cannot be null"), "login");
+        try {
+            sendOtp(Objects.requireNonNull(savedUser.getEmail(), "User email cannot be null"), "login");
+        } catch (Exception e) {
+            System.err.println("OTP send failed: " + e.getMessage());
+        }
 
         return savedUser;
     }

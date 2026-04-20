@@ -1,6 +1,19 @@
--- Migration: Move closed investments (with endDate) to tax_transactions
+-- Migration: Create tax_transactions table and move closed investments (with endDate) into it.
 -- This migration ensures data integrity by moving investments with endDate values
 -- from the investments table to the tax_transactions table.
+
+CREATE TABLE IF NOT EXISTS tax_transactions (
+    transaction_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
+    fund_name VARCHAR(255) NOT NULL,
+    buy_date DATE NOT NULL,
+    sell_date DATE NOT NULL,
+    units DOUBLE NOT NULL,
+    gain DOUBLE NOT NULL,
+    tax_type VARCHAR(10) NOT NULL,
+    source VARCHAR(20) NOT NULL DEFAULT 'APP',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 INSERT INTO tax_transactions (
     transaction_id,

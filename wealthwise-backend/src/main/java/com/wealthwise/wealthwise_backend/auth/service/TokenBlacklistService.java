@@ -1,10 +1,6 @@
 package com.wealthwise.wealthwise_backend.auth.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class TokenBlacklistService {

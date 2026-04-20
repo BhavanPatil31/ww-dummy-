@@ -6,14 +6,16 @@ import {
 } from 'react-icons/fi';
 import axios from 'axios';
 import InfoHint from '../components/InfoHint';
+import HelpSupport from '../components/HelpSupport';
+import DeletedHistory from '../components/DeletedHistory';
 import '../styles/Settings.css';
 
-export default function Settings({ user, currency, setCurrency }) {
+export default function Settings({ user, theme, setTheme }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    
+
     // Delete Account Modal State
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteInput, setDeleteInput] = useState("");
@@ -34,10 +36,20 @@ export default function Settings({ user, currency, setCurrency }) {
         promo: false
     });
 
-    // 3. Privacy State
+    // 3. Appearance State
+    const [currency, setCurrency] = useState('USD');
+
+    // 4. Privacy State
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });
+
+    // 5. Help & Support State
+    const [feedbackForm, setFeedbackForm] = useState({
+        type: 'General',
+        message: ''
+    });
+    const [feedbackStatus, setFeedbackStatus] = useState('');
 
     // --- HANDLERS ---
     const handlePasswordChange = (e) => {
@@ -71,7 +83,7 @@ export default function Settings({ user, currency, setCurrency }) {
             }, { headers });
             setSaveSuccess(true);
             setPasswords({ current: '', new: '', confirm: '' });
-            setTimeout(() => setSaveSuccess(false), 3000); 
+            setTimeout(() => setSaveSuccess(false), 3000);
         } catch (error) {
             alert(error.response?.data?.error || "Failed to update password.");
         } finally {
@@ -90,9 +102,9 @@ export default function Settings({ user, currency, setCurrency }) {
             const token = localStorage.getItem('jwt_token');
             const headers = { Authorization: `Bearer ${token}` };
             const uid = user?.userId || user?.id;
-            const response = await axios.get(`http://localhost:8088/api/portfolio/export/${uid}`, { 
-                headers, 
-                responseType: 'blob' 
+            const response = await axios.get(`http://localhost:8088/api/portfolio/export/${uid}`, {
+                headers,
+                responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const a = document.createElement('a');
@@ -105,17 +117,17 @@ export default function Settings({ user, currency, setCurrency }) {
             alert("Failed to export data");
         }
     };
-    
+
     const handleResetPortfolio = async () => {
         if (!window.confirm("Are you sure you want to delete ALL your investments? This action cannot be undone.")) return;
-        
+
         try {
             const token = localStorage.getItem('jwt_token');
             const headers = { Authorization: `Bearer ${token}` };
             const uid = user?.userId || user?.id;
             await axios.delete(`http://localhost:8088/api/investments/user/${uid}/all`, { headers });
             alert("Portfolio reset successfully.");
-            window.location.reload(); 
+            window.location.reload();
         } catch (error) {
             alert(error.response?.data?.error || "Failed to reset portfolio.");
         }
@@ -138,11 +150,38 @@ export default function Settings({ user, currency, setCurrency }) {
         }
     };
 
+    const handleFeedbackSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setFeedbackStatus('');
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const headers = { Authorization: `Bearer ${token}` };
+            const uid = user?.userId || user?.id;
+
+            await axios.post('http://localhost:8088/api/feedback/submit', {
+                userId: uid,
+                type: feedbackForm.type,
+                message: feedbackForm.message
+            }, { headers });
+
+            setFeedbackStatus('Success');
+            setFeedbackForm({ type: 'General', message: '' });
+            setTimeout(() => setFeedbackStatus(''), 3000);
+        } catch (error) {
+            setFeedbackStatus('Error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // --- CONFIG ---
     const tabs = [
         { id: 'security', label: 'Security & Login', icon: <FiShield /> },
         { id: 'notifications', label: 'Notifications', icon: <FiBell /> },
-        { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> }
+        { id: 'appearance', label: 'Appearance', icon: <FiMonitor /> },
+        { id: 'privacy', label: 'Privacy & Data', icon: <FiEye /> },
+        { id: 'deleted', label: 'Deleted History', icon: <FiTrash2 /> }
     ];
 
     // Animation settings for smoother transitions
@@ -360,6 +399,20 @@ export default function Settings({ user, currency, setCurrency }) {
                     </Motion.div>
                 );
 
+            case 'help':
+                return (
+                    <Motion.div {...pageTransition}>
+                        <HelpSupport user={user} />
+                    </Motion.div>
+                );
+
+            case 'deleted':
+                return (
+                    <Motion.div {...pageTransition}>
+                        <DeletedHistory user={user} />
+                    </Motion.div>
+                );
+
             default: return null;
         }
     };
@@ -404,7 +457,7 @@ export default function Settings({ user, currency, setCurrency }) {
             {/* DELETE ACCOUNT MODAL */}
             <AnimatePresence>
                 {showDeleteModal && (
-                    <Motion.div 
+                    <Motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -438,14 +491,14 @@ export default function Settings({ user, currency, setCurrency }) {
                             </h3>
                             <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
                                 <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>
-                                    This action <strong>cannot</strong> be undone. This will permanently delete your account, 
+                                    This action <strong>cannot</strong> be undone. This will permanently delete your account,
                                     portfolio data, and remove all associations.
                                 </p>
                             </div>
                             <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', color: '#cbd5e1' }}>
                                 Please type <strong style={{ userSelect: 'none', color: '#f8fafc' }}>{user?.email}</strong> to confirm.
                             </label>
-                            <input 
+                            <input
                                 type="text"
                                 value={deleteInput}
                                 onChange={(e) => setDeleteInput(e.target.value)}
@@ -464,16 +517,16 @@ export default function Settings({ user, currency, setCurrency }) {
                                 autoFocus
                             />
                             <div style={{ display: 'flex', gap: '12px' }}>
-                                <button 
+                                <button
                                     disabled={deleteInput !== user?.email || isDeleting}
                                     onClick={handleDeleteAccount}
                                     style={{
-                                        flex: 2, 
+                                        flex: 2,
                                         padding: '12px',
                                         background: deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.15)',
                                         color: deleteInput === user?.email ? '#fff' : 'rgba(255,255,255,0.4)',
-                                        border: '1px solid ' + (deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.2)'), 
-                                        borderRadius: '8px', 
+                                        border: '1px solid ' + (deleteInput === user?.email ? '#ef4444' : 'rgba(239, 68, 68, 0.2)'),
+                                        borderRadius: '8px',
                                         cursor: deleteInput === user?.email ? 'pointer' : 'not-allowed',
                                         fontWeight: '600',
                                         transition: 'all 0.2s ease',
@@ -482,15 +535,15 @@ export default function Settings({ user, currency, setCurrency }) {
                                 >
                                     {isDeleting ? 'Deleting...' : 'Delete this account'}
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => { setShowDeleteModal(false); setDeleteInput(""); }}
                                     style={{
-                                        flex: 1, 
+                                        flex: 1,
                                         padding: '12px',
                                         background: 'transparent',
                                         color: '#cbd5e1',
-                                        border: '1px solid rgba(255,255,255,0.1)', 
-                                        borderRadius: '8px', 
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '8px',
                                         cursor: 'pointer',
                                         fontWeight: '500',
                                         transition: 'background 0.2s'

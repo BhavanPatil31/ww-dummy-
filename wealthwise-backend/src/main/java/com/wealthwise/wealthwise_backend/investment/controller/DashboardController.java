@@ -35,6 +35,7 @@ public class DashboardController {
         Map<String, Double> assetAllocationMap = new HashMap<>();
 
         for (Investment inv : investments) {
+
             String type = inv.getInvestmentType();
             if (type == null || type.trim().isEmpty()) {
                 type = "Other";
@@ -50,17 +51,15 @@ public class DashboardController {
             assetAllocationMap.put(type, assetAllocationMap.getOrDefault(type, 0.0) + currentVal);
         }
 
-        double returnPercentage = totalInvested > 0 ? ((portfolioValue - totalInvested) / totalInvested) * 100 : 0.0;
+        double profitLoss = portfolioValue - totalInvested;
+        double returnPercentage = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0.0;
 
-        // Convert map to list of maps for Recharts
         List<Map<String, Object>> assetAllocation = assetAllocationMap.entrySet().stream().map(entry -> {
             Map<String, Object> map = new HashMap<>();
             map.put("name", entry.getKey());
             map.put("value", entry.getValue());
             return map;
         }).collect(Collectors.toList());
-
-        double profitLoss = portfolioValue - totalInvested;
 
         Map<String, Object> response = new HashMap<>();
         response.put("totalInvested", totalInvested);
