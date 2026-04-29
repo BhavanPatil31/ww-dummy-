@@ -579,6 +579,32 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         [activeInvestments]
     );
 
+    const goalsPreview = useMemo(() => {
+        const idOf = (inv) => String(inv?.investment_id || inv?.id || inv?.investmentId);
+        return (goals || []).slice(0, 4).map((g, idx) => {
+            const target = Number(g.target_amount || g.targetAmount || 0);
+            const linked = g.linkedInvestments || [];
+            const computed = linked.reduce((sum, li) => {
+                const liId = String(li?.investment_id || li);
+                const inv = investments.find(i => idOf(i) === liId);
+                if (inv) return sum + getCurrentValue(inv);
+                return sum + Number(li?.linked_amount || 0);
+            }, 0);
+            const current = computed;
+            const pctRaw = target > 0 ? (current / target) * 100 : 0;
+            const pct = Math.max(0, Math.min(100, Math.round(pctRaw)));
+            return {
+                key: g.goal_id || g.id || idx,
+                name: g.goal_name || g.goalName || `Goal ${idx + 1}`,
+                pct,
+                cur: fmtShort(current),
+                total: fmtShort(target),
+                rem: fmtShort(Math.max(target - current, 0)),
+                color: idx % 2 === 1 ? 'blue' : '',
+            };
+        });
+    }, [goals, investments, getCurrentValue, fmtShort]);
+
     const insights = useMemo(() => {
         const out = [];
         if (!activeInvestments.length) {

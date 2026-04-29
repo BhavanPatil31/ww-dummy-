@@ -64,6 +64,16 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
     }, [fetchGoals]);
 
     const investmentIdOf = (inv) => String(inv?.investment_id || inv?.id || inv?.investmentId);
+    const goalIdOf = (goal) => String(goal?.goal_id || goal?.id);
+
+    const goalById = useMemo(() => {
+        const map = {};
+        (goals || []).forEach((g) => {
+            const gid = goalIdOf(g);
+            if (gid) map[gid] = g;
+        });
+        return map;
+    }, [goals]);
 
     const linkedInvestmentGoalMap = useMemo(() => {
         const map = {};
@@ -85,6 +95,11 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         });
     }, [investments]);
 
+    const activeInvestmentIdSet = useMemo(
+        () => new Set(activeInvestments.map(investmentIdOf)),
+        [activeInvestments]
+    );
+
     const getSelectableInvestments = (currentGoalId = null) => {
         const gid = currentGoalId != null ? String(currentGoalId) : null;
         return activeInvestments.filter(inv => {
@@ -99,6 +114,20 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         if (!owner) return false;
         if (currentGoalId == null) return true;
         return owner !== String(currentGoalId);
+    };
+
+    const getPersistedLinkedAmount = (goalLike, investmentId) => {
+        const links = goalLike?.linkedInvestments || [];
+        const found = links.find(li => String(li?.investment_id || li) === String(investmentId));
+        return Number(found?.linked_amount || 0);
+    };
+
+    const getLinkedAmountForPayload = (investmentId, existingGoal = null) => {
+        const inv = investments.find(i => investmentIdOf(i) === String(investmentId));
+        if (inv) {
+            return Number(inv.amount_invested || inv.amountInvested || inv.amount || 0);
+        }
+        return getPersistedLinkedAmount(existingGoal, investmentId);
     };
 
     // Format currency
@@ -150,22 +179,25 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         if (!form.name || !form.amount || !user) return;
         setLinkError('');
 
-        const conflictingIds = form.linkedInvestments.filter(id => isLinkedToAnotherGoal(id, null));
+        const uniqueSelectedIds = [...new Set((form.linkedInvestments || []).map(id => String(id)))];
+        const safeSelectedIds = uniqueSelectedIds.filter(id => activeInvestmentIdSet.has(id));
+
+        const conflictingIds = safeSelectedIds.filter(id => isLinkedToAnotherGoal(id, null));
         if (conflictingIds.length > 0) {
             setLinkError('One or more selected investments are already linked to another goal.');
             return;
         }
 
-        const currentProgress = calculateProgress(form.linkedInvestments);
+        const currentProgress = calculateProgress(safeSelectedIds);
         const goalData = {
             user_id: user.userId || user.id,
             goal_name: form.name,
             target_amount: parseFloat(form.amount),
             target_year: parseInt(form.year, 10),
             progress: currentProgress,
-            linkedInvestments: form.linkedInvestments.map(id => ({
+            linkedInvestments: safeSelectedIds.map(id => ({
                 investment_id: parseInt(id),
-                linked_amount: investments.find(inv => String(inv.investment_id || inv.id || inv.investmentId) === String(id))?.amount || 0
+                linked_amount: getLinkedAmountForPayload(id)
             }))
         };
 
@@ -210,12 +242,14 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     const handleEdit = (goal) => {
         setLinkError('');
+        const linkedIds = goal.linkedInvestments?.map(li => String(li?.investment_id || li)) || [];
+        const activeLinkedIds = [...new Set(linkedIds)].filter(id => activeInvestmentIdSet.has(String(id)));
         setEditModalData({
             id: goal.goal_id,
             name: goal.goal_name,
             amount: goal.target_amount,
             year: goal.target_year,
-            linkedInvestments: goal.linkedInvestments?.map(li => String(li.investment_id)) || []
+            linkedInvestments: activeLinkedIds
         });
     };
 
@@ -250,37 +284,109 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         if (!editModalData.name || !editModalData.amount || !user) return;
         setLinkError('');
 
-        const conflictingIds = editModalData.linkedInvestments.filter(id => isLinkedToAnotherGoal(id, editModalData.id));
+        const uniqueSelectedIds = [...new Set((editModalData.linkedInvestments || []).map(id => String(id)))];
+        const safeSelectedIds = uniqueSelectedIds.filter(id => activeInvestmentIdSet.has(id));
+
+        const conflictingIds = safeSelectedIds.filter(id => isLinkedToAnotherGoal(id, editModalData.id));
         if (conflictingIds.length > 0) {
             setLinkError('One or more selected investments are already linked to another goal.');
             return;
         }
 
-        const currentProgress = calculateProgress(editModalData.linkedInvestments);
-        const updatedGoal = {
+        const existingGoal = goalById[String(editModalData.id)];
+        const existingLinkedIdSet = new Set(
+            (existingGoal?.linkedInvestments || []).map(li => String(li?.investment_id || li))
+        );
+        const newLinkedIds = safeSelectedIds.filter(id => !existingLinkedIdSet.has(String(id)));
+        const currentProgress = calculateProgress(safeSelectedIds);
+        const buildGoalPayload = (ids, opts = {}) => ({
             user_id: user.userId || user.id,
             goal_name: editModalData.name,
             target_amount: parseFloat(editModalData.amount),
             target_year: parseInt(editModalData.year, 10),
-            progress: currentProgress,
-            linkedInvestments: editModalData.linkedInvestments.map(id => ({
-                investment_id: parseInt(id),
-                linked_amount: investments.find(inv => String(inv.investment_id || inv.id || inv.investmentId) === String(id))?.amount || 0
-            }))
-        };
+            ...(opts.includeProgress === false ? {} : { progress: currentProgress }),
+            linkedInvestments: opts.asIdArray
+                ? ids.map(id => parseInt(id))
+                : ids.map(id => ({
+                    investment_id: parseInt(id),
+                    linked_amount: getLinkedAmountForPayload(id, existingGoal)
+                }))
+        });
 
         const token = localStorage.getItem('jwt_token');
         const headers = { Authorization: `Bearer ${token}` };
 
         try {
-            await axios.put(`${API_BASE}/${editModalData.id}`, updatedGoal, { headers });
+            await axios.put(`${API_BASE}/${editModalData.id}`, buildGoalPayload(safeSelectedIds), { headers });
             fetchGoals();
             setEditModalData(null);
             setLinkError('');
             setModalDropdownOpen(false);
         } catch (error) {
+            const duplicateMsg = String(
+                error?.response?.data?.message ||
+                error?.response?.data?.error ||
+                error?.response?.data ||
+                error?.message ||
+                ''
+            ).toLowerCase();
+            const isDuplicateLinkError = duplicateMsg.includes('duplicate entry') || duplicateMsg.includes('uq_goal_investments_investment_id');
+
+            // Retry for stricter backend DTOs that may expect ID arrays instead of objects.
+            try {
+                await axios.put(
+                    `${API_BASE}/${editModalData.id}`,
+                    buildGoalPayload(safeSelectedIds, { asIdArray: true }),
+                    { headers }
+                );
+                fetchGoals();
+                setEditModalData(null);
+                setLinkError('');
+                setModalDropdownOpen(false);
+                return;
+            } catch (shapeError) {
+                // Final shape retry: omit progress for backends that compute it server-side.
+                try {
+                    await axios.put(
+                        `${API_BASE}/${editModalData.id}`,
+                        buildGoalPayload(safeSelectedIds, { asIdArray: true, includeProgress: false }),
+                        { headers }
+                    );
+                    fetchGoals();
+                    setEditModalData(null);
+                    setLinkError('');
+                    setModalDropdownOpen(false);
+                    return;
+                } catch {
+                    // continue to existing duplicate-specific fallback and final error handling
+                }
+            }
+
+            if (isDuplicateLinkError) {
+                try {
+                    await axios.put(`${API_BASE}/${editModalData.id}`, buildGoalPayload(newLinkedIds), { headers });
+                    fetchGoals();
+                    setEditModalData(null);
+                    setLinkError('');
+                    setModalDropdownOpen(false);
+                    return;
+                } catch (retryError) {
+                    console.error("Failed to update goal (retry)", retryError);
+                    const retryResp = retryError?.response?.data;
+                    const retryMsg = typeof retryResp === 'string'
+                        ? retryResp
+                        : (retryResp?.message || retryResp?.error || 'Failed to update goal. Please try again.');
+                    setLinkError(retryMsg);
+                    return;
+                }
+            }
+
             console.error("Failed to update goal", error);
-            setLinkError(error?.response?.data?.message || 'Failed to update goal. Please try again.');
+            const resp = error?.response?.data;
+            const msg = typeof resp === 'string'
+                ? resp
+                : (resp?.message || resp?.error || 'Failed to update goal. Please try again.');
+            setLinkError(msg);
         }
     };
 
@@ -304,6 +410,8 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
 
     const calculateProgress = React.useCallback((linked) => {
         if (!linked || !linked.length || !investments?.length) return 0;
+    const calculateProgress = (linked) => {
+        if (!linked || !linked.length) return 0;
         let sum = 0;
         linked.forEach(item => {
             // item can be an ID (from form) or an object (from backend)
@@ -313,8 +421,10 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                 if (getCurrentValue) {
                     sum += getCurrentValue(inv);
                 } else {
-                    sum += parseFloat(inv.amount || 0);
+                    sum += parseFloat(inv.amount_invested || inv.amountInvested || inv.amount || 0);
                 }
+            } else {
+                sum += Number(item?.linked_amount || 0);
             }
         });
         return sum;
