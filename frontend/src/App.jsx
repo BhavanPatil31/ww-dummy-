@@ -1,91 +1,87 @@
 import { useState, useEffect } from "react";
-
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
-
 import LoginModal from "./components/LoginModal";
 import SignupModal from "./components/SignupModal";
 import ForgotPasswordModal from "./components/ForgotPasswordModal";
-
-
 import "./App.css";
 
 function App() {
-    const THEME_STORAGE_KEY = "wealthwise_theme";
-    const CURRENCY_STORAGE_KEY = "wealthwise_currency";
+  const THEME_STORAGE_KEY = "wealthwise_theme";
+  const CURRENCY_STORAGE_KEY = "wealthwise_currency";
 
-    // ✅ 1. Initialize from localStorage
-    const [currentUser, setCurrentUser] = useState(() => {
-        try {
-            const saved = localStorage.getItem("wealthwise_user");
-            return (saved && saved !== "undefined") ? JSON.parse(saved) : null;
-        } catch (e) {
-            console.warn("Failed to parse user state:", e);
-            return null;
-        }
-    });
+  // ✅ 1. Initialize from localStorage
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("wealthwise_user");
+      return saved && saved !== "undefined" ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.warn("Failed to parse user state:", e);
+      return null;
+    }
+  });
 
-    const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("dark");
 
-    const [currency, setCurrency] = useState(() => {
-        const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
-        return saved ? saved : "INR";
-    });
+  const [currency, setCurrency] = useState(() => {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return saved ? saved : "INR";
+  });
 
-    const [currentPage, setCurrentPage] = useState(() => {
-        try {
-            const savedPage = localStorage.getItem("wealthwise_current_page");
-            if (savedPage) return savedPage;
-            return localStorage.getItem("jwt_token") ? "dashboard" : "home";
-        } catch {
-            return "home";
-        }
-    });
+  const [currentPage, setCurrentPage] = useState(() => {
+    try {
+      const savedPage = localStorage.getItem("wealthwise_current_page");
+      if (savedPage) return savedPage;
+      return localStorage.getItem("jwt_token") ? "dashboard" : "home";
+    } catch {
+      return "home";
+    }
+  });
 
-    const [showLogin, setShowLogin] = useState(false);
-    const [showSignup, setShowSignup] = useState(false);
-    const [showForgot, setShowForgot] = useState(false);
-    const [loginEmail, setLoginEmail] = useState("");
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
 
-    // ✅ Theme handling (Locked to dark mode)
-    useEffect(() => {
-        const root = document.documentElement;
-        root.classList.remove("theme-light");
-        root.classList.add("theme-dark");
-        localStorage.setItem(THEME_STORAGE_KEY, "dark");
-    }, []);
+  // ✅ Theme handling (Locked to dark mode)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("theme-light");
+    root.classList.add("theme-dark");
+    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+  }, []);
 
-    // ✅ Persist page changes
-    useEffect(() => {
-        localStorage.setItem("wealthwise_current_page", currentPage);
-    }, [currentPage]);
+  // ✅ Persist page changes
+  useEffect(() => {
+    localStorage.setItem("wealthwise_current_page", currentPage);
+  }, [currentPage]);
 
-    // ✅ Currency persistence
-    useEffect(() => {
-        localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
-    }, [currency]);
+  // ✅ Currency persistence
+  useEffect(() => {
+    localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+  }, [currency]);
 
-    // ✅ 3. Logout logic
-    const handleLogout = () => {
-        localStorage.removeItem("jwt_token");
-        localStorage.removeItem("wealthwise_user");
-        localStorage.removeItem("wealthwise_current_page");
-        localStorage.removeItem("activeView");
-        localStorage.removeItem("wealthwise_currency"); // Optional: clear currency on logout? Maybe keep it.
-        setCurrentUser(null);
-        setCurrentPage("home");
-    };
+  // ✅ 3. Logout logic
+  const handleLogout = () => {
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("wealthwise_user");
+    localStorage.removeItem("wealthwise_current_page");
+    localStorage.removeItem("activeView");
+    localStorage.removeItem("wealthwise_currency");
+    // Optional: clear currency on logout? Maybe keep it.
+    setCurrentUser(null);
+    setCurrentPage("home");
+  };
 
-    // ✅ NEW — when name is updated in profile page, sync it to dashboard
-    const handleProfileUpdate = (updatedProfile) => {
-        const newUser = { ...currentUser, name: updatedProfile.name };
-        setCurrentUser(newUser);
-        localStorage.setItem("wealthwise_user", JSON.stringify(newUser));
-    };
+  // ✅ NEW — when name is updated in profile page, sync it to dashboard
+  const handleProfileUpdate = (updatedProfile) => {
+    const newUser = { ...currentUser, name: updatedProfile.name };
+    setCurrentUser(newUser);
+    localStorage.setItem("wealthwise_user", JSON.stringify(newUser));
+  };
 
-    return (
+  return (
         <div>
-
             {/* MAIN APP CONTENT */}
             {currentUser ? (
                 <Dashboard
@@ -97,8 +93,6 @@ function App() {
                     currency={currency}
                     setCurrency={setCurrency}
                 />
-
-            /* LANDING PAGE */
             ) : (
                 <LandingPage
                     openLogin={() => setShowLogin(true)}
@@ -111,7 +105,7 @@ function App() {
             )}
 
             {/* LOGIN MODAL */}
-            {showLogin &&
+            {showLogin && (
                 <LoginModal
                     initialEmail={loginEmail}
                     closeLogin={() => {
@@ -135,10 +129,10 @@ function App() {
                         setShowForgot(true);
                     }}
                 />
-            }
+            )}
 
             {/* SIGNUP MODAL */}
-            {showSignup &&
+            {showSignup && (
                 <SignupModal
                     closeSignup={() => setShowSignup(false)}
                     openLogin={(email) => {
@@ -147,10 +141,10 @@ function App() {
                         setShowLogin(true);
                     }}
                 />
-            }
+            )}
 
             {/* FORGOT PASSWORD MODAL */}
-            {showForgot &&
+            {showForgot && (
                 <ForgotPasswordModal
                     close={() => setShowForgot(false)}
                     openLogin={() => {
@@ -158,10 +152,9 @@ function App() {
                         setShowLogin(true);
                     }}
                 />
-            }
-
+            )}
         </div>
-    );
-}
+      );
+    }
 
-export default App;
+    export default App;

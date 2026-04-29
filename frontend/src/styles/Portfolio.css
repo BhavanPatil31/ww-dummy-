@@ -1489,6 +1489,21 @@
     background-color: #f8fafc;
 }
 
+:root.theme-light .portfolio-chart-wrapper .recharts-cartesian-axis-line,
+:root.theme-light .sidebar-bar-chart-card .recharts-cartesian-axis-line {
+    stroke: #cbd5e1;
+}
+
+:root.theme-light .portfolio-chart-wrapper .recharts-cartesian-axis-tick-line,
+:root.theme-light .sidebar-bar-chart-card .recharts-cartesian-axis-tick-line {
+    stroke: #cbd5e1;
+}
+
+:root.theme-light .portfolio-chart-wrapper .recharts-cartesian-axis-tick-value,
+:root.theme-light .sidebar-bar-chart-card .recharts-cartesian-axis-tick-value {
+    fill: #64748b;
+}
+
 :root.theme-light .portfolio-row:hover {
     background-color: #f1f5f9;
 }
@@ -1657,4 +1672,262 @@
 
 :root.theme-light .table-footer strong {
     color: #1e293b;
+}
+
+/* ── Light Theme Polish Pass ── */
+:root.theme-light .portfolio-container {
+    background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.06), transparent 30%),
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.05), transparent 22%),
+        var(--bg-primary);
+}
+
+:root.theme-light .portfolio-page-header h2 {
+    color: #0f172a;
+    letter-spacing: -0.03em;
+}
+
+:root.theme-light .portfolio-page-header .subtitle {
+    color: #64748b;
+}
+
+:root.theme-light .btn-refresh {
+    background: #ffffff;
+    color: #334155;
+    border-color: #d8e0ea;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+:root.theme-light .btn-refresh:hover {
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.35);
+    background: rgba(37, 99, 235, 0.04);
+}
+
+:root.theme-light .portfolio-chart-wrapper,
+:root.theme-light .sidebar-bar-chart-card,
+:root.theme-light .portfolio-table-wrapper,
+:root.theme-light .modal-card,
+:root.theme-light .p-summary-card,
+:root.theme-light .pro-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+    border-color: rgba(215, 225, 236, 0.95);
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+:root.theme-light .portfolio-chart-wrapper:hover,
+:root.theme-light .sidebar-bar-chart-card:hover,
+:root.theme-light .portfolio-table-wrapper:hover {
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.1);
+}
+
+:root.theme-light .p-summary-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+:root.theme-light .p-summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.1);
+}
+
+:root.theme-light .p-summary-card.highlight-green {
+    border-color: rgba(34, 197, 94, 0.22);
+    background: linear-gradient(180deg, rgba(236, 253, 245, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+:root.theme-light .p-summary-card.highlight-red {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: linear-gradient(180deg, rgba(254, 242, 242, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+:root.theme-light .p-label {
+    color: #64748b;
+    letter-spacing: 0.08em;
+}
+
+:root.theme-light .p-value {
+    color: #0f172a;
+}
+
+:root.theme-light .p-value.highlight-text {
+    color: #2563eb;
+    text-shadow: none;
+}
+
+:root.theme-light .p-sub {
+    color: #64748b;
+}
+
+:root.theme-light .p-sub.green {
+    color: #059669;
+}
+
+:root.theme-light .health-bar-track,
+:root.theme-light .risk-meter-track,
+:root.theme-light .risk-bar-mini {
+    background: #e2e8f0;
+}
+
+:root.theme-light .health-bar-fill.green {
+    background: linear-gradient(90deg, #059669, #22c55e);
+}
+
+:root.theme-light .health-bar-fill.blue {
+    background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+}
+
+:root.theme-light .health-bar-fill.red {
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+}
+
+:root.theme-light .chart-title {
+    color: #0f172a;
+}
+
+:root.theme-light .chart-title::before {
+    background-color: #2563eb;
+}
+
+:root.theme-light .pnl-live-badge {
+    background: #eff6ff;
+    border-color: rgba(37, 99, 235, 0.16);
+    color: #2563eb;
+}
+
+:root.theme-light .pnl-live-badge.positive {
+    background: rgba(236, 253, 245, 0.95);
+    border-color: rgba(34, 197, 94, 0.18);
+    color: #059669;
+}
+
+:root.theme-light .pnl-live-badge.negative {
+    background: rgba(254, 242, 242, 0.95);
+    border-color: rgba(239, 68, 68, 0.18);
+    color: #dc2626;
+}
+
+:root.theme-light .chart-empty-state,
+:root.theme-light .portfolio-empty {
+    color: #64748b;
+}
+
+:root.theme-light .empty-icon,
+:root.theme-light .empty-icon-small {
+    color: rgba(37, 99, 235, 0.22);
+}
+
+:root.theme-light .portfolio-table thead {
+    background: linear-gradient(180deg, #f8fafc, #eef4fb);
+}
+
+:root.theme-light .portfolio-table th {
+    color: #64748b;
+}
+
+:root.theme-light .portfolio-row {
+    border-bottom-color: #e2e8f0;
+}
+
+:root.theme-light .portfolio-row:hover {
+    background-color: rgba(37, 99, 235, 0.04);
+}
+
+:root.theme-light .portfolio-table td {
+    color: #0f172a;
+}
+
+:root.theme-light .td-sl,
+:root.theme-light .td-date {
+    color: #64748b;
+}
+
+:root.theme-light .fund-name {
+    color: #0f172a;
+}
+
+:root.theme-light .fund-type-badge {
+    background-color: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.18);
+}
+
+:root.theme-light .td-current {
+    color: #059669;
+}
+
+:root.theme-light .td-return.positive .return-badge {
+    background-color: rgba(236, 253, 245, 0.95);
+    color: #059669;
+    border-color: rgba(34, 197, 94, 0.18);
+}
+
+:root.theme-light .td-return.negative .return-badge {
+    background-color: rgba(254, 242, 242, 0.95);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.18);
+}
+
+:root.theme-light .action-btn.view {
+    background-color: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.18);
+}
+
+:root.theme-light .action-btn.edit {
+    background-color: rgba(245, 158, 11, 0.08);
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.18);
+}
+
+:root.theme-light .action-btn.delete {
+    background-color: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.18);
+}
+
+:root.theme-light .modal-overlay {
+    background: rgba(15, 23, 42, 0.3);
+}
+
+:root.theme-light .modal-header h3,
+:root.theme-light .detail-fund-name,
+:root.theme-light .portfolio-empty h3,
+:root.theme-light .pro-card-title,
+:root.theme-light .mover-name {
+    color: #0f172a;
+}
+
+:root.theme-light .modal-close:hover {
+    color: #0f172a;
+    background-color: rgba(37, 99, 235, 0.08);
+}
+
+:root.theme-light .detail-item,
+:root.theme-light .mover-row,
+:root.theme-light .risk-zone.low,
+:root.theme-light .risk-zone.med,
+:root.theme-light .risk-zone.high {
+    background-color: #f8fafc;
+}
+
+:root.theme-light .detail-label,
+:root.theme-light .mover-type,
+:root.theme-light .risk-labels,
+:root.theme-light .risk-name,
+:root.theme-light .risk-pct {
+    color: #64748b;
+}
+
+:root.theme-light .detail-value,
+:root.theme-light .mover-rank {
+    color: #0f172a;
+}
+
+:root.theme-light .table-footer {
+    background: linear-gradient(180deg, #f8fafc, #eef4fb);
+    color: #64748b;
+}
+
+:root.theme-light .table-footer strong {
+    color: #0f172a;
 }

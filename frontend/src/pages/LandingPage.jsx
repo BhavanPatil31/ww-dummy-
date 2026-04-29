@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Landing.css";
 import { FiTrendingUp, FiShield, FiPieChart, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiCheckCircle, FiSun, FiMoon, FiTwitter, FiInstagram, FiMail } from "react-icons/fi";
 
-function LandingPage({ openLogin, user, onLogout, theme, setTheme, currency }) {
+function LandingPage({ openLogin, user, onLogout }) {
   const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -200,7 +200,6 @@ function LandingPage({ openLogin, user, onLogout, theme, setTheme, currency }) {
         <p className="cta-subtitle">Join thousands of smart investors who trust WealthWise.</p>
         <div className="cta-buttons">
           <button className="btn-primary" onClick={openLogin}>Create Free Account</button>
-          <button className="btn-secondary outline-light">Explore Investments</button>
         </div>
       </section>
 

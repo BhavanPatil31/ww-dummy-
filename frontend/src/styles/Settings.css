@@ -41,6 +41,128 @@
     line-height: 1.5;
 }
 
+.settings-section-header.compact {
+    margin-bottom: 0.5rem;
+}
+
+.settings-section-header.compact h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.settings-section-header.compact p {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+}
+
+.security-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 1.75rem;
+}
+
+.security-overview-card,
+.security-form-card,
+.security-session-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+}
+
+.security-overview-card {
+    padding: 1.1rem 1.15rem;
+}
+
+.security-overview-card .summary-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.45rem;
+}
+
+.security-overview-card strong {
+    display: block;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.7rem;
+}
+
+.security-overview-card p {
+    margin: 0.7rem 0 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.security-strength {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.security-strength.muted {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-secondary);
+}
+
+.security-strength.weak {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.security-strength.moderate {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+}
+
+.security-strength.strong {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.security-strength-bar,
+.password-strength-track {
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.18);
+}
+
+.security-strength-bar span,
+.password-strength-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primary-color), #22c55e);
+}
+
+.security-form {
+    gap: 0;
+    max-width: 640px;
+}
+
+.security-form-card {
+    padding: 1.5rem;
+}
+
+.security-form-card .settings-input-group + .settings-input-group {
+    margin-top: 0.25rem;
+}
+
+.security-form-card .settings-input-group {
+    margin-top: 1rem;
+}
+
 /* --- BUTTONS --- */
 .btn-primary {
     background-color: var(--primary-color);
@@ -200,5 +322,19 @@
 
     .settings-form {
         max-width: 100%;
+    }
+
+    .security-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .security-session-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .security-save-btn {
+        width: 100%;
+        justify-content: center;
     }
 }

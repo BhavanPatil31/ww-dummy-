@@ -77,15 +77,15 @@ public class PortfolioService {
             holding.setFundName(inv.getSchemeName());
 
             if ("BUY".equalsIgnoreCase(type) || "Lumpsum".equalsIgnoreCase(type)) {
-                if (inv.getUnits() == null || inv.getUnits() <= 0) {
-                   double nav = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 1.0;
-                   double amt = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
-                   inv.setUnits(amt / nav);
-                }
-                
+                double amount = inv.getAmount() != null ? inv.getAmount() : (inv.getAmountInvested() != null ? inv.getAmountInvested() : 0.0);
+                double nav = inv.getNavAtBuy() != null ? inv.getNavAtBuy() : 1.0;
                 double units = inv.getUnits() != null ? inv.getUnits() : 0.0;
-                double amount = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
-                
+
+                if (units <= 0 || (amount > 0 && nav > 0 && units > amount / nav * 1000.0)) {
+                    units = amount / nav;
+                    inv.setUnits(units);
+                }
+
                 holding.setTotalUnits(holding.getTotalUnits() + units);
                 holding.setInvestedAmount(holding.getInvestedAmount() + amount);
                 totalInvested += amount;
@@ -102,7 +102,9 @@ public class PortfolioService {
                 LocalDate calcEnd = (end != null && end.isBefore(today)) ? end : today;
                 
                 String freq = inv.getFrequency() != null ? inv.getFrequency() : "Monthly";
-                double amountPerInst = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
+                double amountPerInst = inv.getAmount() != null && inv.getAmount() > 0
+                        ? inv.getAmount()
+                        : (inv.getAmountInvested() != null ? inv.getAmountInvested() : 0.0);
 
                 double sipTotalUnits = 0.0;
                 double sipTotalInvested = 0.0;
@@ -128,9 +130,8 @@ public class PortfolioService {
                     else break;
                 }
                 
-                inv.setUnits(sipTotalUnits);
-                inv.setAmountInvested(sipTotalInvested);
-                
+                // Do not persist cumulative SIP totals back to the original investment row.
+                // The investment should keep the periodic SIP amount and the original units state.
                 holding.setTotalUnits(holding.getTotalUnits() + sipTotalUnits);
                 holding.setInvestedAmount(holding.getInvestedAmount() + sipTotalInvested);
                 totalInvested += sipTotalInvested;
@@ -302,7 +303,7 @@ public class PortfolioService {
             
             if ("BUY".equalsIgnoreCase(type) || "Lumpsum".equalsIgnoreCase(type)) {
                 double units = (inv.getUnits() != null && inv.getUnits() > 0) ? inv.getUnits() : 
-                              (inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0 ? (inv.getAmountInvested() != null ? inv.getAmountInvested() : inv.getAmount()) / inv.getNavAtBuy() : 0.0);
+                              (inv.getNavAtBuy() != null && inv.getNavAtBuy() > 0 ? (inv.getAmount() != null ? inv.getAmount() : inv.getAmountInvested()) / inv.getNavAtBuy() : 0.0);
                 unitChangesByFund.get(fundId).add(new UnitChange(inv.getBuyDate() != null ? inv.getBuyDate() : inv.getStartDate(), units));
                 
             } else if ("SELL".equalsIgnoreCase(type)) {
@@ -318,7 +319,7 @@ public class PortfolioService {
                 if (end.isAfter(today)) end = today;
                 
                 String freq = inv.getFrequency() != null ? inv.getFrequency() : "Monthly";
-                double amount = inv.getAmountInvested() != null ? inv.getAmountInvested() : (inv.getAmount() != null ? inv.getAmount() : 0.0);
+                double amount = inv.getAmount() != null ? inv.getAmount() : (inv.getAmountInvested() != null ? inv.getAmountInvested() : 0.0);
                 
                 LocalDate current = start;
                 while (!current.isAfter(end)) {

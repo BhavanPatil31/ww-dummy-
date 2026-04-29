@@ -47,7 +47,6 @@ export default function Portfolio({ user, currency = 'INR' }) {
     const [loadingSellNav, setLoadingSellNav] = useState(false);
     const [actionStatus, setActionStatus] = useState({ type: '', message: '' });
     const [sortConfig, setSortConfig] = useState({ key: 'buy_date', dir: 'desc' });
-    const [chartMode, setChartMode] = useState('absolute'); // 'absolute' or 'percentage'
 
     const fetchInvestments = useCallback(async () => {
         setLoading(true);
@@ -247,22 +246,10 @@ export default function Portfolio({ user, currency = 'INR' }) {
     };
 
     const chartData = generateChartData();
-    const finalChartData = useMemo(
-        () =>
-            chartData.map((entry, index) => ({
-                ...entry,
-                chartId: `F${index + 1}`,
-                performanceRange: Math.abs((entry.current || 0) - (entry.invested || 0)),
-                type: entry.pnl >= 0 ? 'Profit' : 'Loss'
-            })),
-        [chartData]
-    );
-
     const PnLTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
             const isProfit = d.pnl >= 0;
-            const pnlColor = isProfit ? '#10b981' : '#f43f5e';
 
             return (
                 <div style={{ background: 'rgba(10,15,30,0.97)', padding: '12px 16px', border: `1px solid ${isProfit ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: '180px' }}>

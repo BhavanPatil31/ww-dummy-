@@ -133,24 +133,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
     }, []);
 
     // ── Generate chart history ────────────────────────────────────
-    const generateHistory = useCallback((baseVal, tf) => {
-        const points = tf === '1W' ? 7 : tf === '1M' ? 30 : tf === '6M' ? 180 : tf === '1Y' ? 365 : 730;
-        const data = [];
-        let base = baseVal * 0.78;
-        const now = new Date();
-        for (let i = points; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(now.getDate() - i);
-            base = Math.max(base + (Math.random() - 0.44) * (baseVal * 0.014), baseVal * 0.5);
-            data.push({
-                date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-                value: parseFloat(base.toFixed(2))
-            });
-        }
-        if (data.length > 0) data[data.length - 1].value = baseVal;
-        return data;
-    }, []);
-
     // ── Fetch data ───────────────────────────────────────────────
     const fetchAllData = useCallback(async () => {
         if (!user) return;
@@ -169,7 +151,9 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         try {
             const r = await axios.get(`http://localhost:8088/api/investments/user/${userId}/active`, { headers });
             invData = r.data || [];
-        } catch { }
+        } catch {
+            // optional source endpoint
+        }
 
         let dbData = null;
         try {

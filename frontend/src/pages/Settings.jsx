@@ -10,7 +10,7 @@ import HelpSupport from '../components/HelpSupport';
 import DeletedHistory from '../components/DeletedHistory';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme }) {
+export default function Settings({ user }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
@@ -43,13 +43,6 @@ export default function Settings({ user, theme, setTheme }) {
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });
-
-    // 5. Help & Support State
-    const [feedbackForm, setFeedbackForm] = useState({
-        type: 'General',
-        message: ''
-    });
-    const [feedbackStatus, setFeedbackStatus] = useState('');
 
     // --- HANDLERS ---
     const handlePasswordChange = (e) => {
@@ -147,31 +140,6 @@ export default function Settings({ user, theme, setTheme }) {
             setIsDeleting(false);
             setShowDeleteModal(false);
             setDeleteInput("");
-        }
-    };
-
-    const handleFeedbackSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setFeedbackStatus('');
-        try {
-            const token = localStorage.getItem('jwt_token');
-            const headers = { Authorization: `Bearer ${token}` };
-            const uid = user?.userId || user?.id;
-
-            await axios.post('http://localhost:8088/api/feedback/submit', {
-                userId: uid,
-                type: feedbackForm.type,
-                message: feedbackForm.message
-            }, { headers });
-
-            setFeedbackStatus('Success');
-            setFeedbackForm({ type: 'General', message: '' });
-            setTimeout(() => setFeedbackStatus(''), 3000);
-        } catch (error) {
-            setFeedbackStatus('Error');
-        } finally {
-            setIsLoading(false);
         }
     };
 

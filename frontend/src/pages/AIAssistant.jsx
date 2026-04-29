@@ -136,7 +136,7 @@ export default function AIAssistant({ user }) {
             {messages.map((msg) => (
               <div key={msg.id} className={`message-row ${msg.role}`}>
                 <div className="avatar">
-                  {msg.role === "assistant" ? "AI" : "You"}
+                  {msg.role === "assistant" ? "AI" : "YOU"}
                 </div>
                 <div className="bubble">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>

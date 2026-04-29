@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import {
     FiFileText, FiDownload, FiCalendar,
-    FiTrendingUp, FiTrendingDown, FiFilter, FiInfo
+    FiTrendingUp, FiTrendingDown, FiFilter
 } from 'react-icons/fi';
 import InfoHint from '../components/InfoHint';
 import { jsPDF } from 'jspdf';
@@ -10,7 +10,7 @@ import autoTable from 'jspdf-autotable';
 import { formatCurrency as formatCurrencyValue } from '../utils/currencyUtils';
 import '../styles/TaxSummary.css';
 
-export default function TaxSummary({ user, investments = [], currency = 'INR', onOpenCAS }) {
+export default function TaxSummary({ user, investments = [], currency = 'INR' }) {
     const [selectedYear, setSelectedYear] = useState(
         () => {
             const today = new Date();
@@ -304,7 +304,7 @@ export default function TaxSummary({ user, investments = [], currency = 'INR', o
                             <option value="2022-2023">FY 2022 - 2023</option>
                         </select>
                     </div>
-                    <p className="ww-card-help"><FiInfo /> Assesment Year: {parseInt(selectedYear.substring(0, 4)) + 1}-{parseInt(selectedYear.substring(5, 9)) + 1}</p>
+                    <p className="ww-card-help">Assesment Year: {parseInt(selectedYear.substring(0, 4)) + 1}-{parseInt(selectedYear.substring(5, 9)) + 1}</p>
                 </div>
 
                 {/* LTCG Summary Card */}

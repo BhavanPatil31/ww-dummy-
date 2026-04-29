@@ -7,7 +7,6 @@ import {
 import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
 import InfoHint from '../components/InfoHint';
-import { getCurrencySymbol } from '../utils/currencyUtils';
 const currencyIcons = { INR: FiDollarSign, USD: FiDollarSign, EUR: FiDollarSign, GBP: FiDollarSign };
 
 // ── Module-level constants ──────────────────────────────────────────────
@@ -119,7 +118,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
     // ── Submission ─────────────────────────────────────────────────────────
     const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
-    const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
     const navValue = parseFloat(formData.nav);
