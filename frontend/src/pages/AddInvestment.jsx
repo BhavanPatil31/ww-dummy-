@@ -160,8 +160,8 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                 console.log(`[AddInvestment] Dropdown ready: ${formatted.length} funds`);
             } catch (err) {
                 console.error('[AddInvestment] Fund list fetch failed:', err);
-                setFundsError('Could not load fund list. Using fallback data.');
                 setAllFunds(FALLBACK_FUNDS);
+                setFundsError('');
             } finally {
                 setLoadingFunds(false);
             }
@@ -394,7 +394,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         }
 
         const payload = {
-            user_id:         user?.userId || user?.id,
+            user_id:         userId,
             fund_id:         parseInt(formData.fund_id),
             investment_type: type === 'Lumpsum' ? 'BUY' : type,
             amount:          parseFloat(formData.amount),
@@ -492,16 +492,14 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
             {/* Toast */}
 
-            <header className="page-header">
-                <h1>Add Investment</h1>
-                <p>Track a new mutual fund SIP or lump-sum investment</p>
-            </header>
-
             <div className="add-investment-layout">
 
                 {/* ── FORM ────────────────────────────────────────────── */}
                 <div className="form-section">
                     <div className="premium-card">
+                        {showSuggestions && !loadingFunds && (
+                            <div className="funds-dropdown-backdrop" aria-hidden="true" />
+                        )}
 
                         {status.success ? (
                             <div className="success-state">

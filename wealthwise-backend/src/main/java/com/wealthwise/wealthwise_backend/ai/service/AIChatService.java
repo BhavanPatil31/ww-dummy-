@@ -16,11 +16,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.NumberFormat;
+import java.net.UnknownHostException;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,7 +76,8 @@ public class AIChatService {
 
         if (geminiApiKey == null || geminiApiKey.isBlank()) {
             log.warn("Gemini API key is not configured, using local fallback response.");
-            return buildFallbackReply(user, message, portfolio, goals, taxSummary, currentFinancialYear);
+            return buildFallbackReply(user, message, portfolio, goals, taxSummary, currentFinancialYear,
+                    "Gemini API key is missing or blank");
         }
 
         Map<String, Object> payload = buildGeminiRequest(buildSystemPrompt(user, portfolio, goals, taxSummary, currentFinancialYear), message);
@@ -101,8 +105,9 @@ public class AIChatService {
             }
             return reply.trim();
         } catch (Exception ex) {
-            log.warn("Gemini AI request failed, falling back to local response: {}", ex.getMessage());
-            return buildFallbackReply(user, message, portfolio, goals, taxSummary, currentFinancialYear);
+            String reason = describeGeminiFailure(ex);
+            log.warn("Gemini AI request failed, falling back to local response: {}", reason, ex);
+            return buildFallbackReply(user, message, portfolio, goals, taxSummary, currentFinancialYear, reason);
         }
     }
 
@@ -341,10 +346,12 @@ public class AIChatService {
             PortfolioDTO portfolio,
             List<Goal> goals,
             List<TaxTransactionDTO> taxSummary,
-            String currentFinancialYear
+            String currentFinancialYear,
+            String reason
     ) {
         String lowerMessage = message == null ? "" : message.toLowerCase(Locale.ROOT);
         String userName = safe(user.getName());
+        String diagnostic = (reason == null || reason.isBlank()) ? "Gemini is temporarily unavailable" : reason;
 
         if (lowerMessage.contains("tax")) {
             double totalGain = taxSummary == null ? 0.0 : taxSummary.stream()
@@ -353,7 +360,9 @@ public class AIChatService {
             int taxCount = taxSummary == null ? 0 : taxSummary.size();
             return new StringBuilder()
                     .append("### Local Tax Snapshot\n\n")
-                    .append("I'm having trouble reaching the live AI service right now, so I'm using your WealthWise data only.\n\n")
+                    .append("I'm having trouble reaching the live AI service right now.\n\n")
+                    .append("**Live status:** ").append(diagnostic).append("\n\n")
+                    .append("I'm using your WealthWise data only.\n\n")
                     .append("**For ").append(userName).append("**\n")
                     .append("- **Financial year:** ").append(currentFinancialYear).append("\n")
                     .append("- **Tax transactions tracked:** ").append(taxCount).append("\n")
@@ -370,7 +379,9 @@ public class AIChatService {
             int goalCount = goals == null ? 0 : goals.size();
             return new StringBuilder()
                     .append("### Local Goal Snapshot\n\n")
-                    .append("I'm offline from the external AI provider right now, but I can still help with your goals, ")
+                    .append("I'm offline from the external AI provider right now.\n\n")
+                    .append("**Live status:** ").append(diagnostic).append("\n\n")
+                    .append("I can still help with your goals, ")
                     .append(userName)
                     .append(".\n\n")
                     .append("- **Goals tracked:** ").append(goalCount).append("\n")
@@ -387,6 +398,7 @@ public class AIChatService {
             return new StringBuilder()
                     .append("### Local Portfolio Snapshot\n\n")
                     .append("I'm currently using a local fallback because the external AI endpoint is unavailable.\n\n")
+                    .append("**Live status:** ").append(diagnostic).append("\n\n")
                     .append("**For ").append(userName).append("**\n")
                     .append("- **Total invested:** ").append(formatCurrency(portfolio.getTotalInvested())).append("\n")
                     .append("- **Current value:** ").append(formatCurrency(portfolio.getPortfolioValue())).append("\n")
@@ -399,12 +411,42 @@ public class AIChatService {
 
         return new StringBuilder()
                 .append("### Local Fallback Active\n\n")
-                .append("I'm having trouble reaching the live AI service right now, so I'm using a local fallback.\n\n")
+                .append("I'm having trouble reaching the live AI service right now.\n\n")
+                .append("**Live status:** ").append(diagnostic).append("\n\n")
+                .append("I'm using a local fallback.\n\n")
                 .append("**Current snapshot**\n")
                 .append("- **Total invested:** ").append(formatCurrency(portfolio.getTotalInvested())).append("\n")
                 .append("- **Current value:** ").append(formatCurrency(portfolio.getPortfolioValue())).append("\n")
                 .append("- **Active goals:** ").append(goals == null ? 0 : goals.size()).append("\n\n")
                 .append("Ask me about your portfolio, goals, or taxes and I'll summarize what is already in your WealthWise data.")
                 .toString();
+    }
+
+    private String describeGeminiFailure(Throwable ex) {
+        Throwable root = ex;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+
+        if (root instanceof UnknownHostException) {
+            return "DNS/network lookup failed for Gemini. Check internet access or corporate firewall settings.";
+        }
+
+        if (root instanceof WebClientResponseException webEx) {
+            if (webEx.getStatusCode().value() == 401 || webEx.getStatusCode().value() == 403) {
+                return "Gemini rejected the API key or the API is not enabled for this project.";
+            }
+            if (webEx.getStatusCode().value() == 429) {
+                return "Gemini quota or rate limit was reached.";
+            }
+            return "Gemini returned HTTP " + webEx.getStatusCode().value() + ".";
+        }
+
+        if (root instanceof WebClientRequestException) {
+            return "The backend could not connect to Gemini: " + safe(root.getMessage());
+        }
+
+        String message = root.getMessage();
+        return (message == null || message.isBlank()) ? root.getClass().getSimpleName() : message;
     }
 }

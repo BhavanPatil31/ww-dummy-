@@ -1121,7 +1121,7 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
                     ) : activeView === 'settings' ? (
                         <Settings user={user} theme={theme} setTheme={setTheme} currency={currency} setCurrency={setCurrency} />
                     ) : activeView === 'ai-assistant' ? (
-                        <AIAssistant user={user} />
+                        <AIAssistant user={user} onLogout={onLogout} />
                     ) : null}
                 </div>
                 <input
