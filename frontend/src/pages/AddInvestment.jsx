@@ -2,12 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
     FiCalendar, FiSearch, FiTrendingUp, FiInfo,
-    FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiDollarSign
+    FiCheckCircle, FiAlertTriangle, FiAlertCircle
 } from 'react-icons/fi';
 import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
 import InfoHint from '../components/InfoHint';
-const currencyIcons = { INR: FiDollarSign, USD: FiDollarSign, EUR: FiDollarSign, GBP: FiDollarSign };
 
 // ── Module-level constants ──────────────────────────────────────────────
 const NAV_OUTDATED_DAYS = 30;
@@ -73,8 +72,7 @@ const FALLBACK_NAV_BY_CODE = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
-    // pick icon dynamically
-    const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
+    const currencySymbol = currencySymbols[currency] || '₹';
 
     // ── Fund list ──────────────────────────────────────────────────────────
     const [allFunds,     setAllFunds]     = useState([]);
@@ -605,9 +603,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     <div className="form-group">
                                         <label>Amount (₹)</label>
                                         <div className="input-wrapper">
-                                            <CurrencyIcon className="input-icon" />
-
-                                            <span className="currency-prefix"></span>
+                                            <span className="currency-prefix">{currencySymbol}</span>
                                             <input
                                                 id="amount"
                                                 type="number"

@@ -21,7 +21,10 @@ function App() {
     }
   });
 
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    return savedTheme === "light" ? "light" : "dark";
+  });
 
   const [currency, setCurrency] = useState(() => {
     const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
@@ -43,13 +46,13 @@ function App() {
   const [showForgot, setShowForgot] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
 
-  // ✅ Theme handling (Locked to dark mode)
+  // ✅ Theme handling
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("theme-light");
-    root.classList.add("theme-dark");
-    localStorage.setItem(THEME_STORAGE_KEY, "dark");
-  }, []);
+    root.classList.remove("theme-light", "theme-dark");
+    root.classList.add(theme === "light" ? "theme-light" : "theme-dark");
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   // ✅ Persist page changes
   useEffect(() => {
@@ -101,6 +104,7 @@ function App() {
                     theme={theme}
                     setTheme={setTheme}
                     currency={currency}
+                    setCurrency={setCurrency}
                 />
             )}
 

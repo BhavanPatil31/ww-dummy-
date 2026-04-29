@@ -139,25 +139,35 @@
 }
 
 .user .bubble {
-    background: var(--accent-user);
-    color: var(--button-text);
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #ffffff;
     border-top-right-radius: 4px;
+    box-shadow: 0 12px 28px rgba(5, 150, 105, 0.18);
 }
 
 .theme-light .user .bubble {
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(59, 130, 246, 0.92));
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.95), rgba(16, 185, 129, 0.9));
     color: #ffffff;
+}
+
+.user .bubble strong {
+    color: inherit;
 }
 
 /* Markdown Styling inside Bubbles */
 .bubble h3 {
     color: var(--accent-ai);
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+}
+
+.bubble p {
+    margin: 0.45rem 0;
 }
 
 .bubble ul {
-    padding-left: 1.2rem;
-    margin: 0.5rem 0;
+    padding-left: 1.15rem;
+    margin: 0.55rem 0 0.75rem 0;
 }
 
 .bubble li {
@@ -167,6 +177,19 @@
 .bubble strong {
     color: var(--text-primary);
     font-weight: 600;
+}
+
+.bubble blockquote {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid var(--accent-ai);
+    background: rgba(56, 189, 248, 0.08);
+    border-radius: 0 12px 12px 0;
+    color: var(--text-secondary);
+}
+
+.bubble blockquote p {
+    margin: 0;
 }
 
 .theme-light .assistant .bubble,

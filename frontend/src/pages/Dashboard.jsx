@@ -247,23 +247,6 @@ export default function Dashboard({ user, onLogout, onProfileUpdate, theme, setT
         });
     }, [investments]);
 
-    const goalsPreview = useMemo(() => {
-        return (goals || []).slice(0, 3).map((goal, index) => {
-            const target = Number(goal.target_amount || goal.targetAmount || 0);
-            const progress = Number(goal.progress || 0);
-            const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
-            return {
-                key: goal.goal_id || goal.id || index,
-                name: goal.goal_name || goal.goalName || `Goal ${index + 1}`,
-                pct,
-                cur: formatCurrency(progress),
-                total: formatCurrency(target),
-                rem: formatCurrency(Math.max(0, target - progress)),
-                color: ['blue', 'purple', 'green'][index % 3]
-            };
-        });
-    }, [goals, formatCurrency]);
-
     useEffect(() => {
         if (user && (activeView === 'dashboard' || activeView === 'tax' || activeView === 'goals')) {
             const timer = setTimeout(() => {

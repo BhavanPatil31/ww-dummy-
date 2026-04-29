@@ -344,7 +344,7 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                 setLinkError('');
                 setModalDropdownOpen(false);
                 return;
-            } catch (shapeError) {
+            } catch {
                 // Final shape retry: omit progress for backends that compute it server-side.
                 try {
                     await axios.put(
@@ -408,14 +408,11 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
         }
     };
 
-    const calculateProgress = React.useCallback((linked) => {
+    const calculateProgress = useCallback((linked) => {
         if (!linked || !linked.length || !investments?.length) return 0;
-    const calculateProgress = (linked) => {
-        if (!linked || !linked.length) return 0;
         let sum = 0;
         linked.forEach(item => {
-            // item can be an ID (from form) or an object (from backend)
-            const id = item.investment_id || item;
+            const id = item?.investment_id || item;
             const inv = investments.find(i => String(i.investment_id || i.id || i.investmentId) === String(id));
             if (inv) {
                 if (getCurrentValue) {
@@ -600,80 +597,6 @@ export default function GoalPlanning({ user, investments, getCurrentValue, curre
                 )}
                 </div>
             </div>
-
-            {/* Investments */}
-            {investments && investments.filter(inv => inv.status !== 'SOLD').length > 0 && (
-                    <div className="goal-card" style={{ marginTop: '24px' }}>
-                        <h3 style={{ marginBottom: '16px', fontSize: '18px', color: '#f8fafc' }}>Investments</h3>
-                        <div className="goal-table-wrapper">
-                            <table className="goal-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Sl No</th>
-                                            <th>Fund Name</th>
-                                            <th>Target Amount (Est.)</th>
-                                            <th>End Year</th>
-                                            <th>Type</th>
-                                            <th>Progress</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    {investments.filter(inv => inv.status !== 'SOLD').map((inv, idx) => {
-                                            const start = new Date(inv.start_date || inv.buy_date);
-                                            const end = inv.end_date ? new Date(inv.end_date) : null;
-                                            let targetAmt = parseFloat(inv.amount || 0);
-
-                                            if (inv.end_date) {
-                                                if (inv.frequency === 'Monthly') {
-                                                    let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
-                                                    targetAmt = targetAmt * (m > 0 ? m : 1);
-                                                } else if (inv.frequency === 'Yearly') {
-                                                    let y = end.getFullYear() - start.getFullYear();
-                                                    targetAmt = targetAmt * (y > 0 ? y : 1);
-                                                } else if (inv.frequency === 'Weekly') {
-                                                    let w = Math.floor((end - start) / (1000 * 60 * 60 * 24 * 7));
-                                                    targetAmt = targetAmt * (w > 0 ? w : 1);
-                                                } else if (inv.frequency === 'Quarterly') {
-                                                    let m = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
-                                                    let q = Math.floor(m / 3);
-                                                    targetAmt = targetAmt * (q > 0 ? q : 1);
-                                                }
-                                            }
-
-                                            const progressVal = getCurrentValue ? getCurrentValue(inv) : parseFloat(inv.amount || 0);
-                                            let percentage = targetAmt > 0 ? (progressVal / targetAmt) * 100 : 0;
-                                            if (percentage > 100) percentage = 100;
-                                            if (isNaN(percentage)) percentage = 0;
-
-                                            return (
-                                                <tr key={`term-${inv.investment_id || idx}`}>
-                                                    <td>{idx + 1}</td>
-                                                    <td style={{ fontWeight: 500 }}>{inv.scheme_name || `Fund #${inv.fund_id}`}</td>
-                                                    <td style={{ color: '#f8fafc' }}>{fmt(targetAmt)}</td>
-                                                    <td>{end ? end.getFullYear() : '-'}</td>
-                                                    <td style={{ color: '#94a3b8' }}>{inv.investment_type || 'Unknown'}</td>
-                                                    <td style={{ width: '200px' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                            <span className="goal-progress-text">{fmt(progressVal)}</span>
-                                                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{percentage.toFixed(1)}%</span>
-                                                        </div>
-                                                        <div className="goal-progress-container">
-                                                            <div className="goal-progress-bar" style={{ width: `${percentage}%` }}></div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Auto-tracked</span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                        </div>
-                    </div>
-                )}
-            
 
             {/* Edit Modal Overlay */ }
     {
