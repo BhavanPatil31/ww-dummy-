@@ -22,6 +22,12 @@ import java.util.stream.Collectors;
 @Service
 public class PortfolioService {
 
+    private static final int XIRR_MAX_ITERATIONS = 100;
+    private static final double XIRR_TOLERANCE = 1e-7;
+    private static final double XIRR_DERIVATIVE_EPSILON = 1e-12;
+    private static final double XIRR_MIN_RATE = -0.999999;
+    private static final double XIRR_MAX_ABS_PERCENT = 1000.0;
+
     @Autowired
     private PortfolioRepository portfolioRepository;
 
@@ -416,28 +422,69 @@ public class PortfolioService {
     private double calculateXirr(List<CashFlow> cashFlows) {
         if (cashFlows == null || cashFlows.size() < 2) return 0.0;
 
-        LocalDate start = cashFlows.stream().map(CashFlow::getDate).min(LocalDate::compareTo).orElse(LocalDate.now());
-        boolean hasPositive = cashFlows.stream().anyMatch(cf -> cf.getAmount() > 0);
-        boolean hasNegative = cashFlows.stream().anyMatch(cf -> cf.getAmount() < 0);
+        List<CashFlow> validCashFlows = cashFlows.stream()
+                .filter(cf -> cf != null
+                        && cf.getDate() != null
+                        && Double.isFinite(cf.getAmount())
+                        && Math.abs(cf.getAmount()) > 0.000001)
+                .sorted(Comparator.comparing(CashFlow::getDate))
+                .collect(Collectors.toList());
+
+        if (validCashFlows.size() < 2) return 0.0;
+
+        boolean hasPositive = validCashFlows.stream().anyMatch(cf -> cf.getAmount() > 0);
+        boolean hasNegative = validCashFlows.stream().anyMatch(cf -> cf.getAmount() < 0);
         if (!hasPositive || !hasNegative) return 0.0;
 
-        double rate = 0.10;
-        for (int i = 0; i < 100; i++) {
+        LocalDate start = validCashFlows.get(0).getDate();
+        LocalDate end = validCashFlows.get(validCashFlows.size() - 1).getDate();
+        if (!end.isAfter(start)) return 0.0;
+
+        double scale = validCashFlows.stream().mapToDouble(cf -> Math.abs(cf.getAmount())).sum();
+        double[] guesses = { 0.10, 0.0, 0.25, -0.10 };
+
+        for (double guess : guesses) {
+            Double rate = solveXirrNewton(validCashFlows, start, guess, scale);
+            if (rate == null) continue;
+
+            double percentage = rate * 100.0;
+            if (Double.isFinite(percentage) && Math.abs(percentage) <= XIRR_MAX_ABS_PERCENT) {
+                return percentage;
+            }
+        }
+
+        return 0.0;
+    }
+
+    private Double solveXirrNewton(List<CashFlow> cashFlows, LocalDate start, double initialGuess, double scale) {
+        double rate = initialGuess;
+
+        for (int i = 0; i < XIRR_MAX_ITERATIONS; i++) {
+            if (!Double.isFinite(rate) || rate <= XIRR_MIN_RATE) return null;
+
             double f = xnpv(rate, cashFlows, start);
             double df = xnpvDerivative(rate, cashFlows, start);
-            if (Math.abs(df) < 1e-12) break;
-            double next = rate - f / df;
-            if (Double.isNaN(next) || Double.isInfinite(next) || next <= -0.999999) break;
-            if (Math.abs(next - rate) < 1e-7) {
-                rate = next;
-                break;
+            if (!Double.isFinite(f) || !Double.isFinite(df) || Math.abs(df) < XIRR_DERIVATIVE_EPSILON) {
+                return null;
             }
+
+            double next = rate - f / df;
+            if (!Double.isFinite(next) || next <= XIRR_MIN_RATE) return null;
+
+            if (Math.abs(next - rate) < XIRR_TOLERANCE) {
+                double residual = Math.abs(xnpv(next, cashFlows, start));
+                double allowedResidual = Math.max(1.0, scale) * XIRR_TOLERANCE;
+                return residual <= allowedResidual ? next : null;
+            }
+
             rate = next;
         }
-        return rate * 100.0;
+
+        return null;
     }
 
     private double xnpv(double rate, List<CashFlow> cashFlows, LocalDate start) {
+        if (rate <= XIRR_MIN_RATE) return Double.NaN;
         double total = 0.0;
         for (CashFlow cf : cashFlows) {
             long days = ChronoUnit.DAYS.between(start, cf.getDate());
@@ -448,6 +495,7 @@ public class PortfolioService {
     }
 
     private double xnpvDerivative(double rate, List<CashFlow> cashFlows, LocalDate start) {
+        if (rate <= XIRR_MIN_RATE) return Double.NaN;
         double total = 0.0;
         for (CashFlow cf : cashFlows) {
             long days = ChronoUnit.DAYS.between(start, cf.getDate());
@@ -558,4 +606,3 @@ public class PortfolioService {
         return null;
     }
 }
-
