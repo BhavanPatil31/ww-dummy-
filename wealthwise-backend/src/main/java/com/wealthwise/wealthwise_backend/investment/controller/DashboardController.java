@@ -42,7 +42,7 @@ public class DashboardController {
             }
 
             InvestmentValuationService.Valuation valuation = investmentValuationService.value(inv, java.time.LocalDate.now());
-            double currentInvested = valuation.getInvestedAmount().doubleValue();
+            double currentInvested = getStoredInvestedAmount(inv);
             double currentVal = valuation.getCurrentValue().doubleValue();
 
             totalInvested += currentInvested;
@@ -69,6 +69,19 @@ public class DashboardController {
         response.put("assetAllocation", assetAllocation);
 
         return response;
+    }
+
+    private double getStoredInvestedAmount(Investment inv) {
+        if (inv == null) {
+            return 0.0;
+        }
+        if (inv.getAmountInvested() != null && inv.getAmountInvested() > 0) {
+            return inv.getAmountInvested();
+        }
+        if (inv.getAmount() != null && inv.getAmount() > 0) {
+            return inv.getAmount();
+        }
+        return 0.0;
     }
 
     @GetMapping("/{userId}/history")

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
     FiShield, FiBell, FiMonitor, FiLock,
-    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle, FiAlertTriangle
+    FiSmartphone, FiEye, FiDownload, FiTrash2, FiSave, FiCheckCircle, FiAlertTriangle,
+    FiSun, FiMoon, FiSliders, FiChevronRight, FiCheck
 } from 'react-icons/fi';
 import axios from 'axios';
 import InfoHint from '../components/InfoHint';
@@ -10,7 +11,7 @@ import HelpSupport from '../components/HelpSupport';
 import DeletedHistory from '../components/DeletedHistory';
 import '../styles/Settings.css';
 
-export default function Settings({ user, theme, setTheme }) {
+export default function Settings({ user, theme = 'dark', setTheme, currency = 'INR', setCurrency }) {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('security');
     const [isLoading, setIsLoading] = useState(false);
@@ -36,20 +37,39 @@ export default function Settings({ user, theme, setTheme }) {
         promo: false
     });
 
-    // 3. Appearance State
-    const [currency, setCurrency] = useState('USD');
-
-    // 4. Privacy State
+    // 3. Privacy State
     const [privacy, setPrivacy] = useState({
         profileVisibility: true
     });
 
-    // 5. Help & Support State
-    const [feedbackForm, setFeedbackForm] = useState({
-        type: 'General',
-        message: ''
-    });
-    const [feedbackStatus, setFeedbackStatus] = useState('');
+    const isLightTheme = theme === 'light';
+    const updateTheme = (nextTheme) => {
+        if (typeof setTheme === 'function') {
+            setTheme(nextTheme);
+        }
+    };
+
+    const themeOptions = [
+        {
+            id: 'light',
+            title: 'Light mode',
+            description: 'Bright surfaces, crisp contrast, and a clean day-view layout.',
+            icon: <FiSun />
+        },
+        {
+            id: 'dark',
+            title: 'Dark mode',
+            description: 'Low-light friendly with a polished fintech-style interface.',
+            icon: <FiMoon />
+        }
+    ];
+
+    const currencyOptions = [
+        { value: 'INR', label: 'INR', symbol: '₹', name: 'Indian Rupee' },
+        { value: 'USD', label: 'USD', symbol: '$', name: 'US Dollar' },
+        { value: 'EUR', label: 'EUR', symbol: '€', name: 'Euro' },
+        { value: 'GBP', label: 'GBP', symbol: '£', name: 'British Pound' }
+    ];
 
     // --- HANDLERS ---
     const handlePasswordChange = (e) => {
@@ -147,31 +167,6 @@ export default function Settings({ user, theme, setTheme }) {
             setIsDeleting(false);
             setShowDeleteModal(false);
             setDeleteInput("");
-        }
-    };
-
-    const handleFeedbackSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setFeedbackStatus('');
-        try {
-            const token = localStorage.getItem('jwt_token');
-            const headers = { Authorization: `Bearer ${token}` };
-            const uid = user?.userId || user?.id;
-
-            await axios.post('http://localhost:8088/api/feedback/submit', {
-                userId: uid,
-                type: feedbackForm.type,
-                message: feedbackForm.message
-            }, { headers });
-
-            setFeedbackStatus('Success');
-            setFeedbackForm({ type: 'General', message: '' });
-            setTimeout(() => setFeedbackStatus(''), 3000);
-        } catch (error) {
-            setFeedbackStatus('Error');
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -314,6 +309,113 @@ export default function Settings({ user, theme, setTheme }) {
                     </Motion.div>
                 );
 
+            case 'appearance':
+                return (
+                    <Motion.div {...pageTransition}>
+                        <div className="settings-section-header">
+                            <h2>Appearance <InfoHint text="Switch between light and dark modes for the app." /></h2>
+                            <p>Customize how WealthWise looks across the dashboard and settings.</p>
+                        </div>
+
+                        <div className="appearance-layout">
+                            <div className="appearance-panel appearance-theme-panel">
+                                <div className="appearance-panel-heading">
+                                    <div>
+                                        <h3><FiSliders /> Theme mode</h3>
+                                        <p>Set the visual tone of the app and keep it consistent across sessions.</p>
+                                    </div>
+                                    <span className="appearance-status-chip">{isLightTheme ? 'Light active' : 'Dark active'}</span>
+                                </div>
+
+                                <div className="appearance-theme-grid">
+                                    {themeOptions.map((option) => {
+                                        const active = theme === option.id;
+                                        return (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                className={`appearance-theme-card ${active ? 'active' : ''}`}
+                                                onClick={() => updateTheme(option.id)}
+                                            >
+                                                <div className="appearance-theme-card-top">
+                                                    <span className="appearance-theme-icon">{option.icon}</span>
+                                                    <span className="appearance-theme-check">
+                                                        {active ? <FiCheck /> : <FiChevronRight />}
+                                                    </span>
+                                                </div>
+                                                <strong>{option.title}</strong>
+                                                <p>{option.description}</p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="appearance-panel appearance-currency-panel">
+                                <div className="appearance-panel-heading">
+                                    <h3><FiMonitor /> Default currency</h3>
+                                    <p>Choose the currency used to display portfolio and goal values.</p>
+                                </div>
+                                <select
+                                    id="appearance-currency"
+                                    className="appearance-select"
+                                    value={currency}
+                                    onChange={(e) => typeof setCurrency === 'function' && setCurrency(e.target.value)}
+                                >
+                                    <option value="INR">₹ INR (Indian Rupee)</option>
+                                    <option value="USD">$ USD (US Dollar)</option>
+                                    <option value="EUR">€ EUR (Euro)</option>
+                                    <option value="GBP">£ GBP (British Pound)</option>
+                                </select>
+                                <div className="appearance-summary">
+                                    <span>Current selection</span>
+                                    <strong>{currencyOptions.find((option) => option.value === currency)?.symbol || '₹'} {currency}</strong>
+                                    <p>This preference updates the display currency throughout the dashboard and settings.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="appearance-preview">
+                            <div className="appearance-preview-header">
+                                <div>
+                                    <h3>Live preview</h3>
+                                    <p>See the active theme at a glance.</p>
+                                </div>
+                                <span className="appearance-preview-badge">Applied globally</span>
+                            </div>
+
+                            <div className="appearance-preview-card">
+                                <div className="appearance-preview-topline">
+                                    <span className="preview-dot preview-dot-accent"></span>
+                                    <span className="preview-dot"></span>
+                                    <span className="preview-dot"></span>
+                                </div>
+
+                                <div className="appearance-preview-body">
+                                    <div>
+                                        <p className="appearance-preview-kicker">Portfolio snapshot</p>
+                                        <h4>WealthWise dashboard</h4>
+                                    </div>
+
+                                    <div className="appearance-preview-metrics">
+                                        <div>
+                                            <span>Total value</span>
+                                            <strong>₹12,48,900</strong>
+                                        </div>
+                                        <div>
+                                            <span>Monthly growth</span>
+                                            <strong className="preview-positive">+8.4%</strong>
+                                        </div>
+                                        <div>
+                                            <span>Theme</span>
+                                            <strong>{isLightTheme ? 'Light mode' : 'Dark mode'}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Motion.div>
+                );
 
             case 'privacy':
                 return (
@@ -335,34 +437,6 @@ export default function Settings({ user, theme, setTheme }) {
                             >
                                 <div className="switch-handle"></div>
                             </div>
-                        </div>
-
-                        <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                            <div className="setting-info">
-                                <h4>Default Currency</h4>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0' }}>Choose the currency for displaying your portfolio value.</p>
-                            </div>
-                            <select
-                                className="settings-select"
-                                value={currency}
-                                onChange={(e) => setCurrency(e.target.value)}
-                                style={{
-                                    padding: '0.6rem 1rem',
-                                    borderRadius: '8px',
-                                    background: 'var(--bg-secondary)',
-                                    color: 'var(--text-primary)',
-                                    border: '1px solid var(--border-color)',
-                                    outline: 'none',
-                                    cursor: 'pointer',
-                                    minWidth: '180px',
-                                    fontSize: '0.9rem'
-                                }}
-                            >
-                                <option value="INR">₹ INR (Indian Rupee)</option>
-                                <option value="USD">$ USD (US Dollar)</option>
-                                <option value="EUR">€ EUR (Euro)</option>
-                                <option value="GBP">£ GBP (British Pound)</option>
-                            </select>
                         </div>
 
                         <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
@@ -561,4 +635,3 @@ export default function Settings({ user, theme, setTheme }) {
         </div>
     );
 }
-

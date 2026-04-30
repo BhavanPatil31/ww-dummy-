@@ -17,7 +17,25 @@ const FAQ_LIST = [
   "What was my best performing fund?"
 ];
 
-export default function AIAssistant({ user }) {
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+};
+
+const isJwtExpired = (token) => {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return false;
+  return Date.now() >= payload.exp * 1000;
+};
+
+export default function AIAssistant({ user, onLogout }) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -53,6 +71,20 @@ export default function AIAssistant({ user }) {
     setMessages((prev) => [...prev, { id: Date.now(), role, text }]);
   };
 
+  const handleSessionExpired = (message) => {
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("wealthwise_user");
+    localStorage.removeItem("wealthwise_current_page");
+    localStorage.removeItem("activeView");
+
+    if (typeof onLogout === "function") {
+      onLogout();
+      return;
+    }
+
+    appendMessage("assistant", message || "Your session has expired. Please log in again.");
+  };
+
   const requestClearChat = () => {
     setShowConfirm(true);
   };
@@ -69,9 +101,15 @@ export default function AIAssistant({ user }) {
     const message = forcedMessage || input.trim();
     if (!message || isSending) return;
 
-    const userId = user?.userId || user?.id;
+    const userId = user?.userId || user?.user_id || user?.id;
     if (!userId) {
       appendMessage("assistant", "⚠️ Session expired. Please log in.");
+      return;
+    }
+
+    const token = localStorage.getItem("jwt_token");
+    if (!token || isJwtExpired(token)) {
+      handleSessionExpired("Your session has expired. Please log in again.");
       return;
     }
 
@@ -80,7 +118,6 @@ export default function AIAssistant({ user }) {
     setIsSending(true);
 
     try {
-      const token = localStorage.getItem("jwt_token");
       const response = await fetch("http://localhost:8088/api/ai/chat", {
         method: "POST",
         headers: {
@@ -91,6 +128,10 @@ export default function AIAssistant({ user }) {
       });
 
       const data = await response.json();
+      if (response.status === 401 || response.status === 403) {
+        handleSessionExpired(data.message || "Your session has expired. Please log in again.");
+        return;
+      }
       if (!response.ok) throw new Error(data.message || "Server Error");
 
       appendMessage("assistant", data.reply);
@@ -136,7 +177,7 @@ export default function AIAssistant({ user }) {
             {messages.map((msg) => (
               <div key={msg.id} className={`message-row ${msg.role}`}>
                 <div className="avatar">
-                  {msg.role === "assistant" ? "AI" : "You"}
+                  {msg.role === "assistant" ? "AI" : "YOU"}
                 </div>
                 <div className="bubble">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>

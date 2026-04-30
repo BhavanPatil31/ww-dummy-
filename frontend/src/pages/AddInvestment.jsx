@@ -2,13 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
     FiCalendar, FiSearch, FiTrendingUp, FiInfo,
-    FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiDollarSign
+    FiCheckCircle, FiAlertTriangle, FiAlertCircle
 } from 'react-icons/fi';
 import '../styles/AddInvestment.css';
 import { getAllFunds, getNavHistory, getNavByDate, daysSince } from '../services/mfService';
 import InfoHint from '../components/InfoHint';
-import { getCurrencySymbol } from '../utils/currencyUtils';
-const currencyIcons = { INR: FiDollarSign, USD: FiDollarSign, EUR: FiDollarSign, GBP: FiDollarSign };
 
 // ── Module-level constants ──────────────────────────────────────────────
 const NAV_OUTDATED_DAYS = 30;
@@ -74,8 +72,7 @@ const FALLBACK_NAV_BY_CODE = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddInvestment({ user, onBackToDashboard, currency = 'INR' }) {
-    // pick icon dynamically
-    const CurrencyIcon = currencyIcons[currency] || FiDollarSign;
+    const currencySymbol = currencySymbols[currency] || '₹';
 
     // ── Fund list ──────────────────────────────────────────────────────────
     const [allFunds,     setAllFunds]     = useState([]);
@@ -119,7 +116,6 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
     // ── Submission ─────────────────────────────────────────────────────────
     const [status,   setStatus]   = useState({ loading: false, success: false, error: '' });
-    const [toastMsg, setToastMsg] = useState('');
 
     // ── Derived ────────────────────────────────────────────────────────────
     const navValue = parseFloat(formData.nav);
@@ -164,8 +160,8 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                 console.log(`[AddInvestment] Dropdown ready: ${formatted.length} funds`);
             } catch (err) {
                 console.error('[AddInvestment] Fund list fetch failed:', err);
-                setFundsError('Could not load fund list. Using fallback data.');
                 setAllFunds(FALLBACK_FUNDS);
+                setFundsError('');
             } finally {
                 setLoadingFunds(false);
             }
@@ -398,7 +394,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
         }
 
         const payload = {
-            user_id:         user?.userId || user?.id,
+            user_id:         userId,
             fund_id:         parseInt(formData.fund_id),
             investment_type: type === 'Lumpsum' ? 'BUY' : type,
             amount:          parseFloat(formData.amount),
@@ -496,16 +492,14 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
 
             {/* Toast */}
 
-            <header className="page-header">
-                <h1>Add Investment</h1>
-                <p>Track a new mutual fund SIP or lump-sum investment</p>
-            </header>
-
             <div className="add-investment-layout">
 
                 {/* ── FORM ────────────────────────────────────────────── */}
                 <div className="form-section">
                     <div className="premium-card">
+                        {showSuggestions && !loadingFunds && (
+                            <div className="funds-dropdown-backdrop" aria-hidden="true" />
+                        )}
 
                         {status.success ? (
                             <div className="success-state">
@@ -607,9 +601,7 @@ export default function AddInvestment({ user, onBackToDashboard, currency = 'INR
                                     <div className="form-group">
                                         <label>Amount (₹)</label>
                                         <div className="input-wrapper">
-                                            <CurrencyIcon className="input-icon" />
-
-                                            <span className="currency-prefix"></span>
+                                            <span className="currency-prefix">{currencySymbol}</span>
                                             <input
                                                 id="amount"
                                                 type="number"

@@ -33,3 +33,9 @@ build/
 .vscode/
 /bin/
 /.apt_generated_tests/
+
+# Local secrets
+.env
+.env.local
+.env.*
+!.env.example
