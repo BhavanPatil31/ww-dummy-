@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import InfoHint from "./InfoHint";
 import "../styles/AuthModal.css";
+import { API_BASE_URL } from "../config/apiConfig";
 
 function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initialEmail }) {
   const [email, setEmail] = useState(initialEmail || "");
@@ -20,7 +21,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
     setErrorMsg("");
 
     try {
-      const response = await fetch("http://localhost:8088/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -79,7 +80,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
   const handleResendOtp = async () => {
     setOtpMsg("");
     try {
-      const response = await fetch("http://localhost:8088/api/auth/send-otp", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
@@ -98,7 +99,7 @@ function LoginModal({ closeLogin, openSignup, openForgot, onLoginSuccess, initia
     setIsVerifyingOtp(true);
     setOtpMsg("");
     try {
-      const response = await fetch("http://localhost:8088/api/auth/verify-otp", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp })

@@ -44,7 +44,7 @@ public class AIChatService {
     @Value("${gemini.api.key:}")
     private String geminiApiKey;
 
-    @Value("${gemini.api.model:gemini-1.5-flash}")
+    @Value("${gemini.api.model:gemini-3.6-flash}")
     private String geminiModel;
 
     @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models}")
